@@ -1,5 +1,4 @@
 
-
 export interface User {
   id: string;
   name: string;
@@ -74,4 +73,3 @@ declare global {
     type AvailableFunctions = "is_owner_of_profile" | "update_user_api_key" | "update_user_name";
   }
 }
-

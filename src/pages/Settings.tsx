@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useRef } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -102,22 +103,28 @@ export default function Settings() {
     try {
       setIsSaving(true);
       
-      // Use RPC function instead of direct update to avoid potential RLS issues
-      const { error } = await supabase.rpc('update_user_name', {
+      // Use RPC function to update the name
+      const { data, error } = await supabase.rpc('update_user_name', {
         name_value: displayName
       });
 
       if (error) throw error;
-
+      
+      // Update local auth context - we'll force a page refresh since
+      // the context update might not happen immediately
       toast({
         title: "Nome atualizado",
         description: "Seu nome foi atualizado com sucesso.",
       });
 
-      // Force a refresh of the page after a short delay to ensure the context updates
-      setTimeout(() => {
-        window.location.reload();
-      }, 500);
+      // Update the local context without forcing a full page reload
+      if (currentUser) {
+        // Wait a moment before redirecting to ensure toast is visible
+        setTimeout(() => {
+          // Use window.location.href to ensure a full page reload
+          window.location.href = window.location.pathname;
+        }, 1500);
+      }
     } catch (error) {
       console.error("Error updating name:", error);
       toast({
@@ -388,8 +395,14 @@ export default function Settings() {
                       disabled={isSaving || !displayName}
                       className="ml-2"
                     >
-                      <Save className="mr-2 h-4 w-4" />
-                      Salvar
+                      {isSaving ? (
+                        <>Salvando...</>
+                      ) : (
+                        <>
+                          <Save className="mr-2 h-4 w-4" />
+                          Salvar
+                        </>
+                      )}
                     </Button>
                   </div>
                 </div>
