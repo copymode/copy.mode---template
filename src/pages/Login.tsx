@@ -26,6 +26,9 @@ export default function Login() {
         <LoginForm />
         <div className="mt-4 text-center text-sm text-muted-foreground">
           <p>Use seu e-mail e senha para acessar o sistema.</p>
+          <p className="mt-2 text-xs">
+            <span className="text-primary">Nota:</span> Para melhor segurança, ative a proteção contra senhas vazadas no painel do Supabase.
+          </p>
         </div>
       </div>
     </div>
