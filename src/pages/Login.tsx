@@ -12,19 +12,25 @@ export default function Login() {
 
   // If already logged in, redirect to home
   if (isLoading) {
-    return <div className="flex min-h-screen items-center justify-center">
+    return (
+      <div className="flex min-h-screen items-center justify-center">
         <Loader2 className="h-12 w-12 animate-spin text-primary" />
-      </div>;
+      </div>
+    );
   }
+  
   if (currentUser) {
     return <Navigate to="/home" />;
   }
-  return <div className="flex min-h-screen items-center justify-center bg-background p-4">
+  
+  return (
+    <div className="flex min-h-screen items-center justify-center bg-background p-4">
       <div className="w-full max-w-md">
         <LoginForm />
         <div className="mt-4 text-center text-sm text-muted-foreground">
           <p></p>
         </div>
       </div>
-    </div>;
+    </div>
+  );
 }

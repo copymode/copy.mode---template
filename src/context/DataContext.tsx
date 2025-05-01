@@ -1,5 +1,6 @@
+
 import { createContext, useContext, useState, useEffect, ReactNode, useMemo, useCallback } from "react";
-import { Agent, Expert, Chat, Message, CopyRequest } from "@/types";
+import { Agent, Expert, Chat, Message, CopyRequest, User } from "@/types";
 import { useAuth } from "./AuthContext";
 import { v4 as uuidv4 } from "uuid";
 
@@ -219,7 +220,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
          setCurrentChat(null);
     }
 
-  }, [currentUser, isLoading]); // Depend on currentUser and isLoading
+  }, [currentUser, isLoading, currentChat]); // Added currentChat as a dependency
 
   // Agents CRUD
   const createAgent = useCallback((agent: Omit<Agent, "id" | "createdAt" | "updatedAt" | "createdBy">) => {
@@ -363,7 +364,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
     if (currentChat?.id === id) {
       stableSetCurrentChat(null);
     }
-  }, [currentUser, currentChat?.id, stableSetCurrentChat]);
+  }, [currentUser, currentChat, stableSetCurrentChat]);
 
   // Add function to delete a specific message
   const deleteMessageFromChat = useCallback((chatId: string, messageId: string) => {
