@@ -89,12 +89,20 @@
 }
 
 @layer base {
+  html,
+  body,
+  #root {
+    height: 100%; /* Ensure full viewport height */
+  }
+
   * {
     @apply border-border;
   }
   body {
     @apply bg-background text-foreground;
     font-feature-settings: "rlig" 1, "calt" 1;
+    /* Remove potential conflicting height from default body if present */
+    /* height: auto; */ 
   }
 }
 

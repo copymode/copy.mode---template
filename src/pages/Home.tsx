@@ -202,7 +202,7 @@ export default function Home() {
   };
 
   return (
-    <div className="flex flex-col h-[calc(100vh-4rem)] md:h-[calc(100vh-4.5rem)] bg-background">
+    <div className="flex flex-col bg-background min-h-full"> 
       {!currentUser ? (
         <div className="flex-1 flex flex-col items-center justify-center p-4">
           <Card className="w-full max-w-md">
@@ -352,119 +352,156 @@ export default function Home() {
               </Button>
             </div>
           </div>
+          
+          <AlertDialog open={showApiKeyAlert} onOpenChange={setShowApiKeyAlert}>
+             <AlertDialogContent>
+                 <AlertDialogHeader>
+                <AlertDialogTitle>API Key Necessária</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Para usar o Copy Mode, você precisa configurar sua API key da Groq.
+                  Vá para as configurações para adicionar sua chave API.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel onClick={handleApiKeyAlertClose}>Entendi</AlertDialogCancel>
+                <AlertDialogAction onClick={() => {
+                  handleApiKeyAlertClose();
+                  window.location.href = "/settings";
+                }}>
+                  Ir para Configurações
+                </AlertDialogAction>
+              </AlertDialogFooter>
+             </AlertDialogContent>
+           </AlertDialog>
+          
+           <AlertDialog open={!!chatToDelete} onOpenChange={(open) => !open && setChatToDelete(null)}>
+             <AlertDialogContent>
+                 <AlertDialogHeader>
+                <AlertDialogTitle>Confirmar Exclusão</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Tem certeza que deseja excluir esta conversa?
+                  Esta ação não pode ser desfeita.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                <AlertDialogAction onClick={confirmDeleteChat} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">Excluir</AlertDialogAction>
+              </AlertDialogFooter>
+             </AlertDialogContent>
+           </AlertDialog>
         </>
       ) : (
-        /* Initial state copy form */
-        <div className="flex-1 flex flex-col items-center justify-center p-4">
-           <Card className="w-full max-w-4xl p-8 shadow-lg">
-             <CardHeader className="items-center text-center">
-                <Sparkles size={48} className="mb-4 text-primary" />
-                <CardTitle className="text-2xl">Crie sua próxima Copy!</CardTitle>
-             </CardHeader>
-             <CardContent className="space-y-6">
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                    <Select value={selectedExpert} onValueChange={setSelectedExpert}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Selecione o Expert" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {experts?.map((expert) => (
-                          <SelectItem key={expert.id} value={expert.id}>{expert.name}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+        <div className="flex-1 grid place-items-center p-4">
+          <Card className="w-full max-w-4xl p-8 shadow-lg">
+            <CardHeader className="items-center text-center">
+               <Sparkles size={48} className="mb-4 text-primary" />
+               <CardTitle className="text-2xl">Crie sua próxima Copy!</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-6">
+               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                   <Select value={selectedExpert} onValueChange={setSelectedExpert}>
+                     <SelectTrigger>
+                       <SelectValue placeholder="Selecione o Expert" />
+                     </SelectTrigger>
+                     <SelectContent>
+                       {experts?.map((expert) => (
+                         <SelectItem key={expert.id} value={expert.id}>{expert.name}</SelectItem>
+                       ))}
+                     </SelectContent>
+                   </Select>
 
-                    <Select value={selectedAgent} onValueChange={setSelectedAgent}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Selecione o Agente *" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {agents?.map((agent) => (
-                          <SelectItem key={agent.id} value={agent.id}>{agent.name}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                   <Select value={selectedAgent} onValueChange={setSelectedAgent}>
+                     <SelectTrigger>
+                       <SelectValue placeholder="Selecione o Agente *" />
+                     </SelectTrigger>
+                     <SelectContent>
+                       {agents?.map((agent) => (
+                         <SelectItem key={agent.id} value={agent.id}>{agent.name}</SelectItem>
+                       ))}
+                     </SelectContent>
+                   </Select>
 
-                    <Select value={selectedContentType} onValueChange={setSelectedContentType}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Tipo de Conteúdo *" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {contentTypes.map((type) => (
-                          <SelectItem key={type} value={type}>{type}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                </div>
+                   <Select value={selectedContentType} onValueChange={setSelectedContentType}>
+                     <SelectTrigger>
+                       <SelectValue placeholder="Tipo de Conteúdo *" />
+                     </SelectTrigger>
+                     <SelectContent>
+                       {contentTypes.map((type) => (
+                         <SelectItem key={type} value={type}>{type}</SelectItem>
+                       ))}
+                     </SelectContent>
+                   </Select>
+               </div>
 
-                 <div className="relative">
-                  <Textarea 
-                    placeholder="Digite o tema ou as informações para sua copy aqui..."
-                    value={promptInput}
-                    onChange={(e) => setPromptInput(e.target.value)}
-                     onKeyDown={(e) => {
-                       if (e.key === 'Enter' && !e.shiftKey) {
-                         e.preventDefault();
-                         handleSendMessage();
-                       }
-                     }}
-                    rows={6}
-                    className="w-full resize-y min-h-[140px] shadow-sm pr-16"
-                    disabled={isGenerating}
-                  />
-                  <Button 
-                    type="button"
-                    size="icon" 
-                    className="absolute right-3 bottom-3 h-8 w-8"
-                    onClick={handleSendMessage}
-                    disabled={isGenerating || !promptInput.trim() || !selectedAgent || !selectedContentType}
-                    aria-label="Gerar Copy"
-                  >
-                    {isGenerating ? <div className="h-4 w-4 border-2 border-background/80 border-t-transparent rounded-full animate-spin"></div> : <SendHorizonal size={18} />}
-                  </Button>
-                 </div>
+                <div className="relative">
+                 <Textarea 
+                   placeholder="Digite o tema ou as informações para sua copy aqui..."
+                   value={promptInput}
+                   onChange={(e) => setPromptInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault();
+                        handleSendMessage(); 
+                      }
+                    }}
+                   rows={6}
+                   className="w-full resize-y min-h-[140px] shadow-sm pr-16"
+                   disabled={isGenerating}
+                 />
+                 <Button 
+                   type="button"
+                   size="icon" 
+                   className="absolute right-3 bottom-3 h-8 w-8"
+                   onClick={handleSendMessage} 
+                   disabled={isGenerating || !promptInput.trim() || !selectedAgent || !selectedContentType}
+                   aria-label="Gerar Copy"
+                 >
+                   {isGenerating ? <div className="h-4 w-4 border-2 border-background/80 border-t-transparent rounded-full animate-spin"></div> : <SendHorizonal size={18} />}
+                 </Button>
+               </div>
 
-             </CardContent>
-           </Card>
+            </CardContent>
+          </Card>
+          
+          <AlertDialog open={showApiKeyAlert} onOpenChange={setShowApiKeyAlert}>
+             <AlertDialogContent>
+                 <AlertDialogHeader>
+                <AlertDialogTitle>API Key Necessária</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Para usar o Copy Mode, você precisa configurar sua API key da Groq.
+                  Vá para as configurações para adicionar sua chave API.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel onClick={handleApiKeyAlertClose}>Entendi</AlertDialogCancel>
+                <AlertDialogAction onClick={() => {
+                  handleApiKeyAlertClose();
+                  window.location.href = "/settings";
+                }}>
+                  Ir para Configurações
+                </AlertDialogAction>
+              </AlertDialogFooter>
+             </AlertDialogContent>
+           </AlertDialog>
+          
+           <AlertDialog open={!!chatToDelete} onOpenChange={(open) => !open && setChatToDelete(null)}>
+             <AlertDialogContent>
+                 <AlertDialogHeader>
+                <AlertDialogTitle>Confirmar Exclusão</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Tem certeza que deseja excluir esta conversa?
+                  Esta ação não pode ser desfeita.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                <AlertDialogAction onClick={confirmDeleteChat} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">Excluir</AlertDialogAction>
+              </AlertDialogFooter>
+             </AlertDialogContent>
+           </AlertDialog>
         </div>
       )}
-
-      <AlertDialog open={showApiKeyAlert} onOpenChange={setShowApiKeyAlert}>
-         <AlertDialogContent>
-             <AlertDialogHeader>
-            <AlertDialogTitle>API Key Necessária</AlertDialogTitle>
-            <AlertDialogDescription>
-              Para usar o Copy Mode, você precisa configurar sua API key da Groq.
-              Vá para as configurações para adicionar sua chave API.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel onClick={handleApiKeyAlertClose}>Entendi</AlertDialogCancel>
-            <AlertDialogAction onClick={() => {
-              handleApiKeyAlertClose();
-              window.location.href = "/settings";
-            }}>
-              Ir para Configurações
-            </AlertDialogAction>
-          </AlertDialogFooter>
-         </AlertDialogContent>
-       </AlertDialog>
       
-       <AlertDialog open={!!chatToDelete} onOpenChange={(open) => !open && setChatToDelete(null)}>
-         <AlertDialogContent>
-             <AlertDialogHeader>
-            <AlertDialogTitle>Confirmar Exclusão</AlertDialogTitle>
-            <AlertDialogDescription>
-              Tem certeza que deseja excluir esta conversa?
-              Esta ação não pode ser desfeita.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmDeleteChat} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">Excluir</AlertDialogAction>
-          </AlertDialogFooter>
-         </AlertDialogContent>
-       </AlertDialog>
     </div>
   );
 }
