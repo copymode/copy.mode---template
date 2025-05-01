@@ -1,13 +1,12 @@
-
-import { useState } from "react";
-import { useData } from "@/context/DataContext";
-import { Agent, Expert } from "@/types";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
+import { useData } from "@/context/data/DataContext";
 import { Textarea } from "@/components/ui/textarea";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { AlertCircle, Loader2 } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { CopyRequest } from "@/types";
 
 interface CopyFormProps {
   onSubmit: (expertId: string | undefined, agentId: string, contentType: string, info: string) => void;
