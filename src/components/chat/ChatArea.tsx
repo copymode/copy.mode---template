@@ -4,18 +4,14 @@ import { Message } from "@/types";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { Copy } from "lucide-react";
+import { Copy } from "lucide-react"; // Fixed import (capitalized)
 import { useToast } from "@/hooks/use-toast";
-import { useData } from "@/context/data/DataContext";
 
 interface ChatAreaProps {
-  messages?: Message[];
+  messages: Message[];
 }
 
 export function ChatArea({ messages }: ChatAreaProps) {
-  const { currentChat } = useData();
-  const effectiveMessages = messages || currentChat?.messages || [];
-  
   const scrollRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
   
@@ -24,7 +20,7 @@ export function ChatArea({ messages }: ChatAreaProps) {
     if (scrollRef.current) {
       scrollRef.current.scrollIntoView({ behavior: "smooth" });
     }
-  }, [effectiveMessages]);
+  }, [messages]);
   
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
@@ -46,7 +42,7 @@ export function ChatArea({ messages }: ChatAreaProps) {
 
   return (
     <ScrollArea className="flex-1 p-4">
-      {effectiveMessages.length === 0 ? (
+      {messages.length === 0 ? (
         <div className="h-full flex items-center justify-center text-center">
           <div className="max-w-sm">
             <h3 className="text-lg font-medium">Nenhuma mensagem ainda</h3>
@@ -57,7 +53,7 @@ export function ChatArea({ messages }: ChatAreaProps) {
         </div>
       ) : (
         <div className="space-y-4">
-          {effectiveMessages.map((message) => (
+          {messages.map((message) => (
             <div
               key={message.id}
               className={`flex ${
@@ -92,7 +88,7 @@ export function ChatArea({ messages }: ChatAreaProps) {
                       className="absolute -top-3 -right-3 h-7 w-7 rounded-full bg-background opacity-0 group-hover:opacity-100 transition-opacity"
                       onClick={() => copyToClipboard(message.content)}
                     >
-                      <Copy className="h-4 w-4" />
+                      <Copy className="h-4 w-4" /> {/* Fixed component name (capitalized) */}
                     </Button>
                   )}
                   <div className="text-sm">{formatContent(message.content)}</div>

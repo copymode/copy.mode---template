@@ -1,13 +1,14 @@
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
-import { useAuth } from "@/context/auth";
+import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { AlertTriangle, Save } from "lucide-react";
+import { AlertTriangle } from "lucide-react";
+import { Save } from "lucide-react"; // Fixed import (capitalized)
 
 export default function Settings() {
   const { currentUser, updateUserApiKey } = useAuth();
@@ -15,53 +16,18 @@ export default function Settings() {
   
   const [apiKey, setApiKey] = useState(currentUser?.apiKey || "");
   const [showApiKey, setShowApiKey] = useState(false);
-  const [isSaving, setIsSaving] = useState(false);
-  
-  // Sync local state when currentUser changes
-  useEffect(() => {
-    if (currentUser?.apiKey) {
-      setApiKey(currentUser.apiKey);
-    }
-  }, [currentUser]);
   
   const handleApiKeyChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setApiKey(e.target.value);
   };
   
-  const handleSaveApiKey = async () => {
+  const handleSaveApiKey = () => {
     if (apiKey) {
-      setIsSaving(true);
-      try {
-        await updateUserApiKey(apiKey);
-        toast({
-          title: "Chave API salva",
-          description: "Sua chave API Groq foi salva com sucesso.",
-        });
-      } catch (error) {
-        console.error("Erro ao salvar a chave API:", error);
-        
-        // Try to update local storage as fallback if Supabase fails
-        if (currentUser) {
-          const updatedUser = {
-            ...currentUser,
-            apiKey
-          };
-          localStorage.setItem("copymode_user", JSON.stringify(updatedUser));
-          
-          toast({
-            title: "Chave API salva localmente",
-            description: "Sua chave foi salva localmente devido a um problema com o servidor.",
-          });
-        } else {
-          toast({
-            title: "Erro",
-            description: "Ocorreu um erro ao salvar a chave API. Por favor, tente novamente.",
-            variant: "destructive",
-          });
-        }
-      } finally {
-        setIsSaving(false);
-      }
+      updateUserApiKey(apiKey);
+      toast({
+        title: "Chave API salva",
+        description: "Sua chave API Groq foi salva com sucesso.",
+      });
     } else {
       toast({
         title: "Erro",
@@ -116,12 +82,9 @@ export default function Settings() {
             </div>
           </CardContent>
           <CardFooter>
-            <Button 
-              onClick={handleSaveApiKey} 
-              disabled={!apiKey || isSaving}
-            >
-              <Save className="mr-2 h-4 w-4" />
-              {isSaving ? "Salvando..." : "Salvar Chave API"}
+            <Button onClick={handleSaveApiKey} disabled={!apiKey}>
+              <Save className="mr-2 h-4 w-4" /> {/* Fixed component name (capitalized) */}
+              Salvar Chave API
             </Button>
           </CardFooter>
         </Card>

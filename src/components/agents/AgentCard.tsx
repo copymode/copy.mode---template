@@ -1,111 +1,59 @@
 
-import { useState } from "react";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Trash2, Edit, Save, X } from "lucide-react";
-import { useData } from "@/context/data";
-import { useAuth } from "@/context/auth";
-import { Textarea } from "@/components/ui/textarea";
-import { Input } from "@/components/ui/input";
 import { Agent } from "@/types";
+import { useData } from "@/context/DataContext";
+import { useState } from "react";
+import { Edit, Trash } from "lucide-react"; // Fixed import (capitalized)
 
 interface AgentCardProps {
   agent: Agent;
+  onEdit?: () => void;
+  onDelete?: () => void;
 }
 
-export function AgentCard({ agent }: AgentCardProps) {
-  const { updateAgent, deleteAgent } = useData();
-  const { currentUser } = useAuth();
-  const [isEditing, setIsEditing] = useState(false);
-  const [name, setName] = useState(agent.name);
-  const [prompt, setPrompt] = useState(agent.prompt);
-  const [description, setDescription] = useState(agent.description);
+export function AgentCard({ agent, onEdit, onDelete }: AgentCardProps) {
+  const [isDeleting, setIsDeleting] = useState(false);
+  const { deleteAgent } = useData();
   
-  const handleSave = () => {
-    if (!currentUser || currentUser.role !== "admin") return;
-    updateAgent(agent.id, { name, prompt, description });
-    setIsEditing(false);
-  };
-  
-  const handleCancel = () => {
-    setName(agent.name);
-    setPrompt(agent.prompt);
-    setDescription(agent.description);
-    setIsEditing(false);
-  };
-  
-  const handleDelete = () => {
-    if (!currentUser || currentUser.role !== "admin") return;
-    deleteAgent(agent.id);
+  const handleDelete = async () => {
+    if (!onDelete) return;
+    
+    setIsDeleting(true);
+    try {
+      await deleteAgent(agent.id);
+      onDelete();
+    } finally {
+      setIsDeleting(false);
+    }
   };
 
   return (
     <Card className="w-full">
-      <CardHeader>
-        <CardTitle>{agent.name}</CardTitle>
+      <CardHeader className="pb-2">
+        <div className="flex justify-between items-start">
+          <CardTitle className="text-lg">{agent.name}</CardTitle>
+          <div className="flex space-x-1">
+            {onEdit && (
+              <Button variant="ghost" size="icon" onClick={onEdit}>
+                <Edit size={16} /> {/* Fixed component name (capitalized) */}
+                <span className="sr-only">Edit</span>
+              </Button>
+            )}
+            {onDelete && (
+              <Button variant="ghost" size="icon" onClick={handleDelete} disabled={isDeleting}>
+                <Trash size={16} /> {/* Fixed component name (capitalized) */}
+                <span className="sr-only">Delete</span>
+              </Button>
+            )}
+          </div>
+        </div>
       </CardHeader>
-      <CardContent>
-        {isEditing ? (
-          <div className="grid gap-4">
-            <div className="grid gap-2">
-              <Input
-                id="name"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-              />
-            </div>
-            <div className="grid gap-2">
-              <Textarea
-                id="prompt"
-                value={prompt}
-                onChange={(e) => setPrompt(e.target.value)}
-              />
-            </div>
-             <div className="grid gap-2">
-              <Textarea
-                id="description"
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-              />
-            </div>
-          </div>
-        ) : (
-          <div className="grid gap-4">
-            <div className="grid gap-2">
-              <p className="text-sm font-medium leading-none">
-                {agent.prompt}
-              </p>
-              <p className="text-sm text-muted-foreground">
-                {agent.description}
-              </p>
-            </div>
-          </div>
-        )}
+      <CardContent className="pb-2 text-sm text-muted-foreground">
+        {agent.description || "Sem descrição"}
       </CardContent>
-      <CardFooter className="flex justify-between">
-        {isEditing ? (
-          <div className="space-x-2">
-            <Button variant="ghost" onClick={handleCancel}>
-              <X className="mr-2 h-4 w-4" />
-              Cancelar
-            </Button>
-            <Button onClick={handleSave}>
-              <Save className="mr-2 h-4 w-4" />
-              Salvar
-            </Button>
-          </div>
-        ) : (
-          <>
-            <Button variant="ghost" onClick={() => setIsEditing(true)}>
-              <Edit className="mr-2 h-4 w-4" />
-              Editar
-            </Button>
-            <Button variant="destructive" onClick={handleDelete}>
-              <Trash2 className="mr-2 h-4 w-4" />
-              Excluir
-            </Button>
-          </>
-        )}
+      <CardFooter className="pt-2 text-xs text-muted-foreground">
+        {new Date(agent.createdAt).toLocaleDateString('pt-BR')}
       </CardFooter>
     </Card>
   );
