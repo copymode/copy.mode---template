@@ -220,11 +220,17 @@ export function DataProvider({ children }: { children: ReactNode }) {
   }, [currentUser, isLoading, currentChat]); // Added currentChat as a dependency
 
   // Agents CRUD
-  const createAgent = useCallback((agent: Omit<Agent, "id" | "createdAt" | "updatedAt" | "createdBy">) => {
+  const createAgent = useCallback((agentData: Omit<Agent, "id" | "createdAt" | "updatedAt" | "createdBy">) => {
     if (!currentUser || currentUser.role !== "admin") return;
     
     const newAgent: Agent = {
-      ...agent,
+      // Ensure all fields from agentData are included
+      name: agentData.name,
+      description: agentData.description,
+      prompt: agentData.prompt,
+      temperature: agentData.temperature, // Add temperature
+      avatar: agentData.avatar, // Keep avatar
+      // Generate new fields
       id: `agent-${uuidv4()}`,
       createdAt: new Date(),
       updatedAt: new Date(),
@@ -234,13 +240,19 @@ export function DataProvider({ children }: { children: ReactNode }) {
     setAgents(prevAgents => [...prevAgents, newAgent]);
   }, [currentUser]);
   
+  // Ensure updateAgent accepts the full Agent type (minus generated fields)
+  // and includes temperature
   const updateAgent = useCallback((id: string, agentData: Partial<Omit<Agent, "id" | "createdAt" | "updatedAt" | "createdBy">>) => {
     if (!currentUser || currentUser.role !== "admin") return;
     
     setAgents(prevAgents =>
       prevAgents.map(agent =>
         agent.id === id
-          ? { ...agent, ...agentData, updatedAt: new Date() }
+          ? { 
+              ...agent, // Keep existing fields like id, createdBy, createdAt
+              ...agentData, // Apply updates from agentData (includes name, desc, prompt, temp, avatar)
+              updatedAt: new Date() // Update the date
+            }
           : agent
       )
     );
@@ -448,7 +460,10 @@ Use estas informações como base para dar mais relevância e especificidade à 
 
     // --- 3. Prepare API Request Body --- 
     const GROQ_API_ENDPOINT = "https://api.groq.com/openai/v1/chat/completions";
-    const GROQ_MODEL = "meta-llama/llama-4-maverick-17b-128e-instruct"; 
+    // Define DEFAULT_TEMPERATURE constant within the scope if not already defined globally
+    const DEFAULT_TEMPERATURE = 0.7;
+    // Example model, replace with actual model if needed
+    const GROQ_MODEL = "llama3-8b-8192"; // Using a known model from docs
 
     const requestBody = {
       model: GROQ_MODEL,
@@ -458,7 +473,10 @@ Use estas informações como base para dar mais relevância e especificidade à 
         // Add the current user request as the latest user message
         { role: "user", content: additionalInfo } 
       ],
-      temperature: 0.7, // Keep reasonable temperature
+      // Use agent's temperature or default fallback
+      temperature: agent.temperature ?? DEFAULT_TEMPERATURE, 
+      // Consider adding other relevant parameters like max_tokens if needed
+      // max_tokens: 1024, 
     };
 
     // Debug log: Show the final messages being sent

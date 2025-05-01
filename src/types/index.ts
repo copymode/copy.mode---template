@@ -1,4 +1,3 @@
-
 export interface User {
   id: string;
   name: string;
@@ -14,17 +13,16 @@ export interface Agent {
   avatar?: string;
   prompt: string;
   description: string;
+  temperature?: number;
   createdAt: Date;
   updatedAt: Date;
   createdBy: string;
-  documents?: Document[];
+  knowledgeFiles?: KnowledgeFile[];
 }
 
-export interface Document {
-  id: string;
+export interface KnowledgeFile {
   name: string;
-  content: string;
-  agentId: string;
+  path: string;
 }
 
 export interface Expert {
