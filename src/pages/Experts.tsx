@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useData } from "@/context/DataContext";
 import { ExpertForm } from "@/components/experts/ExpertForm";
@@ -6,37 +5,28 @@ import { ExpertCard } from "@/components/experts/ExpertCard";
 import { Expert } from "@/types";
 import { Button } from "@/components/ui/button";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-import { Plus } from "lucide-react";
+import { Plus, PlusCircle, Edit, Trash2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 export default function Experts() {
-  const { experts, deleteExpert } = useData();
+  const { experts, addExpert, updateExpert, deleteExpert } = useData();
   const { toast } = useToast();
-  const [isCreating, setIsCreating] = useState(false);
-  const [isEditing, setIsEditing] = useState(false);
-  const [expertToEdit, setExpertToEdit] = useState<Expert | null>(null);
+  const [showForm, setShowForm] = useState(false);
+  const [editingExpert, setEditingExpert] = useState<Expert | null>(null);
   const [expertToDelete, setExpertToDelete] = useState<string | null>(null);
   
-  const handleCreateClick = () => {
-    setIsCreating(true);
-    setIsEditing(false);
-    setExpertToEdit(null);
+  const handleCreate = () => {
+    setEditingExpert(null);
+    setShowForm(true);
   };
   
-  const handleEditClick = (expert: Expert) => {
-    setIsEditing(true);
-    setIsCreating(false);
-    setExpertToEdit(expert);
+  const handleEdit = (expert: Expert) => {
+    setEditingExpert(expert);
+    setShowForm(true);
   };
   
-  const handleCancelForm = () => {
-    setIsCreating(false);
-    setIsEditing(false);
-    setExpertToEdit(null);
-  };
-  
-  const handleDeleteClick = (id: string) => {
-    setExpertToDelete(id);
+  const handleDelete = (expertId: string) => {
+    setExpertToDelete(expertId);
   };
   
   const confirmDelete = () => {
@@ -50,6 +40,22 @@ export default function Experts() {
     }
   };
 
+  const handleSave = (expertData: Omit<Expert, 'id'> | Expert) => {
+    try {
+      if ('id' in expertData && expertData.id) {
+        updateExpert(expertData.id, expertData);
+        toast({ title: "Expert atualizado com sucesso!" });
+      } else {
+        addExpert(expertData as Omit<Expert, 'id'>);
+        toast({ title: "Expert criado com sucesso!" });
+      }
+      setShowForm(false);
+      setEditingExpert(null);
+    } catch (error) {
+      toast({ title: "Erro ao salvar Expert", description: error instanceof Error ? error.message : String(error), variant: "destructive" });
+    }
+  };
+
   return (
     <div className="container mx-auto max-w-5xl">
       <div className="flex justify-between items-center mb-6">
@@ -60,21 +66,25 @@ export default function Experts() {
           </p>
         </div>
         
-        {!isCreating && !isEditing && (
-          <Button onClick={handleCreateClick}>
-            <Plus size={16} className="mr-2" />
-            Novo Expert
+        {!showForm && (
+          <Button onClick={handleCreate}>
+            <PlusCircle className="mr-2 h-4 w-4" />
+            Criar Novo Expert
           </Button>
         )}
       </div>
       
-      {(isCreating || isEditing) ? (
-        <div className="max-w-2xl mx-auto">
-          <ExpertForm 
-            onCancel={handleCancelForm}
-            initialData={expertToEdit || undefined}
-            isEditing={isEditing}
-          />
+      {showForm ? (
+        <div className="max-w-2xl mx-auto p-6 border rounded-lg bg-card shadow-sm">
+           <h2 className="text-xl font-semibold mb-6 border-b pb-3">
+             {editingExpert ? "Editar Expert" : "Criar Novo Expert"}
+           </h2>
+           <ExpertForm 
+             initialData={editingExpert || undefined} 
+             isEditing={!!editingExpert} 
+             onSave={handleSave} 
+             onCancel={() => setShowForm(false)} 
+           />
         </div>
       ) : (
         <div className="space-y-4">
@@ -84,8 +94,8 @@ export default function Experts() {
               <p className="text-muted-foreground mb-4">
                 Você ainda não criou nenhum perfil de expert.
               </p>
-              <Button onClick={handleCreateClick}>
-                <Plus size={16} className="mr-2" />
+              <Button onClick={handleCreate}>
+                <PlusCircle className="mr-2 h-4 w-4" />
                 Criar primeiro expert
               </Button>
             </div>
@@ -94,8 +104,8 @@ export default function Experts() {
               <ExpertCard 
                 key={expert.id}
                 expert={expert}
-                onEdit={handleEditClick}
-                onDelete={handleDeleteClick}
+                onEdit={handleEdit}
+                onDelete={handleDelete}
               />
             ))
           )}

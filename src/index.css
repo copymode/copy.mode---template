@@ -1,87 +1,90 @@
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 240 10% 3.9%;
+    /* Light Mode - Airbnb Inspired Palette */
+    --background: 0 0% 100%; /* White */
+    --foreground: 222 47% 11%; /* Dark Gray/Almost Black - Adjusted slightly */
 
     --card: 0 0% 100%;
-    --card-foreground: 240 10% 3.9%;
+    --card-foreground: 222 47% 11%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 240 10% 3.9%;
+    --popover-foreground: 222 47% 11%;
 
-    --primary: 240 5.9% 10%;
-    --primary-foreground: 0 0% 98%;
+    --primary: 358 100% 67%; /* Airbnb Red */
+    --primary-foreground: 0 0% 100%; /* White text on red */
 
-    --secondary: 240 4.8% 95.9%;
-    --secondary-foreground: 240 5.9% 10%;
+    --secondary: 215 28% 96%; /* Lighter Gray */
+    --secondary-foreground: 222 47% 11%;
 
-    --muted: 240 4.8% 95.9%;
-    --muted-foreground: 240 3.8% 46.1%;
+    --muted: 215 28% 96%; /* Lighter Gray (same as secondary for simplicity) */
+    --muted-foreground: 215 20% 55%; /* Medium Gray */
 
-    --accent: 240 4.8% 95.9%;
-    --accent-foreground: 240 5.9% 10%;
+    --accent: 215 28% 96%; /* Lighter Gray (same as secondary/muted) */
+    --accent-foreground: 222 47% 11%;
 
-    --destructive: 0 84.2% 60.2%;
+    --destructive: 0 84.2% 60.2%; /* Keep default red for destructive */
     --destructive-foreground: 0 0% 98%;
 
-    --border: 240 5.9% 90%;
-    --input: 240 5.9% 90%;
-    --ring: 240 5.9% 10%;
+    --border: 220 20% 91%; /* Very Light Gray */
+    --input: 220 20% 91%; /* Very Light Gray */
+    --ring: 358 100% 67%; /* Airbnb Red for focus ring */
 
     --radius: 0.5rem;
 
-    --sidebar-background: 0 0% 98%;
-    --sidebar-foreground: 240 5.3% 26.1%;
-    --sidebar-primary: 240 5.9% 10%;
-    --sidebar-primary-foreground: 0 0% 98%;
-    --sidebar-accent: 240 4.8% 95.9%;
-    --sidebar-accent-foreground: 240 5.9% 10%;
-    --sidebar-border: 220 13% 91%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    /* Sidebar Specific (Light) */
+    --sidebar-background: 220 20% 98%; /* Very very light gray, almost white */
+    --sidebar-foreground: 222 47% 11%; /* Dark Gray */
+    --sidebar-primary: 358 100% 67%; /* Airbnb Red */
+    --sidebar-primary-foreground: 0 0% 100%; /* White */
+    --sidebar-accent: 220 20% 91%; /* Very Light Gray (like border) */
+    --sidebar-accent-foreground: 222 47% 11%; /* Dark Gray */
+    --sidebar-border: 220 20% 88%; /* Slightly darker border for sidebar */
+    --sidebar-ring: 358 100% 67%; /* Airbnb Red */
   }
 
   .dark {
-    --background: 240 10% 3.9%;
-    --foreground: 0 0% 98%;
+    /* Dark Mode - Airbnb Inspired Palette */
+    --background: 222 47% 11%; /* Dark Gray/Almost Black */
+    --foreground: 210 40% 98%; /* Almost White */
 
-    --card: 240 10% 3.9%;
-    --card-foreground: 0 0% 98%;
+    --card: 222 47% 15%; /* Slightly lighter dark gray */
+    --card-foreground: 210 40% 98%;
 
-    --popover: 240 10% 3.9%;
-    --popover-foreground: 0 0% 98%;
+    --popover: 222 47% 11%;
+    --popover-foreground: 210 40% 98%;
 
-    --primary: 0 0% 98%;
-    --primary-foreground: 240 5.9% 10%;
+    --primary: 358 90% 70%; /* Airbnb Red slightly adjusted for dark */
+    --primary-foreground: 0 0% 100%; /* White text on red */
 
-    --secondary: 240 3.7% 15.9%;
-    --secondary-foreground: 0 0% 98%;
+    --secondary: 217 33% 25%; /* Medium Dark Gray */
+    --secondary-foreground: 210 40% 98%;
 
-    --muted: 240 3.7% 15.9%;
-    --muted-foreground: 240 5% 64.9%;
+    --muted: 217 33% 25%; /* Medium Dark Gray */
+    --muted-foreground: 215 20% 65%; /* Lighter Gray */
 
-    --accent: 240 3.7% 15.9%;
-    --accent-foreground: 0 0% 98%;
+    --accent: 217 33% 25%; /* Medium Dark Gray */
+    --accent-foreground: 210 40% 98%;
 
-    --destructive: 0 62.8% 30.6%;
+    --destructive: 0 72% 51%; /* Darker Red */
     --destructive-foreground: 0 0% 98%;
 
-    --border: 240 3.7% 15.9%;
-    --input: 240 3.7% 15.9%;
-    --ring: 240 4.9% 83.9%;
+    --border: 217 33% 25%; /* Medium Dark Gray */
+    --input: 217 33% 25%; /* Medium Dark Gray */
+    --ring: 358 90% 70%; /* Airbnb Red for focus ring */
     
-    --sidebar-background: 240 5.9% 10%;
-    --sidebar-foreground: 240 4.8% 95.9%;
-    --sidebar-primary: 224.3 76.3% 48%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 240 3.7% 15.9%;
-    --sidebar-accent-foreground: 240 4.8% 95.9%;
-    --sidebar-border: 240 3.7% 15.9%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    /* Sidebar Specific (Dark) */
+    --sidebar-background: 222 47% 9%; /* Even darker for sidebar */
+    --sidebar-foreground: 210 40% 98%; /* Almost White */
+    --sidebar-primary: 358 90% 70%; /* Airbnb Red */
+    --sidebar-primary-foreground: 0 0% 100%; /* White */
+    --sidebar-accent: 217 33% 20%; /* Darker accent */
+    --sidebar-accent-foreground: 210 40% 98%; /* Almost White */
+    --sidebar-border: 217 33% 18%; /* Slightly darker border */
+    --sidebar-ring: 358 90% 70%; /* Airbnb Red */
   }
 }
 

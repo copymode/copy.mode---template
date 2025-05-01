@@ -1,5 +1,4 @@
-
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import { ThemeProvider } from "./context/ThemeContext";
 import { DataProvider } from "./context/DataContext";
@@ -16,9 +15,10 @@ import Experts from "./pages/Experts";
 import Admin from "./pages/Admin";
 import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
+import ExpertsPage from "@/pages/Experts";
 
 // Auth guard component
-const ProtectedRoute = ({ children, adminOnly = false }: { children: React.ReactNode, adminOnly?: boolean }) => {
+function ProtectedRoute({ children, adminOnly = false }: { children: React.ReactNode, adminOnly?: boolean }) {
   const { currentUser } = useAuth();
 
   // Check if logged in
@@ -32,7 +32,7 @@ const ProtectedRoute = ({ children, adminOnly = false }: { children: React.React
   }
 
   return <>{children}</>;
-};
+}
 
 const queryClient = new QueryClient();
 
@@ -53,7 +53,7 @@ const AppRoutes = () => {
       <Route path="/experts" element={
         <ProtectedRoute>
           <AppShell>
-            <Experts />
+            <ExpertsPage />
           </AppShell>
         </ProtectedRoute>
       } />
@@ -87,9 +87,9 @@ const App = () => {
           <Sonner />
           <AuthProvider>
             <DataProvider>
-              <BrowserRouter>
+              <Router>
                 <AppRoutes />
-              </BrowserRouter>
+              </Router>
             </DataProvider>
           </AuthProvider>
         </TooltipProvider>

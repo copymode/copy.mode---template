@@ -1,4 +1,3 @@
-
 export interface User {
   id: string;
   name: string;
@@ -29,7 +28,6 @@ export interface Document {
 export interface Expert {
   id: string;
   name: string;
-  avatar?: string;
   niche: string;
   targetAudience: string;
   deliverables: string;
@@ -46,6 +44,7 @@ export interface Chat {
   messages: Message[];
   expertId?: string;
   agentId: string;
+  contentType: string;
   userId: string;
   createdAt: Date;
   updatedAt: Date;
