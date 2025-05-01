@@ -5,14 +5,17 @@ import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Agent } from "@/types";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 interface AgentFormProps {
+  open?: boolean;
+  setOpen?: (open: boolean) => void;
   agent?: Agent;
-  onCancel: () => void;
   onSubmit: (agentData: Omit<Agent, "id" | "createdAt" | "updatedAt" | "createdBy">) => void;
+  onCancel?: () => void;
 }
 
-export function AgentForm({ agent, onCancel, onSubmit }: AgentFormProps) {
+export function AgentForm({ agent, open, setOpen, onSubmit, onCancel }: AgentFormProps) {
   const [name, setName] = useState(agent?.name || "");
   const [prompt, setPrompt] = useState(agent?.prompt || "");
   const [description, setDescription] = useState(agent?.description || "");
@@ -20,9 +23,21 @@ export function AgentForm({ agent, onCancel, onSubmit }: AgentFormProps) {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     onSubmit({ name, prompt, description });
+    if (setOpen) {
+      setOpen(false);
+    }
+  };
+
+  const handleCancel = () => {
+    if (onCancel) {
+      onCancel();
+    }
+    if (setOpen) {
+      setOpen(false);
+    }
   };
   
-  return (
+  const formContent = (
     <form onSubmit={handleSubmit} className="space-y-4">
       <div className="space-y-2">
         <Label htmlFor="name">Nome</Label>
@@ -57,11 +72,28 @@ export function AgentForm({ agent, onCancel, onSubmit }: AgentFormProps) {
       </div>
       
       <div className="flex justify-end space-x-2">
-        <Button type="button" variant="ghost" onClick={onCancel}>
+        <Button type="button" variant="ghost" onClick={handleCancel}>
           Cancelar
         </Button>
         <Button type="submit">Salvar</Button>
       </div>
     </form>
   );
+  
+  // If open and setOpen are provided, render in a Dialog
+  if (open !== undefined && setOpen) {
+    return (
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>{agent ? "Editar Agente" : "Adicionar Novo Agente"}</DialogTitle>
+          </DialogHeader>
+          {formContent}
+        </DialogContent>
+      </Dialog>
+    );
+  }
+  
+  // Otherwise render directly
+  return formContent;
 }

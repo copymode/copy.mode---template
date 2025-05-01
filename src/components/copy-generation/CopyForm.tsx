@@ -1,20 +1,23 @@
-import { useState, useEffect } from "react";
+
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useData } from "@/context/data/DataContext";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Input } from "@/components/ui/input";
 import { AlertCircle, Loader2 } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { CopyRequest } from "@/types";
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { CopyRequest, Agent, Expert } from "@/types";
 
 interface CopyFormProps {
   onSubmit: (expertId: string | undefined, agentId: string, contentType: string, info: string) => void;
+  isLoading?: boolean;
 }
 
-export function CopyForm({ onSubmit }: CopyFormProps) {
+export function CopyForm({ onSubmit, isLoading = false }: CopyFormProps) {
   const { agents, experts } = useData();
-  const [isLoading, setIsLoading] = useState(false);
   
   const [formData, setFormData] = useState({
     expertId: "",
@@ -36,7 +39,6 @@ export function CopyForm({ onSubmit }: CopyFormProps) {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    setIsLoading(true);
     
     try {
       onSubmit(
@@ -52,8 +54,8 @@ export function CopyForm({ onSubmit }: CopyFormProps) {
         contentType: "",
         additionalInfo: "",
       });
-    } finally {
-      setIsLoading(false);
+    } catch (error) {
+      console.error("Error submitting form:", error);
     }
   };
 
@@ -136,7 +138,14 @@ export function CopyForm({ onSubmit }: CopyFormProps) {
             className="w-full"
             disabled={isLoading || !formData.agentId || !formData.contentType}
           >
-            {isLoading ? "Gerando..." : "Gerar Copy"}
+            {isLoading ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Gerando...
+              </>
+            ) : (
+              "Gerar Copy"
+            )}
           </Button>
         </CardFooter>
       </form>

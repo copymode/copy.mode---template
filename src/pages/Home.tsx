@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useData } from "@/context/data/DataContext";
 import { Button } from "@/components/ui/button";
@@ -13,10 +14,22 @@ export default function Home() {
   const [isLoading, setIsLoading] = useState(false);
   const [generatedCopy, setGeneratedCopy] = useState<string | null>(null);
 
-  const handleGenerateCopy = async (request: CopyRequest) => {
+  const handleGenerateCopy = async (
+    expertId: string | undefined,
+    agentId: string,
+    contentType: string,
+    additionalInfo: string
+  ) => {
     setIsLoading(true);
     setGeneratedCopy(null);
     try {
+      const request: CopyRequest = {
+        expertId,
+        agentId,
+        contentType,
+        additionalInfo
+      };
+      
       const copy = await generateCopy(request);
       setGeneratedCopy(copy);
     } catch (error: any) {
@@ -71,8 +84,8 @@ export default function Home() {
       <CopyForm onSubmit={handleGenerateCopy} isLoading={isLoading} />
 
       {/* Chat Area */}
-      <div className="flex-1">
-        <ChatArea generatedCopy={generatedCopy} isLoading={isLoading} />
+      <div className="flex-1 mt-4">
+        <ChatArea />
       </div>
 
       {/* Retry Button */}
