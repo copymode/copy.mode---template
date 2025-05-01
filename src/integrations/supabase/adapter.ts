@@ -23,12 +23,12 @@ export async function fetchUserProfile(userId: string): Promise<User> {
   
   console.log("User profile data from Supabase:", data);
   
-  // Map database fields to User type
+  // Map database fields to User type, ensuring role is the correct type
   return {
     id: data.id,
     name: data.name || data.email || "Usuário",
     email: data.email || "",
-    role: data.role || "user",
+    role: data.role === "admin" ? "admin" : "user", // Ensure role is either "admin" or "user"
     apiKey: data.api_key || null
   };
 }
@@ -56,7 +56,7 @@ export async function updateUserProfile(userId: string, updates: Partial<User>):
     id: data.id,
     name: data.name || data.email || "Usuário",
     email: data.email || "",
-    role: data.role || "user",
+    role: data.role === "admin" ? "admin" : "user", // Ensure role is either "admin" or "user"
     apiKey: data.api_key || null
   };
 }
