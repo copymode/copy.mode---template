@@ -41,7 +41,7 @@ export function CopyForm({ onSubmit }: CopyFormProps) {
     
     try {
       onSubmit(
-        formData.expertId || undefined,
+        formData.expertId === "none" ? undefined : formData.expertId,
         formData.agentId,
         formData.contentType,
         formData.additionalInfo
@@ -75,7 +75,7 @@ export function CopyForm({ onSubmit }: CopyFormProps) {
                 <SelectValue placeholder="Selecione um Expert (opcional)" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">Nenhum Expert</SelectItem>
+                <SelectItem value="none">Nenhum Expert</SelectItem>
                 {experts.map((expert: Expert) => (
                   <SelectItem key={expert.id} value={expert.id}>
                     {expert.name} - {expert.niche}
