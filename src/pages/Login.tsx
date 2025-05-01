@@ -1,5 +1,4 @@
 
-import { useState } from "react";
 import { Navigate } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import { LoginForm } from "@/components/auth/LoginForm";
@@ -25,6 +24,9 @@ export default function Login() {
     <div className="flex min-h-screen items-center justify-center bg-background p-4">
       <div className="w-full max-w-md">
         <LoginForm />
+        <div className="mt-4 text-center text-sm text-muted-foreground">
+          <p>Administradores são definidos diretamente no painel do Supabase.</p>
+        </div>
       </div>
     </div>
   );
