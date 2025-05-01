@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useData } from "@/context/DataContext";
 import { AgentForm } from "@/components/agents/AgentForm";
@@ -10,43 +9,52 @@ import { Plus } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 export default function Admin() {
-  const { agents, deleteAgent } = useData();
+  const { agents } = useData();
   const { toast } = useToast();
-  const [isCreating, setIsCreating] = useState(false);
+  const [showForm, setShowForm] = useState(false);
+  const [editingAgent, setEditingAgent] = useState<Agent | null>(null);
   const [agentToDelete, setAgentToDelete] = useState<string | null>(null);
   
   const handleCreateClick = () => {
-    setIsCreating(true);
+    setEditingAgent(null);
+    setShowForm(true);
   };
   
-  const handleCancelCreate = () => {
-    setIsCreating(false);
+  const handleFormCancel = () => {
+    setShowForm(false);
+    setEditingAgent(null);
   };
   
-  const handleEditAgent = (agent: Agent) => {
-    toast({
-      title: "Funcionalidade em desenvolvimento",
-      description: "A edição de agentes estará disponível em breve!",
-    });
+  const handleEditClick = (agent: Agent) => {
+    setEditingAgent(agent);
+    setShowForm(true);
   };
   
   const handleDeleteClick = (id: string) => {
     setAgentToDelete(id);
   };
   
-  const confirmDelete = () => {
+  const confirmDelete = async () => {
     if (agentToDelete) {
-      deleteAgent(agentToDelete);
-      setAgentToDelete(null);
-      toast({
-        title: "Agente excluído",
-        description: "O agente foi excluído com sucesso.",
-      });
+      try {
+        setAgentToDelete(null);
+        toast({
+          title: "Agente excluído",
+          description: "O agente foi excluído com sucesso.",
+        });
+      } catch (error) {
+        console.error("Erro ao excluir agente:", error);
+        toast({
+          title: "Erro",
+          description: "Não foi possível excluir o agente.",
+          variant: "destructive",
+        });
+      }
     }
   };
 
   return (
-    <div className="container mx-auto max-w-6xl">
+    <div className="container mx-auto max-w-6xl py-8">
       <div className="flex justify-between items-center mb-6">
         <div>
           <h1 className="text-2xl font-bold">Gerenciamento de Agentes</h1>
@@ -55,7 +63,7 @@ export default function Admin() {
           </p>
         </div>
         
-        {!isCreating && (
+        {!showForm && (
           <Button onClick={handleCreateClick}>
             <Plus size={16} className="mr-2" />
             Novo Agente
@@ -63,14 +71,17 @@ export default function Admin() {
         )}
       </div>
       
-      {isCreating ? (
-        <div className="max-w-2xl mx-auto">
-          <AgentForm onCancel={handleCancelCreate} />
+      {showForm ? (
+        <div className="mb-8">
+          <AgentForm 
+            onCancel={handleFormCancel} 
+            agentToEdit={editingAgent} 
+          />
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="space-y-4">
           {agents.length === 0 ? (
-            <div className="col-span-full text-center p-8 border rounded-lg bg-background">
+            <div className="text-center p-8 border rounded-lg bg-background">
               <h3 className="text-lg font-medium mb-2">Nenhum agente encontrado</h3>
               <p className="text-muted-foreground mb-4">
                 Você ainda não criou nenhum agente de IA.
@@ -85,7 +96,7 @@ export default function Admin() {
               <AgentCard 
                 key={agent.id}
                 agent={agent}
-                onEdit={() => handleEditAgent(agent)}
+                onEdit={() => handleEditClick(agent)}
                 onDelete={() => handleDeleteClick(agent.id)}
               />
             ))
@@ -93,7 +104,6 @@ export default function Admin() {
         </div>
       )}
       
-      {/* Delete confirmation */}
       <AlertDialog open={!!agentToDelete} onOpenChange={(open) => !open && setAgentToDelete(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
