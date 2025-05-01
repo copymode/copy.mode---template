@@ -15,6 +15,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { SendHorizonal, Copy, Trash2, Pencil, Bot, User, Sparkles, ShieldAlert } from "lucide-react";
 import { Expert, Agent, Message, CopyRequest, Chat } from "@/types";
+import { v4 as uuidv4 } from "uuid";
 
 export default function Home() {
   const { 
