@@ -1,6 +1,6 @@
 
 import { createContext, useContext, useState, useEffect, ReactNode, useMemo } from "react";
-import { useAuth } from "@/context/AuthContext";
+import { useAuth } from "@/context/auth";
 import { DataContextType } from "./types";
 import { useAgentSlice } from "./agentSlice";
 import { useExpertSlice } from "./expertSlice";

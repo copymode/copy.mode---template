@@ -1,21 +1,20 @@
+
 import { useState } from "react";
-import { useAuth } from "@/context/AuthContext";
+import { useAuth } from "@/context/auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { LogIn } from "lucide-react";
+
 export function LoginForm() {
-  const {
-    login
-  } = useAuth();
-  const {
-    toast
-  } = useToast();
+  const { login } = useAuth();
+  const { toast } = useToast();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email) {
@@ -51,7 +50,9 @@ export function LoginForm() {
       setIsLoading(false);
     }
   };
-  return <Card className="w-[350px] mx-auto">
+  
+  return (
+    <Card className="w-[350px] mx-auto">
       <CardHeader>
         <CardTitle className="text-2xl text-center">Copy Mode</CardTitle>
         <CardDescription className="text-center">Entre com seu e-mail para continuar.</CardDescription>
@@ -79,5 +80,6 @@ export function LoginForm() {
           </Button>
         </CardFooter>
       </form>
-    </Card>;
+    </Card>
+  );
 }

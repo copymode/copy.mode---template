@@ -2,53 +2,52 @@
 import { useState } from "react";
 import { User } from "@/types";
 import { supabase } from "@/integrations/supabase/client";
-import { fetchUserProfile } from "@/integrations/supabase/adapter";
-import { mockUsers, saveUserToLocalStorage } from "./authUtils";
+import { saveUserToLocalStorage, mapSupabaseUser } from "./authUtils";
+import { mockUsers } from "@/context/auth/types";
 
 export const useLogin = (
-  setCurrentUser: React.Dispatch<React.SetStateAction<User | null>>
+  setCurrentUser: React.Dispatch<React.SetStateAction<User | null>>,
+  setSession: React.Dispatch<React.SetStateAction<any>>
 ) => {
-  const [loginLoading, setLoginLoading] = useState(false);
   
   const login = async (email: string, password: string): Promise<User | null> => {
-    setLoginLoading(true);
-    
     try {
-      console.log("Attempting login with:", email);
-      // Try Supabase auth first
+      // For demo purposes, try to find a matching mock user by email
+      const mockUser = mockUsers.find(user => user.email === email);
+      
+      if (mockUser) {
+        console.log("Mock login success:", mockUser);
+        setCurrentUser(mockUser);
+        saveUserToLocalStorage(mockUser);
+        return mockUser;
+      }
+
+      // If no mock user matches, try Supabase
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
-        password
+        password,
       });
-      
+
       if (error) {
         console.error("Supabase login error:", error);
-        throw error;
+        return null;
       }
-      
-      if (data.user) {
-        console.log("Login successful, fetching user profile");
-        const userProfile = await fetchUserProfile(data.user.id);
+
+      if (data.user && data.session) {
+        console.log("Supabase login success:", data.user);
+        
+        const userProfile = await mapSupabaseUser(data.user, data.session);
+        setCurrentUser(userProfile);
+        setSession(data.session);
+        saveUserToLocalStorage(userProfile);
+        
         return userProfile;
       }
-      
-      return null;
     } catch (error) {
-      console.error("Login failed:", error);
-      
-      // Fallback to mock users for demo
-      const user = mockUsers.find(u => u.email === email);
-      if (user) {
-        console.log("Using mock user for login:", user);
-        setCurrentUser(user);
-        saveUserToLocalStorage(user);
-        return user;
-      }
-      return null;
-    } finally {
-      setLoginLoading(false);
+      console.error("Login error:", error);
     }
+    return null;
   };
 
-  return { login, loginLoading };
+  return { login };
 };

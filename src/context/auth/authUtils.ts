@@ -1,57 +1,69 @@
-
-import { User } from "@/types";
+import { AuthUser } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
-import { fetchUserProfile } from "@/integrations/supabase/adapter";
+import { User } from "@/types";
 
-// Helper to get user from localStorage
-export const getUserFromLocalStorage = (): User | null => {
-  const savedUser = localStorage.getItem("copymode_user");
-  if (savedUser) {
-    try {
-      return JSON.parse(savedUser);
-    } catch (e) {
-      console.error("Error parsing saved user:", e);
-      return null;
-    }
+// Save the user to localStorage for persistence
+export const saveUserToLocalStorage = (user: User) => {
+  localStorage.setItem("auth_user", JSON.stringify(user));
+};
+
+// Remove user from localStorage
+export const removeUserFromLocalStorage = () => {
+  localStorage.removeItem("auth_user");
+};
+
+// Load user from localStorage
+export const loadUserFromLocalStorage = (): User | null => {
+  const storedUser = localStorage.getItem("auth_user");
+  if (storedUser) {
+    return JSON.parse(storedUser);
   }
   return null;
 };
 
-// Helper to save user to localStorage
-export const saveUserToLocalStorage = (user: User): void => {
-  localStorage.setItem("copymode_user", JSON.stringify(user));
-};
+// Map a Supabase user to our app's User type
+export const mapSupabaseUser = async (
+  supabaseUser: AuthUser,
+  session: any
+): Promise<User> => {
+  try {
+    // Try to fetch the user profile from the profiles table
+    const { data: profile, error } = await supabase
+      .from("profiles")
+      .select("*")
+      .eq("id", supabaseUser.id)
+      .single();
 
-// Helper to remove user from localStorage
-export const removeUserFromLocalStorage = (): void => {
-  localStorage.removeItem("copymode_user");
-};
-
-// Helper function to check initial session
-export const checkInitialSession = async (): Promise<{
-  initialUser: User | null;
-  initialSession: any;
-}> => {
-  const { data: { session: initialSession } } = await supabase.auth.getSession();
-  
-  if (initialSession?.user) {
-    try {
-      const user = await fetchUserProfile(initialSession.user.id);
-      return { initialUser: user, initialSession };
-    } catch (err) {
-      console.error("Error fetching initial user profile:", err);
-      // Fallback to basic user info
-      const fallbackUser = {
-        id: initialSession.user.id,
-        name: initialSession.user.email || "",
-        email: initialSession.user.email || "",
-        role: "user"
-      };
-      return { initialUser: fallbackUser, initialSession };
+    if (error) {
+      console.error("Error fetching user profile:", error);
     }
+
+    if (profile) {
+      // If we have a profile, use that data
+      return {
+        id: supabaseUser.id,
+        name: profile.name || supabaseUser.email?.split("@")[0] || "User",
+        email: supabaseUser.email || "",
+        role: profile.role as "admin" | "user",
+        apiKey: profile.api_key
+      };
+    } else {
+      // Otherwise create a basic user
+      return {
+        id: supabaseUser.id,
+        name: supabaseUser.email?.split("@")[0] || "User",
+        email: supabaseUser.email || "",
+        role: "user", // Default role
+      };
+    }
+  } catch (error) {
+    console.error("Error mapping Supabase user:", error);
+    // Fallback if the mapping fails
+    return {
+      id: supabaseUser.id,
+      name: supabaseUser.email?.split("@")[0] || "User",
+      email: supabaseUser.email || "",
+      role: "user", // Default role
+    };
   }
-  
-  // Check localStorage for mock user
-  const localUser = getUserFromLocalStorage();
-  return { initialUser: localUser, initialSession: null };
 };

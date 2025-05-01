@@ -1,7 +1,8 @@
+
 import { useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useData } from "@/context/data/DataContext";
-import { useAuth } from "@/context/AuthContext";
+import { useData } from "@/context/data";
+import { useAuth } from "@/context/auth";
 import { ExpertCard } from "@/components/experts/ExpertCard";
 import { ExpertForm } from "@/components/experts/ExpertForm";
 import { Button } from "@/components/ui/button";

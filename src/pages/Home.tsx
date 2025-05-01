@@ -1,10 +1,10 @@
 
 import { useState, useEffect } from "react";
-import { useData } from "@/context/data/DataContext";
+import { useData } from "@/context/data";
 import { Button } from "@/components/ui/button";
 import { CopyForm } from "@/components/copy-generation/CopyForm";
 import { ChatArea } from "@/components/chat/ChatArea";
-import { useAuth } from "@/context/AuthContext";
+import { useAuth } from "@/context/auth";
 import { Loader2, RefreshCw } from "lucide-react";
 import { CopyRequest } from "@/types";
 
