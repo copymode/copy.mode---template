@@ -1,1 +1,5 @@
+
 project_id = "tprmiyclgmkyujswyotr"
+
+[functions.check-rls-policies]
+verify_jwt = true

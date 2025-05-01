@@ -85,8 +85,8 @@ export default function Admin() {
               <AgentCard 
                 key={agent.id}
                 agent={agent}
-                onEdit={handleEditAgent}
-                onDelete={handleDeleteClick}
+                onEdit={() => handleEditAgent(agent)}
+                onDelete={() => handleDeleteClick(agent.id)}
               />
             ))
           )}

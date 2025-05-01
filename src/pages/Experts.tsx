@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { useData } from "@/context/DataContext";
 import { ExpertForm } from "@/components/experts/ExpertForm";
@@ -5,7 +6,7 @@ import { ExpertCard } from "@/components/experts/ExpertCard";
 import { Expert } from "@/types";
 import { Button } from "@/components/ui/button";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-import { Plus, PlusCircle, Edit, Trash2 } from "lucide-react";
+import { Plus, PlusCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 export default function Experts() {
@@ -104,8 +105,8 @@ export default function Experts() {
               <ExpertCard 
                 key={expert.id}
                 expert={expert}
-                onEdit={handleEdit}
-                onDelete={handleDelete}
+                onEdit={() => handleEdit(expert)}
+                onDelete={() => handleDelete(expert.id)}
               />
             ))
           )}
