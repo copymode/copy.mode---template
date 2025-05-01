@@ -1,6 +1,4 @@
 
-import { User } from "@/types";
-
 // Re-export types from the main types file
 export type { Agent, Expert, Chat, Message, CopyRequest } from "@/types";
 
