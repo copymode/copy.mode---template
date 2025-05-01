@@ -1,4 +1,3 @@
-
 import { createContext, useContext, useState, useEffect, ReactNode, useMemo, useCallback } from "react";
 import { Agent, Expert, Chat, Message, CopyRequest, User } from "@/types";
 import { useAuth } from "./AuthContext";
@@ -213,11 +212,11 @@ export function DataProvider({ children }: { children: ReactNode }) {
     }
     // Reset currentChat if it doesn't belong to the current user or doesn't exist anymore
     const currentChatStillValid = currentChat && 
-                                  (currentUser.role === 'admin' || currentChat.userId === currentUser.id) &&
-                                  loadedChats.some((chat: Chat) => chat.id === currentChat.id);
-                                  
+                                 (currentUser.role === 'admin' || currentChat.userId === currentUser.id) &&
+                                 loadedChats.some((chat: Chat) => chat.id === currentChat.id);
+                                 
     if (!currentChatStillValid) {
-         setCurrentChat(null);
+      setCurrentChat(null);
     }
 
   }, [currentUser, isLoading, currentChat]); // Added currentChat as a dependency
