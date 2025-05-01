@@ -116,7 +116,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const savedUser = localStorage.getItem("copymode_user");
       if (savedUser) {
         console.log("Mock user found in localStorage");
-        setCurrentUser(JSON.parse(savedUser));
+        try {
+          const parsedUser = JSON.parse(savedUser);
+          setCurrentUser(parsedUser);
+        } catch (e) {
+          console.error("Error parsing saved user:", e);
+        }
       }
       setIsLoading(false);
     }
@@ -174,21 +179,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const updateUserApiKey = async (apiKey: string): Promise<void> => {
     if (!currentUser) {
       console.error("Cannot update API key: No user logged in");
-      return;
+      throw new Error("Não foi possível atualizar a chave API: Usuário não logado");
     }
     
     try {
       console.log("Updating API key for user:", currentUser.id);
+      
+      // Atualização para mock user
+      if (!session) {
+        console.log("Updating mock user API key");
+        const updatedUser = {
+          ...currentUser,
+          apiKey
+        };
+        setCurrentUser(updatedUser);
+        localStorage.setItem("copymode_user", JSON.stringify(updatedUser));
+        return;
+      }
+      
+      // Atualização para usuário do Supabase
       const updatedUser = await updateUserProfile(currentUser.id, { apiKey });
       console.log("API key updated successfully:", updatedUser);
       
       // Update local state
       setCurrentUser(updatedUser);
-      
-      // Also update localStorage for mock users (demo only)
-      if (!session) {
-        localStorage.setItem("copymode_user", JSON.stringify(updatedUser));
-      }
     } catch (error) {
       console.error("Error updating API key:", error);
       throw error;

@@ -49,6 +49,7 @@ export async function updateUserProfile(userId: string, updates: Partial<User>):
   if (updates.apiKey !== undefined) dbUpdates.api_key = updates.apiKey;
   
   try {
+    console.log("Sending update to Supabase:", dbUpdates);
     const { data, error } = await supabase
       .from('profiles')
       .update(dbUpdates)
@@ -63,11 +64,12 @@ export async function updateUserProfile(userId: string, updates: Partial<User>):
     
     console.log("Updated profile data:", data);
     
+    // Ensure we correctly map the database response back to our User type
     return {
       id: data.id,
       name: data.name || data.email || "Usuário",
       email: data.email || "",
-      role: data.role === "admin" ? "admin" : "user", // Ensure role is either "admin" or "user"
+      role: data.role === "admin" ? "admin" : "user",
       apiKey: data.api_key || null
     };
   } catch (error) {
