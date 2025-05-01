@@ -259,6 +259,10 @@ export type Database = {
         Args: { api_key_value: string }
         Returns: undefined
       }
+      update_user_name: {
+        Args: { name_value: string }
+        Returns: undefined
+      }
     }
     Enums: {
       [_ in never]: never
