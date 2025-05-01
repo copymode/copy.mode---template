@@ -6,9 +6,9 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { LogIn, UserPlus } from "lucide-react";
+import { LogIn, UserPlus, ShieldCheck } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 
 export function LoginForm() {
   const { login } = useAuth();
@@ -161,18 +161,19 @@ export function LoginForm() {
                 </>
               )}
             </Button>
-            <Button 
-              type="button" 
-              variant="outline" 
-              className="w-full" 
-              onClick={() => setShowAdminDialog(true)}
-            >
-              <UserPlus className="mr-2 h-4 w-4" />
-              Promover usuário a administrador
-            </Button>
           </CardFooter>
         </form>
       </Card>
+
+      <div className="mt-4 text-center">
+        <Button 
+          variant="outline" 
+          onClick={() => setShowAdminDialog(true)}
+        >
+          <ShieldCheck className="mr-2 h-4 w-4" />
+          Promover usuário a administrador
+        </Button>
+      </div>
 
       <Dialog open={showAdminDialog} onOpenChange={setShowAdminDialog}>
         <DialogContent>
