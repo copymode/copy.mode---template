@@ -1,7 +1,9 @@
+
 import { Navigate } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import { LoginForm } from "@/components/auth/LoginForm";
 import { Loader2 } from "lucide-react";
+
 export default function Login() {
   const {
     currentUser,
