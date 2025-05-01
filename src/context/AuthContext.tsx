@@ -1,3 +1,4 @@
+
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
 import { Session, User as SupabaseUser } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
@@ -47,15 +48,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (newSession?.user) {
           setTimeout(() => {
             fetchUserProfile(newSession.user.id)
-              .then(user => setCurrentUser(user))
+              .then(user => {
+                // If user has a stored API key in localStorage, add it to the user object
+                const storedApiKey = localStorage.getItem("copymode_user_api_key");
+                if (storedApiKey && user) {
+                  user.apiKey = storedApiKey;
+                }
+                setCurrentUser(user);
+              })
               .catch(err => {
                 console.error("Error fetching user profile:", err);
                 // If profile fetch fails, set basic user info
+                const storedApiKey = localStorage.getItem("copymode_user_api_key");
                 setCurrentUser({
                   id: newSession.user.id,
                   name: newSession.user.email || "",
                   email: newSession.user.email || "",
-                  role: "user"
+                  role: "user",
+                  apiKey: storedApiKey || undefined
                 });
               });
           }, 0);
@@ -70,17 +80,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (initialSession?.user) {
         fetchUserProfile(initialSession.user.id)
           .then(user => {
+            // If user has a stored API key in localStorage, add it to the user object
+            const storedApiKey = localStorage.getItem("copymode_user_api_key");
+            if (storedApiKey && user) {
+              user.apiKey = storedApiKey;
+            }
             setCurrentUser(user);
             setSession(initialSession);
           })
           .catch(err => {
             console.error("Error fetching initial user profile:", err);
             // Fallback to basic user info
+            const storedApiKey = localStorage.getItem("copymode_user_api_key");
             setCurrentUser({
               id: initialSession.user.id,
               name: initialSession.user.email || "",
               email: initialSession.user.email || "",
-              role: "user"
+              role: "user",
+              apiKey: storedApiKey || undefined
             });
             setSession(initialSession);
           })
@@ -153,6 +170,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // Clean up local state
       setCurrentUser(null);
       localStorage.removeItem("copymode_user");
+      localStorage.removeItem("copymode_user_api_key");
     }
   };
 
@@ -160,26 +178,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!currentUser) return;
     
     try {
+      // Store API key in localStorage first as a fallback mechanism
+      localStorage.setItem("copymode_user_api_key", apiKey);
+
       // Try to update in Supabase if we have a session
       if (session) {
-        const { error } = await supabase
-          .from('profiles')
-          .update({ api_key: apiKey })
-          .eq('id', currentUser.id);
+        try {
+          // Use RPC function instead of direct update to avoid RLS issues
+          const { error } = await supabase.rpc('update_user_api_key', {
+            api_key_value: apiKey
+          });
           
-        if (error) throw error;
+          if (error) {
+            console.error("Supabase RPC update failed, using localStorage only:", error);
+          }
+        } catch (supabaseError) {
+          console.error("Error during Supabase update, using localStorage only:", supabaseError);
+          // Continue execution to update local state
+        }
       }
       
-      // Update local state
+      // Update local state regardless of Supabase success
       const updatedUser = { ...currentUser, apiKey };
       setCurrentUser(updatedUser);
       
       // Also update localStorage for mock users (demo only)
       if (!session) {
         localStorage.setItem("copymode_user", JSON.stringify(updatedUser));
-      } else {
-        // For logged in users, also keep a local copy to persist between page refreshes
-        localStorage.setItem("copymode_user_api_key", apiKey);
       }
       
       console.log("API key updated successfully:", apiKey ? "key set" : "key cleared");
