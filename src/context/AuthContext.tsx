@@ -185,7 +185,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       console.log("Updating API key for user:", currentUser.id);
       
-      // Atualização para mock user
+      // Update for mock user
       if (!session) {
         console.log("Updating mock user API key");
         const updatedUser = {
@@ -197,12 +197,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return;
       }
       
-      // Atualização para usuário do Supabase
-      const updatedUser = await updateUserProfile(currentUser.id, { apiKey });
-      console.log("API key updated successfully:", updatedUser);
-      
-      // Update local state
-      setCurrentUser(updatedUser);
+      // Update for Supabase user - with better error handling
+      try {
+        const updatedUser = await updateUserProfile(currentUser.id, { apiKey });
+        console.log("API key updated successfully:", updatedUser);
+        
+        // Update local state
+        setCurrentUser(updatedUser);
+      } catch (error: any) {
+        console.error("Error updating API key in Supabase:", error);
+        
+        // Fallback to localStorage if Supabase update fails
+        console.log("Falling back to local storage for API key");
+        const updatedUser = {
+          ...currentUser,
+          apiKey
+        };
+        setCurrentUser(updatedUser);
+        localStorage.setItem("copymode_user", JSON.stringify(updatedUser));
+      }
     } catch (error) {
       console.error("Error updating API key:", error);
       throw error;

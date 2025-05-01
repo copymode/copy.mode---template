@@ -17,7 +17,7 @@ export default function Settings() {
   const [showApiKey, setShowApiKey] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   
-  // Sincronizar o estado local quando o currentUser mudar
+  // Sync local state when currentUser changes
   useEffect(() => {
     if (currentUser?.apiKey) {
       setApiKey(currentUser.apiKey);
@@ -39,11 +39,26 @@ export default function Settings() {
         });
       } catch (error) {
         console.error("Erro ao salvar a chave API:", error);
-        toast({
-          title: "Erro",
-          description: "Ocorreu um erro ao salvar a chave API. Por favor, tente novamente.",
-          variant: "destructive",
-        });
+        
+        // Try to update local storage as fallback if Supabase fails
+        if (currentUser) {
+          const updatedUser = {
+            ...currentUser,
+            apiKey
+          };
+          localStorage.setItem("copymode_user", JSON.stringify(updatedUser));
+          
+          toast({
+            title: "Chave API salva localmente",
+            description: "Sua chave foi salva localmente devido a um problema com o servidor.",
+          });
+        } else {
+          toast({
+            title: "Erro",
+            description: "Ocorreu um erro ao salvar a chave API. Por favor, tente novamente.",
+            variant: "destructive",
+          });
+        }
       } finally {
         setIsSaving(false);
       }
