@@ -222,6 +222,7 @@ export type Database = {
       profiles: {
         Row: {
           api_key: string | null
+          avatar_url: string | null
           email: string | null
           id: string
           name: string | null
@@ -229,6 +230,7 @@ export type Database = {
         }
         Insert: {
           api_key?: string | null
+          avatar_url?: string | null
           email?: string | null
           id: string
           name?: string | null
@@ -236,6 +238,7 @@ export type Database = {
         }
         Update: {
           api_key?: string | null
+          avatar_url?: string | null
           email?: string | null
           id?: string
           name?: string | null
@@ -254,6 +257,10 @@ export type Database = {
       }
       update_user_api_key: {
         Args: { api_key_value: string }
+        Returns: undefined
+      }
+      update_user_name: {
+        Args: { name_value: string }
         Returns: undefined
       }
     }

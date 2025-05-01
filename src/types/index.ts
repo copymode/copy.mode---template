@@ -1,9 +1,11 @@
+
 export interface User {
   id: string;
   name: string;
   email: string;
   role: "admin" | "user";
   apiKey?: string;
+  avatar_url?: string;
 }
 
 export interface Agent {
@@ -63,4 +65,11 @@ export interface CopyRequest {
   agentId: string;
   contentType: string;
   additionalInfo: string;
+}
+
+// This helps TypeScript recognize the available RPC functions in Supabase
+declare global {
+  namespace SupabaseRPC {
+    type AvailableFunctions = "is_owner_of_profile" | "update_user_api_key" | "update_user_name";
+  }
 }
