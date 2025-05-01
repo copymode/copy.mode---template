@@ -6,11 +6,13 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
+import { LogIn } from "lucide-react";
 
 export function LoginForm() {
   const { login } = useAuth();
   const { toast } = useToast();
   const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -28,13 +30,12 @@ export function LoginForm() {
     setIsLoading(true);
     
     try {
-      // Corrigido para passar uma string vazia como segundo argumento (senha)
-      const user = await login(email, "");
+      const user = await login(email, password);
       
       if (!user) {
         toast({
           title: "Erro de autenticação",
-          description: "E-mail não encontrado. Tente admin@copymode.com ou user@example.com",
+          description: "E-mail ou senha inválidos. Tente admin@copymode.com ou user@example.com",
           variant: "destructive",
         });
       } else {
@@ -73,15 +74,33 @@ export function LoginForm() {
                 onChange={(e) => setEmail(e.target.value)}
                 disabled={isLoading}
               />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="password">Senha</Label>
+              <Input
+                id="password"
+                type="password"
+                placeholder="••••••••"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                disabled={isLoading}
+              />
               <p className="text-xs text-muted-foreground mt-1">
-                Use admin@copymode.com ou user@example.com
+                Use admin@copymode.com ou user@example.com para testar
               </p>
             </div>
           </div>
         </CardContent>
         <CardFooter>
           <Button type="submit" className="w-full" disabled={isLoading}>
-            {isLoading ? "Entrando..." : "Entrar"}
+            {isLoading ? (
+              "Entrando..."
+            ) : (
+              <>
+                <LogIn className="mr-2 h-4 w-4" />
+                Entrar
+              </>
+            )}
           </Button>
         </CardFooter>
       </form>
