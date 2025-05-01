@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -8,7 +8,7 @@ import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { AlertTriangle } from "lucide-react";
-import { Save } from "lucide-react"; // Fixed import (capitalized)
+import { Save } from "lucide-react";
 
 export default function Settings() {
   const { currentUser, updateUserApiKey } = useAuth();
@@ -16,18 +16,38 @@ export default function Settings() {
   
   const [apiKey, setApiKey] = useState(currentUser?.apiKey || "");
   const [showApiKey, setShowApiKey] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  
+  // Update API key state when currentUser changes
+  useEffect(() => {
+    if (currentUser?.apiKey) {
+      setApiKey(currentUser.apiKey);
+    }
+  }, [currentUser]);
   
   const handleApiKeyChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setApiKey(e.target.value);
   };
   
-  const handleSaveApiKey = () => {
+  const handleSaveApiKey = async () => {
     if (apiKey) {
-      updateUserApiKey(apiKey);
-      toast({
-        title: "Chave API salva",
-        description: "Sua chave API Groq foi salva com sucesso.",
-      });
+      try {
+        setIsSaving(true);
+        await updateUserApiKey(apiKey);
+        toast({
+          title: "Chave API salva",
+          description: "Sua chave API Groq foi salva com sucesso.",
+        });
+      } catch (error) {
+        console.error("Error saving API key:", error);
+        toast({
+          title: "Erro ao salvar",
+          description: error instanceof Error ? error.message : "Ocorreu um erro ao salvar sua chave API.",
+          variant: "destructive",
+        });
+      } finally {
+        setIsSaving(false);
+      }
     } else {
       toast({
         title: "Erro",
@@ -82,9 +102,12 @@ export default function Settings() {
             </div>
           </CardContent>
           <CardFooter>
-            <Button onClick={handleSaveApiKey} disabled={!apiKey}>
-              <Save className="mr-2 h-4 w-4" /> {/* Fixed component name (capitalized) */}
-              Salvar Chave API
+            <Button 
+              onClick={handleSaveApiKey} 
+              disabled={!apiKey || isSaving}
+            >
+              <Save className="mr-2 h-4 w-4" />
+              {isSaving ? "Salvando..." : "Salvar Chave API"}
             </Button>
           </CardFooter>
         </Card>

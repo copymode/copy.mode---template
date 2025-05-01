@@ -1,4 +1,3 @@
-
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
 import { Session, User as SupabaseUser } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
@@ -102,7 +101,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // Check for user in localStorage (for demo purposes)
       const savedUser = localStorage.getItem("copymode_user");
       if (savedUser) {
-        setCurrentUser(JSON.parse(savedUser));
+        try {
+          const parsedUser = JSON.parse(savedUser);
+          setCurrentUser(parsedUser);
+        } catch (error) {
+          console.error("Error parsing saved user:", error);
+        }
       }
       setIsLoading(false);
     }
@@ -156,20 +160,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!currentUser) return;
     
     try {
-      const { error } = await supabase
-        .from('profiles')
-        .update({ api_key: apiKey })
-        .eq('id', currentUser.id);
-        
-      if (error) throw error;
+      // Try to update in Supabase if we have a session
+      if (session) {
+        const { error } = await supabase
+          .from('profiles')
+          .update({ api_key: apiKey })
+          .eq('id', currentUser.id);
+          
+        if (error) throw error;
+      }
       
       // Update local state
-      setCurrentUser({ ...currentUser, apiKey });
+      const updatedUser = { ...currentUser, apiKey };
+      setCurrentUser(updatedUser);
       
       // Also update localStorage for mock users (demo only)
       if (!session) {
-        localStorage.setItem("copymode_user", JSON.stringify({ ...currentUser, apiKey }));
+        localStorage.setItem("copymode_user", JSON.stringify(updatedUser));
+      } else {
+        // For logged in users, also keep a local copy to persist between page refreshes
+        localStorage.setItem("copymode_user_api_key", apiKey);
       }
+      
+      console.log("API key updated successfully:", apiKey ? "key set" : "key cleared");
     } catch (error) {
       console.error("Error updating API key:", error);
       throw error;
