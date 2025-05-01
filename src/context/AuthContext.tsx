@@ -1,4 +1,3 @@
-
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
 import { Session, User as SupabaseUser } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
@@ -48,7 +47,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (newSession?.user) {
           setTimeout(() => {
             fetchUserProfile(newSession.user.id)
-              .then(user => setCurrentUser(user))
+              .then(user => {
+                console.log("User profile fetched:", user);
+                setCurrentUser(user);
+              })
               .catch(err => {
                 console.error("Error fetching user profile:", err);
                 // If profile fetch fails, set basic user info
@@ -71,6 +73,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (initialSession?.user) {
         fetchUserProfile(initialSession.user.id)
           .then(user => {
+            console.log("Initial user profile fetched:", user);
             setCurrentUser(user);
             setSession(initialSession);
           })
@@ -156,12 +159,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!currentUser) return;
     
     try {
+      console.log("Updating API key for user:", currentUser.id);
       const { error } = await supabase
         .from('profiles')
         .update({ api_key: apiKey })
         .eq('id', currentUser.id);
         
-      if (error) throw error;
+      if (error) {
+        console.error("Error from Supabase when updating API key:", error);
+        throw error;
+      }
+      
+      console.log("API key updated successfully in database");
       
       // Update local state
       setCurrentUser({ ...currentUser, apiKey });
