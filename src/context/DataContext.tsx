@@ -1,22 +1,62 @@
 import { createContext, useContext, useState, useEffect, ReactNode, useMemo, useCallback } from "react";
-import { Agent, Expert, Chat, Message, CopyRequest, User } from "@/types";
+import { Agent, Expert, Chat, Message, CopyRequest, User, KnowledgeFile } from "@/types";
 import { useAuth } from "./AuthContext";
 import { v4 as uuidv4 } from "uuid";
+// Import Supabase client
+import { supabase } from "@/integrations/supabase/client";
+
+// Define table and bucket names as constants
+const AGENTS_TABLE = 'agents';
+const EXPERTS_TABLE = 'experts'; // Assuming experts table name
+const CHATS_TABLE = 'chats';     // Assuming chats table name
+const KNOWLEDGE_BUCKET = 'agent.files';
+
+// Define the shape of the Agent data returned from Supabase
+// (assuming snake_case for column names like created_by, knowledge_files)
+interface DbAgent {
+  id: string;
+  name: string;
+  avatar?: string;
+  prompt: string;
+  description?: string; // Made optional to match DB
+  temperature?: number;
+  created_at: string; // DB returns ISO string
+  updated_at: string; // DB returns ISO string
+  created_by: string;
+  knowledges_files?: KnowledgeFile[]; // Corrected: Use knowledges_files
+}
+
+// Adapter function to convert DB data to frontend type
+function adaptAgentFromDb(dbAgent: DbAgent): Agent {
+  return {
+    id: dbAgent.id,
+    name: dbAgent.name,
+    avatar: dbAgent.avatar,
+    prompt: dbAgent.prompt,
+    description: dbAgent.description || '', // Handle potential null from DB
+    temperature: dbAgent.temperature, // Already optional
+    createdAt: new Date(dbAgent.created_at),
+    updatedAt: new Date(dbAgent.updated_at),
+    createdBy: dbAgent.created_by,
+    // Corrected: Use knowledges_files from DB
+    knowledgeFiles: dbAgent.knowledges_files || [], 
+  };
+}
 
 interface DataContextType {
-  // Agents
   agents: Agent[];
-  createAgent: (agent: Omit<Agent, "id" | "createdAt" | "updatedAt" | "createdBy">) => void;
-  updateAgent: (id: string, agent: Partial<Omit<Agent, "id" | "createdAt" | "updatedAt" | "createdBy">>) => void;
-  deleteAgent: (id: string) => void;
+  // Modify createAgent to return the created Agent or its ID
+  createAgent: (agentData: Omit<Agent, "id" | "createdAt" | "updatedAt" | "createdBy" | "knowledgeFiles">) => Promise<Agent>; 
+  updateAgent: (id: string, agentData: Partial<Omit<Agent, "id" | "createdAt" | "updatedAt" | "createdBy">>) => Promise<void>; 
+  deleteAgent: (id: string) => Promise<void>; 
   
-  // Experts
+  // Experts (Keep mocks for now or update similarly if needed)
   experts: Expert[];
   addExpert: (expert: Omit<Expert, "id" | "createdAt" | "updatedAt" | "userId">) => void;
   updateExpert: (id: string, expert: Partial<Omit<Expert, "id" | "createdAt" | "updatedAt" | "userId">>) => void;
   deleteExpert: (id: string) => void;
   
-  // Chats
+  // Chats (Keep mocks for now or update similarly if needed)
   chats: Chat[];
   currentChat: Chat | null;
   setCurrentChat: (chat: Chat | null) => void;
@@ -25,247 +65,222 @@ interface DataContextType {
   deleteChat: (id: string) => void;
   deleteMessageFromChat: (chatId: string, messageId: string) => void;
   
-  // Copy Generation
+  // Copy Generation (Keep as is for now)
   generateCopy: (request: CopyRequest) => Promise<string>;
 
-  // Loading State
   isLoading: boolean;
 }
 
 const DataContext = createContext<DataContextType | undefined>(undefined);
 
-// Mock data
-const mockAgents: Agent[] = [
-  {
-    id: "agent-1",
-    name: "Copywriter Expert",
-    avatar: "/placeholder.svg",
-    prompt: "Você é um especialista em copywriting para redes sociais.",
-    description: "Este agente cria copies persuasivas para redes sociais.",
-    createdAt: new Date(),
-    updatedAt: new Date(),
-    createdBy: "admin-1"
-  },
-  {
-    id: "agent-2",
-    name: "Instagram Specialist",
-    avatar: "/placeholder.svg",
-    prompt: "Você é um especialista em conteúdo para Instagram.",
-    description: "Este agente é especializado em criar conteúdo otimizado para Instagram.",
-    createdAt: new Date(),
-    updatedAt: new Date(),
-    createdBy: "admin-1"
-  }
-];
+// REMOVE MOCK DATA FOR AGENTS
+/*
+const mockAgents: Agent[] = [ ... ];
+*/
+// Keep mocks for Experts and Chats for now
+const mockExperts: Expert[] = [/* ... */];
+const mockChats: Chat[] = [/* ... */];
 
-const mockExperts: Expert[] = [
-  {
-    id: "expert-1",
-    name: "Marketing Digital",
-    niche: "Marketing Digital",
-    targetAudience: "Empreendedores que querem aumentar sua presença online",
-    deliverables: "Estratégias de marketing, otimização de SEO",
-    benefits: "Aumento de tráfego, mais conversões",
-    objections: "Tempo, custo inicial",
-    createdAt: new Date(),
-    updatedAt: new Date(),
-    userId: "user-1"
-  }
-];
-
-const mockChats: Chat[] = [
-  {
-    id: "chat-1",
-    title: "Copy para Instagram",
-    messages: [
-      {
-        id: "msg-1",
-        content: "Preciso de uma copy para post no Instagram sobre marketing digital",
-        role: "user",
-        chatId: "chat-1",
-        createdAt: new Date()
-      },
-      {
-        id: "msg-2",
-        content: "Aqui está uma sugestão de copy para seu post...",
-        role: "assistant",
-        chatId: "chat-1",
-        createdAt: new Date()
-      }
-    ],
-    expertId: "expert-1",
-    agentId: "agent-1",
-    contentType: "Post Feed",
-    userId: "user-1",
-    createdAt: new Date(),
-    updatedAt: new Date()
-  }
-];
 
 export function DataProvider({ children }: { children: ReactNode }) {
   const { currentUser } = useAuth();
-  const [agents, setAgents] = useState<Agent[]>([]); // Initialize as empty
-  const [experts, setExperts] = useState<Expert[]>([]); // Initialize as empty
-  const [chats, setChats] = useState<Chat[]>([]); // Initialize as empty
+  const [agents, setAgents] = useState<Agent[]>([]); 
+  const [experts, setExperts] = useState<Expert[]>(mockExperts); // Keep using mocks for now
+  const [chats, setChats] = useState<Chat[]>(mockChats);       // Keep using mocks for now
   const [currentChat, setCurrentChat] = useState<Chat | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [initialLoadComplete, setInitialLoadComplete] = useState(false);
 
-  // Load data from localStorage on initial mount
+  // Load initial data from Supabase
   useEffect(() => {
-    try {
-      const storedAgents = localStorage.getItem("agents_data");
-      const storedExperts = localStorage.getItem("experts_data");
-      const storedChats = localStorage.getItem("chats_data");
-      const storedCurrentChatId = localStorage.getItem("currentChatId_data");
+    if (!currentUser || initialLoadComplete) return; // Only load once per user session
 
-      const loadedAgents = storedAgents ? JSON.parse(storedAgents) : mockAgents; // Fallback to mock
-      const loadedExperts = storedExperts ? JSON.parse(storedExperts) : mockExperts; // Fallback to mock
-      const loadedChats = storedChats ? JSON.parse(storedChats, (key, value) => {
-         // Revive dates from ISO strings
-         if (key === 'createdAt' || key === 'updatedAt') {
-           return new Date(value);
-         }
-         return value;
-       }) : mockChats; // Fallback to mock
+    const fetchInitialData = async () => {
+      setIsLoading(true);
+      try {
+        // Fetch Agents
+        const { data: agentsData, error: agentsError } = await supabase
+          .from(AGENTS_TABLE)
+          .select('*'); // Fetch all columns
+          // .eq('created_by', currentUser.id); // Uncomment if admins should only see their own agents initially
+        
+        if (agentsError) throw agentsError;
+        // Adapt agents data
+        setAgents(agentsData ? agentsData.map(adaptAgentFromDb) : []);
 
-      setAgents(loadedAgents);
-      setExperts(loadedExperts);
-      setChats(loadedChats);
-      
-      if (storedCurrentChatId && storedCurrentChatId !== 'null') {
-        const foundChat = loadedChats.find((chat: Chat) => chat.id === storedCurrentChatId);
-        setCurrentChat(foundChat || null);
-      } else {
-         setCurrentChat(null);
+        // TODO: Fetch Experts from DB (similar pattern)
+        // const { data: expertsData, error: expertsError } = await supabase.from(EXPERTS_TABLE)...;
+        // setExperts(expertsData ? expertsData.map(adaptExpertFromDb) : []);
+        setExperts(mockExperts); // Keep using mock for now
+
+        // TODO: Fetch Chats from DB (similar pattern)
+        // const { data: chatsData, error: chatsError } = await supabase.from(CHATS_TABLE)...;
+        // setChats(chatsData ? chatsData.map(adaptChatFromDb) : []);
+        setChats(mockChats); // Keep using mock for now
+
+        setInitialLoadComplete(true); // Mark load as complete
+
+      } catch (error) {
+        console.error("Error loading initial data from Supabase:", error);
+        // Handle error appropriately (e.g., show toast, fallback to empty)
+        setAgents([]);
+        setExperts(mockExperts); // Fallback to mocks on error for now
+        setChats(mockChats);
+      } finally {
+        setIsLoading(false);
       }
+    };
 
-    } catch (error) {
-      console.error("Error loading data from localStorage:", error);
-      // Fallback to mocks if parsing fails
-      setAgents(mockAgents);
-      setExperts(mockExperts);
-      setChats(mockChats);
-      setCurrentChat(null);
-    } finally {
-      setIsLoading(false);
-    }
-  }, []); // Empty dependency array means this runs only once on mount
+    fetchInitialData();
+  // Rerun if currentUser changes (login/logout) 
+  // Reset initialLoadComplete on user change to force reload
+  }, [currentUser]);
 
-   // Save data to localStorage whenever it changes
-   useEffect(() => {
-    if (isLoading) return; // Don't save during initial load
-    try {
-       localStorage.setItem("agents_data", JSON.stringify(agents));
-    } catch (error) {
-       console.error("Error saving agents to localStorage:", error);
-    }
-   }, [agents, isLoading]);
-
-   useEffect(() => {
-    if (isLoading) return; // Don't save during initial load
-    try {
-       localStorage.setItem("experts_data", JSON.stringify(experts));
-    } catch (error) {
-       console.error("Error saving experts to localStorage:", error);
-    }
-   }, [experts, isLoading]);
-
+  // Reset initialLoadComplete when user logs out
   useEffect(() => {
-    if (isLoading) return; // Don't save during initial load
-    try {
-      localStorage.setItem("chats_data", JSON.stringify(chats));
-    } catch (error) {
-      console.error("Error saving chats to localStorage:", error);
+      if (!currentUser) {
+          setInitialLoadComplete(false);
+          setAgents([]); // Clear data on logout
+          setExperts(mockExperts);
+          setChats(mockChats);
+      }
+  }, [currentUser]);
+
+
+  // --- Agents CRUD (Connected to Supabase) --- 
+
+  const createAgent = useCallback(async (
+    agentData: Omit<Agent, "id" | "createdAt" | "updatedAt" | "createdBy" | "knowledgeFiles">
+  ): Promise<Agent> => { 
+    if (!currentUser || currentUser.role !== "admin") {
+      throw new Error("Apenas administradores podem criar agentes.");
     }
-  }, [chats, isLoading]);
-
-  useEffect(() => {
-    if (isLoading) return; // Don't save during initial load
-    try {
-       localStorage.setItem("currentChatId_data", currentChat ? currentChat.id : "null");
-    } catch (error) {
-       console.error("Error saving currentChatId to localStorage:", error);
-    }
-  }, [currentChat, isLoading]);
-
-
-  // Filter data based on user role and handle loading state
-  useEffect(() => {
-    if (isLoading || !currentUser) return; // Wait for loading and user
-
-    // Load data again or filter existing loaded data
-    const storedExperts = localStorage.getItem("experts_data");
-    const loadedExperts = storedExperts ? JSON.parse(storedExperts) : mockExperts;
-    const storedChats = localStorage.getItem("chats_data");
-     const loadedChats = storedChats ? JSON.parse(storedChats, (key, value) => {
-         if (key === 'createdAt' || key === 'updatedAt') return new Date(value);
-         return value;
-       }) : mockChats;
-
-    if (currentUser.role === "user") {
-       setExperts(loadedExperts.filter((expert: Expert) => expert.userId === currentUser.id));
-       setChats(loadedChats.filter((chat: Chat) => chat.userId === currentUser.id));
-    } else {
-      // Admin sees all data (already loaded or from mocks)
-      setExperts(loadedExperts);
-      setChats(loadedChats);
-    }
-    // Reset currentChat if it doesn't belong to the current user or doesn't exist anymore
-    if (currentChat && 
-        ((currentUser.role !== 'admin' && currentChat.userId !== currentUser.id) || 
-         !loadedChats.some((chat: Chat) => chat.id === currentChat.id))) {
-      setCurrentChat(null);
-    }
-
-  }, [currentUser, isLoading, currentChat]); // Added currentChat as a dependency
-
-  // Agents CRUD
-  const createAgent = useCallback((agentData: Omit<Agent, "id" | "createdAt" | "updatedAt" | "createdBy">) => {
-    if (!currentUser || currentUser.role !== "admin") return;
     
-    const newAgent: Agent = {
-      // Ensure all fields from agentData are included
+    const dataToInsert = {
       name: agentData.name,
       description: agentData.description,
       prompt: agentData.prompt,
-      temperature: agentData.temperature, // Add temperature
-      avatar: agentData.avatar, // Keep avatar
-      // Generate new fields
-      id: `agent-${uuidv4()}`,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-      createdBy: currentUser.id
+      temperature: agentData.temperature,
+      avatar: agentData.avatar,
+      created_by: currentUser.id, 
+      // knowledge_files is initially null or handled in update
     };
-    
+
+    const { data, error } = await supabase
+      .from(AGENTS_TABLE)
+      .insert(dataToInsert)
+      .select()
+      .single();
+
+    if (error) {
+      console.error("Error creating agent:", error);
+      throw new Error(`Falha ao criar agente: ${error.message}`);
+    }
+    if (!data) {
+      throw new Error("Falha ao criar agente: Nenhum dado retornado.");
+    }
+
+    const newAgent = adaptAgentFromDb(data as DbAgent);
     setAgents(prevAgents => [...prevAgents, newAgent]);
+    return newAgent; 
+
   }, [currentUser]);
   
-  // Ensure updateAgent accepts the full Agent type (minus generated fields)
-  // and includes temperature
-  const updateAgent = useCallback((id: string, agentData: Partial<Omit<Agent, "id" | "createdAt" | "updatedAt" | "createdBy">>) => {
-    if (!currentUser || currentUser.role !== "admin") return;
-    
+  const updateAgent = useCallback(async (
+    id: string, 
+    agentData: Partial<Omit<Agent, "id" | "createdAt" | "updatedAt" | "createdBy">>
+  ) => {
+    if (!currentUser || currentUser.role !== "admin") {
+       throw new Error("Apenas administradores podem atualizar agentes.");
+    }
+
+    const dataToUpdate: { [key: string]: any } = { 
+        // Spread core fields (name, description, prompt, temperature, avatar)
+        ...(agentData.name && { name: agentData.name }),
+        ...(agentData.description !== undefined && { description: agentData.description }),
+        ...(agentData.prompt && { prompt: agentData.prompt }),
+        ...(agentData.temperature !== undefined && { temperature: agentData.temperature }),
+        ...(agentData.avatar && { avatar: agentData.avatar }),
+        // Corrected: Use knowledges_files for DB update
+        ...(agentData.knowledgeFiles && { knowledges_files: agentData.knowledgeFiles }),
+        updated_at: new Date().toISOString(),
+    };
+
+    const { data, error } = await supabase
+      .from(AGENTS_TABLE)
+      .update(dataToUpdate) 
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error) {
+      console.error("Error updating agent:", error);
+      throw new Error(`Falha ao atualizar agente: ${error.message}`);
+    }
+     if (!data) {
+      throw new Error("Falha ao atualizar agente: Nenhum dado retornado.");
+    }
+
+    const updatedAgent = adaptAgentFromDb(data as DbAgent);
     setAgents(prevAgents =>
-      prevAgents.map(agent =>
-        agent.id === id
-          ? { 
-              ...agent, // Keep existing fields like id, createdBy, createdAt
-              ...agentData, // Apply updates from agentData (includes name, desc, prompt, temp, avatar)
-              updatedAt: new Date() // Update the date
-            }
-          : agent
-      )
+      prevAgents.map(agent => (agent.id === id ? updatedAgent : agent))
     );
+
   }, [currentUser]);
   
-  const deleteAgent = useCallback((id: string) => {
-    if (!currentUser || currentUser.role !== "admin") return;
-    setAgents(prevAgents => prevAgents.filter(agent => agent.id !== id));
+  const deleteAgent = useCallback(async (id: string) => {
+    if (!currentUser || currentUser.role !== "admin") {
+      throw new Error("Apenas administradores podem excluir agentes.");
+    }
+
+    try {
+      // Fetch agent data including knowledges_files (Corrected column name)
+      const { data: agentDataAny, error: fetchError } = await supabase
+        .from(AGENTS_TABLE)
+        .select('knowledges_files') // Corrected: Select knowledges_files
+        .eq('id', id)
+        .single();
+
+      if (fetchError && fetchError.code !== 'PGRST116') { 
+         console.error("Error fetching agent files before delete:", fetchError);
+      }
+
+      // Corrected property access
+      const filesToDelete = (agentDataAny as any)?.knowledges_files as KnowledgeFile[] || [];
+      const filePathsToDelete = filesToDelete.map(f => f.path).filter(p => !!p);
+
+      if (filePathsToDelete.length > 0) {
+        console.log(`Attempting to delete files from storage: ${filePathsToDelete.join(', ')}`);
+        const { error: storageError } = await supabase.storage
+          .from(KNOWLEDGE_BUCKET)
+          .remove(filePathsToDelete);
+        
+        if (storageError) {
+          console.error("Error deleting files from storage:", storageError);
+        }
+      }
+
+      const { error: deleteError } = await supabase
+        .from(AGENTS_TABLE)
+        .delete()
+        .eq('id', id);
+
+      if (deleteError) {
+        throw deleteError;
+      }
+
+      setAgents(prevAgents => prevAgents.filter(agent => agent.id !== id));
+
+    } catch (error: any) {
+        console.error("Error deleting agent:", error);
+        throw new Error(`Falha ao excluir agente: ${error.message}`);
+    }
   }, [currentUser]);
 
-  // Experts CRUD
+  // Experts CRUD (Mocks - Keep as is or update later)
   const addExpert = useCallback((expertData: Omit<Expert, "id" | "createdAt" | "updatedAt" | "userId">) => {
-    if (!currentUser) return;
+    // ... mock implementation ...
+      if (!currentUser) return;
     
     const newExpert: Expert = {
       ...expertData,
@@ -279,6 +294,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
   }, [currentUser]);
   
   const updateExpert = useCallback((id: string, expertData: Partial<Omit<Expert, "id" | "createdAt" | "updatedAt" | "userId">>) => {
+   // ... mock implementation ...
     if (!currentUser) return;
     
     setExperts(prevExperts =>
@@ -295,18 +311,20 @@ export function DataProvider({ children }: { children: ReactNode }) {
   }, [currentUser]);
   
   const deleteExpert = useCallback((id: string) => {
-    if (!currentUser) return;
+    // ... mock implementation ...
+     if (!currentUser) return;
     setExperts(prevExperts => 
       prevExperts.filter(expert => !(expert.id === id && expert.userId === currentUser.id))
     );
   }, [currentUser]);
 
-  // Chats CRUD
+  // Chats CRUD (Mocks - Keep as is or update later)
   const stableSetCurrentChat = useCallback((chat: Chat | null) => {
     setCurrentChat(chat);
   }, []);
 
   const createChat = useCallback((copyRequest: CopyRequest) => {
+     // ... mock implementation ...
     if (!currentUser) throw new Error("Usuário não autenticado");
     
     const newChat: Chat = {
@@ -328,7 +346,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
   }, [currentUser]);
   
   const addMessageToChat = useCallback((chatId: string, content: string, role: "user" | "assistant") => {
-    if (!currentUser) return;
+    // ... mock implementation ...
+     if (!currentUser) return;
     
     const newMessage: Message = {
       id: `msg-${uuidv4()}`,
@@ -364,6 +383,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
   }, [currentUser]);
   
   const deleteChat = useCallback((id: string) => {
+    // ... mock implementation ...
     if (!currentUser) return;
     
     setChats(prevChats => 
@@ -375,8 +395,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
     }
   }, [currentUser, currentChat]);
 
-  // Add function to delete a specific message
   const deleteMessageFromChat = useCallback((chatId: string, messageId: string) => {
+    // ... mock implementation ...
     if (!currentUser) return;
 
     setChats(prevChats =>
@@ -399,8 +419,9 @@ export function DataProvider({ children }: { children: ReactNode }) {
     );
   }, [currentUser]);
 
-  // Copy Generation
+  // Copy Generation (Keep as is)
   const generateCopy = useCallback(async (request: CopyRequest): Promise<string> => {
+     // ... implementation using Groq ...
     console.log("Generating copy with request:", request);
     if (!currentUser) {
       throw new Error("Usuário não autenticado.");
@@ -416,30 +437,18 @@ export function DataProvider({ children }: { children: ReactNode }) {
     if (!agent) {
       throw new Error(`Agente com ID ${agentId} não encontrado.`);
     }
-    // Find the expert using the ID from the request. Ensure experts state is used.
     const expert = expertId ? experts.find(e => e.id === expertId && e.userId === currentUser.id) : null;
-    // If user is admin, they might be able to use any expert? For now, enforce user ID match.
-
-    // Find the relevant chat history. 
     const historyChat = currentChat; 
-    
-    // Filter out potential error messages we added manually & format for API
     const conversationHistory = historyChat?.messages
        .filter(msg => !msg.content.startsWith("⚠️")) 
        .map(msg => ({ role: msg.role, content: msg.content })) 
        || [];
-
-    // If no currentChat, it implies this is the *first* message triggered from the initial form.
-    // In this case, history is empty, which is correct.
-    // Check for mismatch *after* calculating history
     if (!historyChat && conversationHistory.length > 0) { 
         console.warn("generateCopy: Mismatch between currentChat and existing history. History might be inaccurate.");
     }
 
     // --- 2. Construct System Prompt --- 
-    let systemPrompt = agent.prompt; // Start with the agent's base prompt
-
-    // Append Expert context if an expert was found and selected
+    let systemPrompt = agent.prompt;
     if (expert) {
       console.log("Appending context for expert:", expert.name);
       systemPrompt += `\n\nContexto Adicional (Sobre o Negócio/Produto do Usuário - Expert: ${expert.name}):
@@ -451,35 +460,24 @@ Use estas informações como base para dar mais relevância e especificidade à 
       systemPrompt += `- Objeções/Dúvidas Comuns: ${expert.objections || "Não definido"}\n`;
     } else if (expertId) {
         console.warn(`Expert com ID ${expertId} foi selecionado, mas não encontrado nos dados do usuário.`);
-        // Optionally inform the LLM that an expert was intended but context is missing
         systemPrompt += `\n\nNota: Um perfil de Expert foi selecionado, mas seus detalhes não estão disponíveis no momento.`;
     }
-    
-    // Add general instructions
     systemPrompt += `\n\nInstruções Gerais: Gere o conteúdo exclusivamente no idioma Português do Brasil. Seja criativo e siga o tom de voz implícito no prompt do agente e no contexto do expert (se fornecido). Adapte o formato ao Tipo de Conteúdo solicitado: ${contentType}.`;
 
     // --- 3. Prepare API Request Body --- 
     const GROQ_API_ENDPOINT = "https://api.groq.com/openai/v1/chat/completions";
-    // Define DEFAULT_TEMPERATURE constant within the scope if not already defined globally
     const DEFAULT_TEMPERATURE = 0.7;
-    // Example model, replace with actual model if needed
-    const GROQ_MODEL = "llama3-8b-8192"; // Using a known model from docs
+    const GROQ_MODEL = "llama3-8b-8192"; 
 
     const requestBody = {
       model: GROQ_MODEL,
       messages: [
         { role: "system", content: systemPrompt },
-        ...conversationHistory, // Past messages (user and assistant)
-        // Add the current user request as the latest user message
+        ...conversationHistory, 
         { role: "user", content: additionalInfo } 
       ],
-      // Use agent's temperature or default fallback
       temperature: agent.temperature ?? DEFAULT_TEMPERATURE, 
-      // Consider adding other relevant parameters like max_tokens if needed
-      // max_tokens: 1024, 
     };
-
-    // Debug log: Show the final messages being sent
     console.log("Sending messages to Groq:", JSON.stringify(requestBody.messages, null, 2)); 
 
     // --- 4. Make API Call --- 
@@ -501,18 +499,14 @@ Use estas informações como base para dar mais relevância e especificidade à 
 
       const data = await response.json();
       console.log("Groq API Success Response:", data);
-
       const generatedContent = data.choices?.[0]?.message?.content;
-
       if (!generatedContent) {
         throw new Error("Resposta da API Groq não continha conteúdo gerado.");
       }
-
       return generatedContent.trim();
 
     } catch (error) {
       console.error("Erro ao chamar a API Groq:", error);
-      // Improved error re-throwing for better feedback
       let errorMessage = "Ocorreu um erro desconhecido ao chamar a API Groq.";
       if (error instanceof Error) {
          if (error.message.includes("401")) { 
@@ -529,20 +523,15 @@ Use estas informações como base para dar mais relevância e especificidade à 
 
   // --- Memoize the context value --- 
   const value = useMemo(() => ({
-    isLoading, // Export isLoading state
-    // Agents
+    isLoading, 
     agents,
     createAgent,
     updateAgent,
     deleteAgent,
-    
-    // Experts
     experts,
     addExpert,
     updateExpert,
     deleteExpert,
-    
-    // Chats
     chats,
     currentChat,
     setCurrentChat: stableSetCurrentChat,
@@ -550,11 +539,9 @@ Use estas informações como base para dar mais relevância e especificidade à 
     addMessageToChat,
     deleteChat,
     deleteMessageFromChat,
-    
-    // Copy Generation
     generateCopy
   }), [
-    isLoading, // Add isLoading to dependencies
+    isLoading, 
     agents, experts, chats, currentChat, 
     createAgent, updateAgent, deleteAgent,
     addExpert, updateExpert, deleteExpert,
@@ -565,6 +552,7 @@ Use estas informações como base para dar mais relevância e especificidade à 
   return <DataContext.Provider value={value}>{children}</DataContext.Provider>;
 }
 
+// Custom hook remains the same
 export const useData = () => {
   const context = useContext(DataContext);
   if (context === undefined) {

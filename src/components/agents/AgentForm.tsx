@@ -131,7 +131,7 @@ export function AgentForm({ onCancel, agentToEdit }: AgentFormProps) {
       console.error("Erro ao remover arquivo do storage:", error);
       toast({
         title: "Erro ao Remover Arquivo",
-        description: `Não foi possível remover o arquivo do armazenamento: ${error.message}`,
+        description: `Não foi possível remover o arquivo: ${error.message}`,
         variant: "destructive",
       });
     } finally {
@@ -193,8 +193,8 @@ export function AgentForm({ onCancel, agentToEdit }: AgentFormProps) {
     if (isFileLoading) return;
     setIsSubmitting(true);
     
-    let finalKnowledgeFiles: KnowledgeFile[] = [...formData.knowledgeFiles];
-    let newAgentId: string | undefined = agentToEdit?.id;
+    let finalKnowledgeFiles: KnowledgeFile[] = isEditMode ? [...formData.knowledgeFiles] : [];
+    let agentId = agentToEdit?.id;
 
     try {
       if (!formData.name || !formData.prompt) {
@@ -212,23 +212,37 @@ export function AgentForm({ onCancel, agentToEdit }: AgentFormProps) {
         description: formData.description,
         prompt: formData.prompt,
         temperature: formData.temperature,
+        avatar: agentToEdit?.avatar || "/placeholder.svg",
       };
 
-      if (isEditMode && agentToEdit) {
-        const uploadedFiles = await uploadFiles(agentToEdit.id);
+      if (isEditMode && agentId) {
+        const uploadedFiles = await uploadFiles(agentId);
         finalKnowledgeFiles = [...formData.knowledgeFiles, ...uploadedFiles];
         
-        await updateAgent(agentToEdit.id, {
-          ...agentToEdit,
+        await updateAgent(agentId, {
           ...agentCoreData,
           knowledgeFiles: finalKnowledgeFiles,
         });
         toast({ title: "Sucesso", description: "Agente atualizado com sucesso!" });
 
       } else {
-        await createAgent({ ...agentCoreData, avatar: "/placeholder.svg" }); 
-        console.warn("Criação de Agente: Upload de arquivos pulado. Necessita retorno de ID.");
-        toast({ title: "Sucesso (Parcial)", description: "Agente criado. Upload de arquivos pendente de ajuste." });
+        const newAgent = await createAgent(agentCoreData); 
+        agentId = newAgent.id;
+
+        if (!agentId) {
+          throw new Error("Não foi possível obter o ID do agente recém-criado.");
+        }
+
+        const uploadedFiles = await uploadFiles(agentId);
+        finalKnowledgeFiles = uploadedFiles;
+
+        if (finalKnowledgeFiles.length > 0) {
+          await updateAgent(agentId, { 
+            knowledgeFiles: finalKnowledgeFiles 
+          });
+        }
+        
+        toast({ title: "Sucesso", description: "Agente criado com sucesso!" });
       }
       
       onCancel();
