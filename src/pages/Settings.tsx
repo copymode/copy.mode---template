@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -103,10 +102,10 @@ export default function Settings() {
     try {
       setIsSaving(true);
       
-      const { error } = await supabase
-        .from('profiles')
-        .update({ name: displayName })
-        .eq('id', currentUser?.id);
+      // Use RPC function instead of direct update to avoid potential RLS issues
+      const { error } = await supabase.rpc('update_user_name', {
+        name_value: displayName
+      });
 
       if (error) throw error;
 
@@ -115,14 +114,10 @@ export default function Settings() {
         description: "Seu nome foi atualizado com sucesso.",
       });
 
-      // Update local state in auth context
-      if (currentUser) {
-        // This assumes the auth context will update from Supabase events
-        // Force a refresh of the page after a short delay to ensure the context updates
-        setTimeout(() => {
-          window.location.reload();
-        }, 500);
-      }
+      // Force a refresh of the page after a short delay to ensure the context updates
+      setTimeout(() => {
+        window.location.reload();
+      }, 500);
     } catch (error) {
       console.error("Error updating name:", error);
       toast({
