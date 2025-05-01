@@ -5,10 +5,7 @@ import { LoginForm } from "@/components/auth/LoginForm";
 import { Loader2 } from "lucide-react";
 
 export default function Login() {
-  const {
-    currentUser,
-    isLoading
-  } = useAuth();
+  const { currentUser, isLoading } = useAuth();
 
   // If already logged in, redirect to home
   if (isLoading) {
@@ -28,7 +25,7 @@ export default function Login() {
       <div className="w-full max-w-md">
         <LoginForm />
         <div className="mt-4 text-center text-sm text-muted-foreground">
-          <p></p>
+          <p>Use seu e-mail e senha para acessar o sistema.</p>
         </div>
       </div>
     </div>

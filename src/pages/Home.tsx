@@ -31,9 +31,9 @@ export default function Home() {
   const { currentUser } = useAuth();
   const { toast } = useToast();
   
-  const [selectedExpert, setSelectedExpert] = useState<string | undefined>(currentChat?.expertId);
-  const [selectedAgent, setSelectedAgent] = useState<string | undefined>(currentChat?.agentId);
-  const [selectedContentType, setSelectedContentType] = useState<string | undefined>(currentChat?.contentType);
+  const [selectedExpert, setSelectedExpert] = useState<string | undefined>(undefined);
+  const [selectedAgent, setSelectedAgent] = useState<string | undefined>(undefined);
+  const [selectedContentType, setSelectedContentType] = useState<string | undefined>(undefined);
   
   const [promptInput, setPromptInput] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
@@ -51,11 +51,13 @@ export default function Home() {
 
   useEffect(() => {
     // Sync selectors when currentChat changes from context
-    setSelectedExpert(currentChat?.expertId);
-    setSelectedAgent(currentChat?.agentId);
-    setSelectedContentType(currentChat?.contentType);
-    setPromptInput("");
-    setIsGenerating(false);
+    if (currentChat) {
+      setSelectedExpert(currentChat.expertId);
+      setSelectedAgent(currentChat.agentId);
+      setSelectedContentType(currentChat.contentType);
+      setPromptInput("");
+      setIsGenerating(false);
+    }
   }, [currentChat]);
 
   useEffect(() => {
