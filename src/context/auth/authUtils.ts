@@ -1,3 +1,4 @@
+
 import { AuthUser } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 import { User } from "@/types";
@@ -19,6 +20,33 @@ export const loadUserFromLocalStorage = (): User | null => {
     return JSON.parse(storedUser);
   }
   return null;
+};
+
+// Check for existing session on initial load
+export const checkInitialSession = async () => {
+  try {
+    let initialUser = loadUserFromLocalStorage();
+    let initialSession = null;
+    
+    // Try to get current session from Supabase
+    const { data } = await supabase.auth.getSession();
+    initialSession = data.session;
+    
+    // If we have a valid Supabase session but no local user,
+    // try to fetch user profile
+    if (initialSession?.user && !initialUser) {
+      try {
+        initialUser = await mapSupabaseUser(initialSession.user, initialSession);
+      } catch (error) {
+        console.error("Error mapping Supabase user:", error);
+      }
+    }
+    
+    return { initialUser, initialSession };
+  } catch (error) {
+    console.error("Error checking initial session:", error);
+    return { initialUser: null, initialSession: null };
+  }
 };
 
 // Map a Supabase user to our app's User type

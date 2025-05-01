@@ -1,9 +1,10 @@
+
 import { useState } from "react";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Trash2, Edit, Save, X } from "lucide-react";
-import { useData } from "@/context/data/DataContext";
-import { useAuth } from "@/context/AuthContext";
+import { useData } from "@/context/data";
+import { useAuth } from "@/context/auth";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Agent } from "@/types";

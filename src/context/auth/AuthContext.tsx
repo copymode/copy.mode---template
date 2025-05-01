@@ -17,7 +17,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
   
   // Import hooks
-  const { login } = useLogin(setCurrentUser);
+  const { login } = useLogin(setCurrentUser, setSession);
   const { logout } = useLogout(setCurrentUser, setSession);
   const { updateUserApiKey } = useUpdateUserApiKey(currentUser, session, setCurrentUser);
   

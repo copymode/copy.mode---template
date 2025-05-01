@@ -1,8 +1,8 @@
 
 import { useState, ReactNode } from "react";
-import { useAuth } from "@/context/AuthContext";
+import { useAuth } from "@/context/auth";
 import { useTheme } from "@/context/ThemeContext";
-import { useData } from "@/context/data/DataContext";
+import { useData } from "@/context/data";
 import { Link, useLocation } from "react-router-dom";
 import { Menu, X, Home, Users, Settings, ChevronRight, Moon, Sun, LogOut, ChevronsLeft, ChevronsRight, MessageSquare, Trash2, Pencil, Plus, Bot } from "lucide-react";
 import { Button } from "@/components/ui/button";
