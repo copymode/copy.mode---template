@@ -1,5 +1,4 @@
 
-import { useState } from "react";
 import { User } from "@/types";
 import { supabase } from "@/integrations/supabase/client";
 import { saveUserToLocalStorage, mapSupabaseUser } from "./authUtils";
