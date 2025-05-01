@@ -1,54 +1,65 @@
-import { Expert } from "@/types";
-import { Button } from "@/components/ui/button";
+
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Edit, Trash2, UserCircle } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Expert } from "@/types";
+import { useData } from "@/context/DataContext";
+import { useState } from "react";
+import { Edit, Trash } from "lucide-react"; // Fixed import (capitalized)
 
 interface ExpertCardProps {
   expert: Expert;
-  onEdit: (expert: Expert) => void;
-  onDelete: (expertId: string) => void;
+  onEdit?: () => void;
+  onDelete?: () => void;
 }
 
 export function ExpertCard({ expert, onEdit, onDelete }: ExpertCardProps) {
+  const [isDeleting, setIsDeleting] = useState(false);
+  const { deleteExpert } = useData();
+  
+  const handleDelete = async () => {
+    if (!onDelete) return;
+    
+    setIsDeleting(true);
+    try {
+      await deleteExpert(expert.id);
+      onDelete();
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
   return (
-    <Card className="hover:shadow-md transition-shadow duration-200">
+    <Card className="w-full">
       <CardHeader className="pb-2">
-        <div className="flex items-center justify-between">
-           <div className="flex items-center gap-3">
-              {/* Placeholder for Photo */}
-              {/* Removed conditional rendering for photoUrl */}
-             {/* {expert.photoUrl ? ( 
-                <img src={expert.photoUrl} alt={expert.name} className="h-10 w-10 rounded-full object-cover" />
-             ) : ( */} 
-                <div className="h-10 w-10 rounded-full bg-muted flex items-center justify-center text-muted-foreground">
-                  <UserCircle size={24} />
-                </div>
-             {/* )} */} 
-              <div>
-                <CardTitle className="text-lg leading-tight">{expert.name || "Sem Nome"}</CardTitle>
-                <p className="text-sm text-muted-foreground">{expert.niche || "Nicho não definido"}</p>
-              </div>
-           </div>
-            <div className="flex gap-1">
-              <Button variant="ghost" size="icon" onClick={() => onEdit(expert)} aria-label="Editar">
-                  <Edit className="h-4 w-4 text-muted-foreground hover:text-foreground transition-colors" />
+        <div className="flex justify-between items-start">
+          <CardTitle className="text-lg">{expert.name}</CardTitle>
+          <div className="flex space-x-1">
+            {onEdit && (
+              <Button variant="ghost" size="icon" onClick={onEdit}>
+                <Edit size={16} /> {/* Fixed component name (capitalized) */}
+                <span className="sr-only">Edit</span>
               </Button>
-              <Button 
-                 variant="ghost" 
-                 size="icon" 
-                 onClick={() => onDelete(expert.id)} 
-                 className="text-destructive/70 hover:text-destructive hover:bg-destructive/10 transition-colors" 
-                 aria-label="Excluir"
-               >
-                  <Trash2 className="h-4 w-4" />
+            )}
+            {onDelete && (
+              <Button variant="ghost" size="icon" onClick={handleDelete} disabled={isDeleting}>
+                <Trash size={16} /> {/* Fixed component name (capitalized) */}
+                <span className="sr-only">Delete</span>
               </Button>
-            </div>
+            )}
+          </div>
         </div>
       </CardHeader>
-       {/* Optional: Add more details in CardContent if needed later */}
-       {/* <CardContent>
-         <p className="text-sm text-muted-foreground">Público: {expert.targetAudience || '-'}</p>
-       </CardContent> */}
+      <CardContent className="pb-2 space-y-2 text-sm">
+        <div>
+          <span className="font-medium">Nicho:</span> {expert.niche}
+        </div>
+        <div>
+          <span className="font-medium">Público-alvo:</span> {expert.targetAudience}
+        </div>
+      </CardContent>
+      <CardFooter className="pt-2 text-xs text-muted-foreground">
+        {new Date(expert.createdAt).toLocaleDateString('pt-BR')}
+      </CardFooter>
     </Card>
   );
 }

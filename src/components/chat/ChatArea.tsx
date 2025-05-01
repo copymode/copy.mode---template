@@ -4,7 +4,7 @@ import { Message } from "@/types";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { copy } from "lucide-react";
+import { Copy } from "lucide-react"; // Fixed import (capitalized)
 import { useToast } from "@/hooks/use-toast";
 
 interface ChatAreaProps {
@@ -88,7 +88,7 @@ export function ChatArea({ messages }: ChatAreaProps) {
                       className="absolute -top-3 -right-3 h-7 w-7 rounded-full bg-background opacity-0 group-hover:opacity-100 transition-opacity"
                       onClick={() => copyToClipboard(message.content)}
                     >
-                      <copy className="h-4 w-4" />
+                      <Copy className="h-4 w-4" /> {/* Fixed component name (capitalized) */}
                     </Button>
                   )}
                   <div className="text-sm">{formatContent(message.content)}</div>
