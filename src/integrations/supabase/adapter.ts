@@ -1,4 +1,3 @@
-
 import { supabase } from "./client";
 import { Agent, Chat, Document, Expert, Message, User } from "@/types";
 import { Database } from "./types";
@@ -150,9 +149,20 @@ export async function fetchUserProfile(userId: string) {
     .select("*")
     .eq("id", userId)
     .single();
+
+  // DEBUG LOG REMOVED
+  // console.log('[fetchUserProfile] Raw data from Supabase:', data);
   
-  if (error) throw error;
-  if (!data) throw new Error("User profile not found");
+  if (error) {
+    // Keep error logging for actual errors
+    console.error('[fetchUserProfile] Error fetching profile:', error);
+    throw error;
+  }
+  if (!data) {
+    // Keep warning for missing data
+    console.warn('[fetchUserProfile] Profile data not found for userId:', userId);
+    throw new Error("User profile not found");
+  }
   
   return adaptProfileFromDB(data);
 }

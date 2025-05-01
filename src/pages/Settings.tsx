@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -14,16 +13,17 @@ export default function Settings() {
   const { currentUser, updateUserApiKey } = useAuth();
   const { toast } = useToast();
   
-  const [apiKey, setApiKey] = useState(currentUser?.apiKey || "");
+  const [apiKey, setApiKey] = useState("");
   const [showApiKey, setShowApiKey] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   
-  // Update API key state when currentUser changes
   useEffect(() => {
     if (currentUser?.apiKey) {
       setApiKey(currentUser.apiKey);
+    } else {
+      setApiKey("");
     }
-  }, [currentUser]);
+  }, [currentUser?.apiKey]);
   
   const handleApiKeyChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setApiKey(e.target.value);

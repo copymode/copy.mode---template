@@ -6,6 +6,7 @@ import { Link, useLocation } from "react-router-dom";
 import { Menu, X, Home, Users, Settings, ChevronRight, Moon, Sun, LogOut, ChevronsLeft, ChevronsRight, MessageSquare, Trash2, Pencil, Plus, Bot } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 interface AppShellProps {
   children: ReactNode;
@@ -60,6 +61,14 @@ export function AppShell({ children }: AppShellProps) {
      return `${trimmedContent.substring(0, maxLength)}...`;
   }
 
+  // Helper to get initials
+  const getInitials = (name: string | undefined): string => {
+    if (!name) return "?";
+    const names = name.split(' ');
+    if (names.length === 1) return names[0].charAt(0).toUpperCase();
+    return (names[0].charAt(0) + names[names.length - 1].charAt(0)).toUpperCase();
+  };
+
   return (
     <div className="flex min-h-screen bg-background">
       <aside 
@@ -85,24 +94,6 @@ export function AppShell({ children }: AppShellProps) {
           </div>
           
           <nav className="px-2 py-2">
-            <Tooltip delayDuration={0}>
-              <TooltipTrigger asChild>
-                 <Button 
-                    variant="outline" 
-                    className={`w-full mb-2 ${sidebarCollapsed ? 'justify-center px-0' : 'justify-start'}`}
-                    onClick={handleNewChat} 
-                  >
-                     <Plus size={18} className={`${sidebarCollapsed ? '' : 'mr-2'}`} />
-                     <span className={`${sidebarCollapsed ? 'hidden' : 'block'}`}>Nova Conversa</span>
-                  </Button>
-                </TooltipTrigger>
-                {sidebarCollapsed && (
-                  <TooltipContent side="right" className="bg-popover text-popover-foreground">
-                    Nova Conversa
-                  </TooltipContent>
-                )}
-             </Tooltip>
-
             <ul className="space-y-1">
               {[
                 { path: "/", icon: Home, label: "Home" },
@@ -136,9 +127,29 @@ export function AppShell({ children }: AppShellProps) {
 
           <hr className={`mx-4 my-2 border-sidebar-border ${sidebarCollapsed ? 'hidden' : 'block'}`} />
 
-          <div className="flex-1 overflow-y-auto px-2 py-2">
+          <div className="flex-1 overflow-y-auto px-2 py-2 flex flex-col">
+             <div className="mb-2 px-1">
+                <Tooltip delayDuration={0}>
+                  <TooltipTrigger asChild>
+                    <Button 
+                        variant="outline" 
+                        className={`w-full ${sidebarCollapsed ? 'justify-center px-0' : 'justify-start'}`}
+                        onClick={handleNewChat} 
+                      >
+                        <Plus size={18} className={`${sidebarCollapsed ? '' : 'mr-2'}`} />
+                        <span className={`${sidebarCollapsed ? 'hidden' : 'block'}`}>Nova Conversa</span>
+                      </Button>
+                    </TooltipTrigger>
+                    {sidebarCollapsed && (
+                      <TooltipContent side="right" className="bg-popover text-popover-foreground">
+                        Nova Conversa
+                      </TooltipContent>
+                    )}
+                </Tooltip>
+              </div>
+
              <h3 className={`px-3 py-1 text-xs font-semibold text-muted-foreground tracking-wider uppercase ${sidebarCollapsed ? 'hidden' : 'block'}`}>Histórico</h3>
-            <ul className="space-y-1 mt-1">
+            <ul className="space-y-1 mt-1 flex-1 overflow-y-auto">
               {chatHistory.map((chat) => {
                 const subtitle = generateChatSubtitle(chat.messages[0]?.content);
                 return (
@@ -175,7 +186,21 @@ export function AppShell({ children }: AppShellProps) {
             </ul>
           </div>
           
-          <div className={`p-4 border-t border-sidebar-border ${sidebarCollapsed ? 'space-y-2 flex flex-col items-center' : 'flex items-center justify-between'}`}>
+          <div className={`px-4 py-3 border-t border-sidebar-border mt-auto ${sidebarCollapsed ? 'hidden' : 'block'}`}>
+             <div className="flex items-center">
+                <Avatar className="h-9 w-9 mr-3">
+                  {/* Assuming currentUser doesn't have an avatar URL field */}
+                  {/* <AvatarImage src={currentUser.avatarUrl} alt={currentUser.name} /> */}
+                  <AvatarFallback>{getInitials(currentUser.name)}</AvatarFallback>
+                </Avatar>
+                <div className="overflow-hidden">
+                  <p className="text-sm font-medium text-sidebar-foreground truncate">{currentUser.name}</p>
+                  <p className="text-xs text-muted-foreground truncate">{currentUser.email}</p>
+                </div>
+              </div>
+          </div>
+
+          <div className={`p-4 ${sidebarCollapsed ? 'border-t border-sidebar-border space-y-2 flex flex-col items-center' : 'border-t border-sidebar-border flex items-center justify-between'}`}>
               <Tooltip delayDuration={0}>
                 <TooltipTrigger asChild>
                   <Button 
@@ -227,17 +252,6 @@ export function AppShell({ children }: AppShellProps) {
             </button>
             
             <div className="flex-1 md:ml-0">
-              {/* <h1 className="text-lg font-medium">Copy Mode</h1> */}
-            </div>
-            
-            <div className="flex items-center">
-              <div className="mr-2 text-right">
-                <div className="text-sm font-medium">{currentUser.name}</div>
-                <div className="text-xs text-muted-foreground">{currentUser.role === "admin" ? "Administrador" : "Usuário"}</div>
-              </div>
-              <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center border">
-                <span className="text-sm font-medium text-primary">{currentUser.name.charAt(0).toUpperCase()}</span>
-              </div>
             </div>
           </div>
         </header>

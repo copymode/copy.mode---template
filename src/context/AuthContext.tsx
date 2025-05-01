@@ -1,4 +1,3 @@
-
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
 import { Session, User as SupabaseUser } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
@@ -36,20 +35,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   
-  // Set up auth state listener and check for existing session
   useEffect(() => {
-    // Set up auth state listener FIRST
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, newSession) => {
-        console.log("Auth state changed:", event);
         setSession(newSession);
         
-        // Fetch user profile when session changes
         if (newSession?.user) {
           setTimeout(() => {
             fetchUserProfile(newSession.user.id)
               .then(user => {
-                // If user has a stored API key in localStorage, add it to the user object
+                // If user has a stored API key in localStorage, add it to the user object (from upstream)
                 const storedApiKey = localStorage.getItem("copymode_user_api_key");
                 if (storedApiKey && user) {
                   user.apiKey = storedApiKey;
@@ -57,8 +52,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 setCurrentUser(user);
               })
               .catch(err => {
-                console.error("Error fetching user profile:", err);
-                // If profile fetch fails, set basic user info
+                console.error("Error fetching user profile on auth change:", err);
+                // If profile fetch fails, set basic user info (from upstream)
                 const storedApiKey = localStorage.getItem("copymode_user_api_key");
                 setCurrentUser({
                   id: newSession.user.id,
@@ -75,12 +70,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     );
     
-    // Check for existing session
     supabase.auth.getSession().then(({ data: { session: initialSession } }) => {
       if (initialSession?.user) {
         fetchUserProfile(initialSession.user.id)
           .then(user => {
-            // If user has a stored API key in localStorage, add it to the user object
+             // If user has a stored API key in localStorage, add it to the user object (from upstream)
             const storedApiKey = localStorage.getItem("copymode_user_api_key");
             if (storedApiKey && user) {
               user.apiKey = storedApiKey;
@@ -90,7 +84,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           })
           .catch(err => {
             console.error("Error fetching initial user profile:", err);
-            // Fallback to basic user info
+            // Fallback to basic user info (from upstream)
             const storedApiKey = localStorage.getItem("copymode_user_api_key");
             setCurrentUser({
               id: initialSession.user.id,
@@ -112,7 +106,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
   }, []);
   
-  // For development/demo purposes, also check localStorage for mock users
+  // Keep the commented out localStorage logic (from stash, but was already commented)
+  /* DISABLED FOR DEBUGGING API KEY ISSUE
   useEffect(() => {
     if (!session) {
       // Check for user in localStorage (for demo purposes)
@@ -125,13 +120,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           console.error("Error parsing saved user:", error);
         }
       }
-      setIsLoading(false);
+      // Note: This might have caused issues if it set isLoading false too early
+      // setIsLoading(false); 
     }
   }, [session]);
+  */
 
+  // Keep login function from upstream
   const login = async (email: string, password: string): Promise<User | null> => {
     try {
-      // Try Supabase auth first
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password
@@ -143,6 +140,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       
       if (data.user) {
         const userProfile = await fetchUserProfile(data.user.id);
+         // Add localStorage key check here too after login fetch (consistent with upstream logic)
+        const storedApiKey = localStorage.getItem("copymode_user_api_key");
+        if (storedApiKey && userProfile) {
+          userProfile.apiKey = storedApiKey;
+        }
         return userProfile;
       }
       
@@ -155,36 +157,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (user) {
         setCurrentUser(user);
         localStorage.setItem("copymode_user", JSON.stringify(user));
-        return user;
       }
-      return null;
+      return user || null;
     }
   };
 
+  // Keep logout function from upstream (includes removing api key from localStorage)
   const logout = async (): Promise<void> => {
     try {
       await supabase.auth.signOut();
     } catch (error) {
       console.error("Error during sign out:", error);
     } finally {
-      // Clean up local state
       setCurrentUser(null);
       localStorage.removeItem("copymode_user");
       localStorage.removeItem("copymode_user_api_key");
     }
   };
 
+  // Keep updateUserApiKey function from upstream (uses RPC and localStorage fallback)
   const updateUserApiKey = async (apiKey: string): Promise<void> => {
     if (!currentUser) return;
     
     try {
-      // Store API key in localStorage first as a fallback mechanism
       localStorage.setItem("copymode_user_api_key", apiKey);
 
-      // Try to update in Supabase if we have a session
       if (session) {
         try {
-          // Use RPC function instead of direct update to avoid RLS issues
           const { error } = await supabase.rpc('update_user_api_key', {
             api_key_value: apiKey
           });
@@ -194,20 +193,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           }
         } catch (supabaseError) {
           console.error("Error during Supabase update, using localStorage only:", supabaseError);
-          // Continue execution to update local state
         }
       }
       
-      // Update local state regardless of Supabase success
       const updatedUser = { ...currentUser, apiKey };
       setCurrentUser(updatedUser);
       
-      // Also update localStorage for mock users (demo only)
       if (!session) {
         localStorage.setItem("copymode_user", JSON.stringify(updatedUser));
       }
       
-      console.log("API key updated successfully:", apiKey ? "key set" : "key cleared");
+      console.log("API key updated successfully (local state):", apiKey ? "key set" : "key cleared");
     } catch (error) {
       console.error("Error updating API key:", error);
       throw error;
@@ -221,6 +217,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 }
 
+// Keep useAuth hook from upstream
 export const useAuth = () => {
   const context = useContext(AuthContext);
   if (context === undefined) {
