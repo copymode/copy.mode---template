@@ -28,7 +28,8 @@ export function LoginForm() {
     setIsLoading(true);
     
     try {
-      const user = await login(email);
+      // Corrigido para passar uma string vazia como segundo argumento (senha)
+      const user = await login(email, "");
       
       if (!user) {
         toast({
