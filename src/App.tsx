@@ -1,27 +1,101 @@
-import { Toaster } from "@/components/ui/toaster";
-import { Toaster as Sonner } from "@/components/ui/sonner";
-import { TooltipProvider } from "@/components/ui/tooltip";
+
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { AuthProvider, useAuth } from "./context/AuthContext";
+import { ThemeProvider } from "./context/ThemeContext";
+import { DataProvider } from "./context/DataContext";
+import { AppShell } from "./components/layout/AppShell";
+import { Toaster } from "./components/ui/toaster";
+import { Toaster as Sonner } from "./components/ui/sonner";
+import { TooltipProvider } from "./components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
-import Index from "./pages/Index";
+
+// Pages
+import Login from "./pages/Login";
+import Home from "./pages/Home";
+import Experts from "./pages/Experts";
+import Admin from "./pages/Admin";
+import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
+
+// Auth guard component
+const ProtectedRoute = ({ children, adminOnly = false }: { children: React.ReactNode, adminOnly?: boolean }) => {
+  const { currentUser } = useAuth();
+
+  // Check if logged in
+  if (!currentUser) {
+    return <Navigate to="/login" />;
+  }
+
+  // Check if admin-only route
+  if (adminOnly && currentUser.role !== "admin") {
+    return <Navigate to="/home" />;
+  }
+
+  return <>{children}</>;
+};
 
 const queryClient = new QueryClient();
 
-const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<Index />} />
-          {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-          <Route path="*" element={<NotFound />} />
-        </Routes>
-      </BrowserRouter>
-    </TooltipProvider>
-  </QueryClientProvider>
-);
+const AppRoutes = () => {
+  return (
+    <Routes>
+      <Route path="/login" element={<Login />} />
+      
+      {/* Protected routes */}
+      <Route path="/" element={<Navigate to="/home" />} />
+      <Route path="/home" element={
+        <ProtectedRoute>
+          <AppShell>
+            <Home />
+          </AppShell>
+        </ProtectedRoute>
+      } />
+      <Route path="/experts" element={
+        <ProtectedRoute>
+          <AppShell>
+            <Experts />
+          </AppShell>
+        </ProtectedRoute>
+      } />
+      <Route path="/admin" element={
+        <ProtectedRoute adminOnly={true}>
+          <AppShell>
+            <Admin />
+          </AppShell>
+        </ProtectedRoute>
+      } />
+      <Route path="/settings" element={
+        <ProtectedRoute>
+          <AppShell>
+            <Settings />
+          </AppShell>
+        </ProtectedRoute>
+      } />
+      
+      {/* 404 */}
+      <Route path="*" element={<NotFound />} />
+    </Routes>
+  );
+};
+
+const App = () => {
+  return (
+    <QueryClientProvider client={queryClient}>
+      <ThemeProvider>
+        <TooltipProvider>
+          <Toaster />
+          <Sonner />
+          <AuthProvider>
+            <DataProvider>
+              <BrowserRouter>
+                <AppRoutes />
+              </BrowserRouter>
+            </DataProvider>
+          </AuthProvider>
+        </TooltipProvider>
+      </ThemeProvider>
+    </QueryClientProvider>
+  );
+};
 
 export default App;
