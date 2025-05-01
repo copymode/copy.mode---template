@@ -211,11 +211,9 @@ export function DataProvider({ children }: { children: ReactNode }) {
       setChats(loadedChats);
     }
     // Reset currentChat if it doesn't belong to the current user or doesn't exist anymore
-    const currentChatStillValid = currentChat && 
-                                 (currentUser.role === 'admin' || currentChat.userId === currentUser.id) &&
-                                 loadedChats.some((chat: Chat) => chat.id === currentChat.id);
-                                 
-    if (!currentChatStillValid) {
+    if (currentChat && 
+        ((currentUser.role !== 'admin' && currentChat.userId !== currentUser.id) || 
+         !loadedChats.some((chat: Chat) => chat.id === currentChat.id))) {
       setCurrentChat(null);
     }
 
@@ -312,13 +310,14 @@ export function DataProvider({ children }: { children: ReactNode }) {
     };
     
     setChats(prevChats => [...prevChats, newChat]);
-    stableSetCurrentChat(newChat);
+    setCurrentChat(newChat);
     
     return newChat;
-  }, [currentUser, stableSetCurrentChat]);
+  }, [currentUser]);
   
   const addMessageToChat = useCallback((chatId: string, content: string, role: "user" | "assistant") => {
     if (!currentUser) return;
+    
     const newMessage: Message = {
       id: `msg-${uuidv4()}`,
       content,
@@ -329,7 +328,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
     setChats(prevChats =>
       prevChats.map(chat => {
-        if (chat.id === chatId && chat.userId === currentUser.id) {
+        if (chat.id === chatId && (currentUser.role === 'admin' || chat.userId === currentUser.id)) {
           return {
             ...chat,
             messages: [...chat.messages, newMessage],
@@ -342,12 +341,11 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
     setCurrentChat(prev => {
       if (prev?.id === chatId) {
-        const updatedChat = {
+        return {
           ...prev,
           messages: [...prev.messages, newMessage],
           updatedAt: new Date()
         };
-        return updatedChat;
       } 
       return prev;
     });
@@ -357,13 +355,13 @@ export function DataProvider({ children }: { children: ReactNode }) {
     if (!currentUser) return;
     
     setChats(prevChats => 
-      prevChats.filter(chat => !(chat.id === id && chat.userId === currentUser.id))
+      prevChats.filter(chat => !(chat.id === id && (currentUser.role === 'admin' || chat.userId === currentUser.id)))
     );
     
     if (currentChat?.id === id) {
-      stableSetCurrentChat(null);
+      setCurrentChat(null);
     }
-  }, [currentUser, currentChat, stableSetCurrentChat]);
+  }, [currentUser, currentChat]);
 
   // Add function to delete a specific message
   const deleteMessageFromChat = useCallback((chatId: string, messageId: string) => {
@@ -371,8 +369,12 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
     setChats(prevChats =>
       prevChats.map(chat => {
-        if (chat.id === chatId && chat.userId === currentUser.id) {
-          return { ...chat, messages: chat.messages.filter(msg => msg.id !== messageId), updatedAt: new Date() };
+        if (chat.id === chatId && (currentUser.role === 'admin' || chat.userId === currentUser.id)) {
+          return { 
+            ...chat, 
+            messages: chat.messages.filter(msg => msg.id !== messageId), 
+            updatedAt: new Date() 
+          };
         }
         return chat;
       })

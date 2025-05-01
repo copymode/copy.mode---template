@@ -13,7 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { SendHorizonal, Copy, Trash2, Pencil, Bot, User, Sparkles } from "lucide-react";
+import { SendHorizonal, Copy, Trash2, Pencil, Bot, User, Sparkles, ShieldAlert } from "lucide-react";
 import { Expert, Agent, Message, CopyRequest, Chat } from "@/types";
 
 export default function Home() {
@@ -31,6 +31,7 @@ export default function Home() {
   const { currentUser } = useAuth();
   const { toast } = useToast();
   
+  // Initialize state with undefined, not depending on currentChat which might be null initially
   const [selectedExpert, setSelectedExpert] = useState<string | undefined>(undefined);
   const [selectedAgent, setSelectedAgent] = useState<string | undefined>(undefined);
   const [selectedContentType, setSelectedContentType] = useState<string | undefined>(undefined);
@@ -46,11 +47,11 @@ export default function Home() {
   const [chatToDelete, setChatToDelete] = useState<string | null>(null);
 
   const contentTypes = ["Post Feed", "Story", "Reels", "Anúncio"];
-  const messages: Message[] = currentChat?.messages || [];
+  const messages = currentChat?.messages || [];
   const isInitialState = !currentChat;
 
+  // Only update state from currentChat when it exists
   useEffect(() => {
-    // Sync selectors when currentChat changes from context
     if (currentChat) {
       setSelectedExpert(currentChat.expertId);
       setSelectedAgent(currentChat.agentId);
@@ -62,7 +63,7 @@ export default function Home() {
 
   useEffect(() => {
     if (scrollAreaRef.current) {
-       const scrollElement = scrollAreaRef.current.querySelector('[data-radix-scroll-area-viewport]');
+      const scrollElement = scrollAreaRef.current.querySelector('[data-radix-scroll-area-viewport]');
       if (scrollElement) {
         setTimeout(() => { scrollElement.scrollTop = scrollElement.scrollHeight; }, 0);
       }
@@ -201,7 +202,22 @@ export default function Home() {
 
   return (
     <div className="flex flex-col h-[calc(100vh-4rem)] md:h-[calc(100vh-4.5rem)] bg-background">
-      {!isInitialState && (
+      {!currentUser ? (
+        <div className="flex-1 flex flex-col items-center justify-center p-4">
+          <Card className="w-full max-w-md">
+            <CardHeader className="text-center">
+              <ShieldAlert className="mx-auto h-12 w-12 text-destructive mb-2" />
+              <CardTitle>Login Necessário</CardTitle>
+            </CardHeader>
+            <CardContent className="text-center">
+              <p className="mb-4">Você precisa estar logado para acessar este recurso.</p>
+              <Button onClick={() => window.location.href = "/login"}>
+                Fazer Login
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
+      ) : !isInitialState ? (
         <>
           <div className="flex-shrink-0 p-3 border-b bg-card">
             <div className="flex flex-wrap items-center gap-4 max-w-4xl mx-auto">
@@ -336,9 +352,8 @@ export default function Home() {
             </div>
           </div>
         </>
-      )}
-
-      {isInitialState && (
+      ) : (
+        /* Initial state copy form */
         <div className="flex-1 flex flex-col items-center justify-center p-4">
            <Card className="w-full max-w-4xl p-8 shadow-lg">
              <CardHeader className="items-center text-center">
