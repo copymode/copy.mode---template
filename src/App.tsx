@@ -1,3 +1,4 @@
+
 import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import { ThemeProvider } from "./context/ThemeContext";
@@ -15,7 +16,6 @@ import Experts from "./pages/Experts";
 import Admin from "./pages/Admin";
 import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
-import ExpertsPage from "@/pages/Experts";
 
 // Auth guard component
 function ProtectedRoute({ children, adminOnly = false }: { children: React.ReactNode, adminOnly?: boolean }) {
@@ -34,8 +34,6 @@ function ProtectedRoute({ children, adminOnly = false }: { children: React.React
   return <>{children}</>;
 }
 
-const queryClient = new QueryClient();
-
 const AppRoutes = () => {
   return (
     <Routes>
@@ -53,7 +51,7 @@ const AppRoutes = () => {
       <Route path="/experts" element={
         <ProtectedRoute>
           <AppShell>
-            <ExpertsPage />
+            <Experts />
           </AppShell>
         </ProtectedRoute>
       } />
@@ -77,6 +75,9 @@ const AppRoutes = () => {
     </Routes>
   );
 };
+
+// Create a new QueryClient instance outside the component
+const queryClient = new QueryClient();
 
 const App = () => {
   return (
