@@ -1,9 +1,11 @@
+
 export interface User {
   id: string;
   name: string;
   email: string;
   role: "admin" | "user";
   apiKey?: string;
+  avatar_url?: string;
 }
 
 export interface Agent {
