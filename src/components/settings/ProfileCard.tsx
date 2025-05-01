@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -9,7 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
-import { Pencil, Save } from "lucide-react";
+import { Pencil, Save, Upload } from "lucide-react";
 
 const ProfileCard = () => {
   const { currentUser } = useAuth();
@@ -20,17 +20,36 @@ const ProfileCard = () => {
   const [avatarUrl, setAvatarUrl] = useState<string | null>(currentUser?.avatar_url || null);
   const [isSaving, setIsSaving] = useState(false);
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
-  const fileInputRef = React.useRef<HTMLInputElement>(null);
+  const [nameError, setNameError] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const validateName = (name: string): boolean => {
+    if (!name.trim()) {
+      setNameError("O nome não pode estar vazio.");
+      return false;
+    }
+    
+    if (name.trim().length < 2) {
+      setNameError("O nome deve ter pelo menos 2 caracteres.");
+      return false;
+    }
+    
+    setNameError(null);
+    return true;
+  };
 
   const handleDisplayNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setDisplayName(e.target.value);
+    // Clear error when user starts typing
+    if (nameError) setNameError(null);
   };
 
   const handleSaveDisplayName = async () => {
-    if (!displayName.trim()) {
+    // Validate name before saving
+    if (!validateName(displayName)) {
       toast({
-        title: "Erro",
-        description: "O nome não pode estar vazio.",
+        title: "Erro de validação",
+        description: nameError,
         variant: "destructive",
       });
       return;
@@ -46,8 +65,6 @@ const ProfileCard = () => {
 
       if (error) throw error;
       
-      // Update local auth context - we'll force a page refresh since
-      // the context update might not happen immediately
       toast({
         title: "Nome atualizado",
         description: "Seu nome foi atualizado com sucesso.",
@@ -239,19 +256,22 @@ const ProfileCard = () => {
           <div className="flex-1 space-y-4 w-full">
             <div className="space-y-2">
               <Label htmlFor="displayName">Nome</Label>
-              <div className="flex">
+              <div className="flex flex-col gap-1">
                 <Input
                   id="displayName"
                   placeholder="Seu nome"
                   value={displayName}
                   onChange={handleDisplayNameChange}
-                  className="flex-1"
+                  className={nameError ? "border-red-500" : ""}
                 />
+                {nameError && (
+                  <p className="text-sm text-red-500">{nameError}</p>
+                )}
                 <Button
                   variant="outline"
                   onClick={handleSaveDisplayName}
-                  disabled={isSaving || !displayName}
-                  className="ml-2"
+                  disabled={isSaving || !displayName || displayName === currentUser?.name}
+                  className="mt-2 self-start"
                 >
                   {isSaving ? (
                     <>Salvando...</>
