@@ -61,7 +61,7 @@ export default function Home() {
   useEffect(() => {
     console.log("Navegação detectada para Home, verificando se é necessário resetar estado");
     // Se navegamos diretamente para /home ou /, garantir que currentChat seja null
-    // Mas apenas quando a página for carregada inicialmente, não quando um chat for selecionado
+    // Mas apenas quando a página for carregada inicialmente via navegação normal, não quando um chat for selecionado
     const fromNavigation = sessionStorage.getItem('fromNavigation') === 'true';
     
     if ((location.pathname === "/" || location.pathname === "/home") && fromNavigation) {

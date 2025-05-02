@@ -2,7 +2,7 @@ import { useState, ReactNode, useEffect } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { useTheme } from "@/context/ThemeContext";
 import { useData } from "@/context/DataContext";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Menu, X, Home, Users, Settings, ChevronRight, Moon, Sun, LogOut, ChevronsLeft, ChevronsRight, Trash2, Pencil, Plus, Bot, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -36,6 +36,7 @@ export function AppShell({ children }: AppShellProps) {
   const [searchTerm, setSearchTerm] = useState("");
   const [filteredChats, setFilteredChats] = useState(chats);
   const location = useLocation();
+  const navigate = useNavigate();
 
   const chatHistory = chats;
 
@@ -80,10 +81,10 @@ export function AppShell({ children }: AppShellProps) {
   };
 
   const handleNewChat = () => {
-    sessionStorage.setItem('fromNavigation', 'true');
+    sessionStorage.removeItem('fromNavigation');
     setCurrentChat(null);
-    if (location.pathname !== "/home") {
-      window.location.href = "/home";
+    if (location.pathname !== "/home" && location.pathname !== "/") {
+      navigate("/home");
     }
     if (sidebarOpen) {
       setSidebarOpen(false);
@@ -175,7 +176,7 @@ export function AppShell({ children }: AppShellProps) {
                             isActive(path) ? "bg-sidebar-accent font-medium" : ""
                           } ${sidebarCollapsed ? 'justify-center' : ''}`}
                           onClick={() => {
-                            sessionStorage.setItem('fromNavigation', 'true');
+                            sessionStorage.removeItem('fromNavigation');
                             
                             if (path === "/" || path === "/home") {
                               setCurrentChat(null);
@@ -256,9 +257,10 @@ export function AppShell({ children }: AppShellProps) {
                                             ${currentChat?.id === chat.id ? 'bg-sidebar-accent font-medium' : ''} 
                                             ${sidebarCollapsed ? 'justify-center' : ''}`}
                                onClick={() => {
+                                 sessionStorage.removeItem('fromNavigation');
                                  setCurrentChat(chat);
                                  if (location.pathname !== "/" && location.pathname !== "/home") {
-                                   window.location.href = "/home";
+                                   navigate("/home");
                                  }
                                }}
                              >
