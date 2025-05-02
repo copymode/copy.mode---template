@@ -35,6 +35,7 @@ export function AppShell({ children }: AppShellProps) {
   const [chatToDelete, setChatToDelete] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [filteredChats, setFilteredChats] = useState(chats);
+  const [tooltipsOpen, setTooltipsOpen] = useState<{[key: string]: boolean}>({});
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -74,10 +75,12 @@ export function AppShell({ children }: AppShellProps) {
 
   const toggleSidebar = () => {
     setSidebarOpen(!sidebarOpen);
+    setTooltipsOpen({});
   };
 
   const toggleCollapse = () => {
     setSidebarCollapsed(!sidebarCollapsed);
+    setTooltipsOpen({});
   };
 
   const handleNewChat = () => {
@@ -168,7 +171,11 @@ export function AppShell({ children }: AppShellProps) {
                     { path: "/settings", icon: Settings, label: "Configurações" },
                  ].map(({ path, icon: Icon, label }) => (
                    <li key={path}>
-                     <Tooltip delayDuration={0}>
+                     <Tooltip 
+                       delayDuration={0} 
+                       open={sidebarCollapsed ? tooltipsOpen[`nav-${path}`] : false}
+                       onOpenChange={(open) => setTooltipsOpen({...tooltipsOpen, [`nav-${path}`]: open})}
+                     >
                       <TooltipTrigger asChild>
                         <Link 
                           to={path} 
@@ -223,7 +230,11 @@ export function AppShell({ children }: AppShellProps) {
              </div>
              
              <div className="mb-2 px-1">
-               <Tooltip delayDuration={0}>
+               <Tooltip 
+                 delayDuration={0}
+                 open={sidebarCollapsed ? tooltipsOpen['new-chat'] : false}
+                 onOpenChange={(open) => setTooltipsOpen({...tooltipsOpen, 'new-chat': open})}
+               >
                  <TooltipTrigger asChild>
                    <Button 
                       variant="outline" 
@@ -249,7 +260,11 @@ export function AppShell({ children }: AppShellProps) {
                    const subtitle = generateChatSubtitle(chat.messages[0]?.content);
                    return (
                      <li key={chat.id}>
-                        <Tooltip delayDuration={sidebarCollapsed ? 0 : 500}>
+                        <Tooltip 
+                          delayDuration={sidebarCollapsed ? 0 : 500}
+                          open={tooltipsOpen[`chat-${chat.id}`]}
+                          onOpenChange={(open) => setTooltipsOpen({...tooltipsOpen, [`chat-${chat.id}`]: open})}
+                        >
                          <TooltipTrigger asChild>
                            <div className="relative group">
                              <button
@@ -344,7 +359,11 @@ export function AppShell({ children }: AppShellProps) {
              </div>
 
              <div className={`p-4 ${sidebarCollapsed ? 'space-y-2 flex flex-col items-center' : 'flex items-center justify-between'}`}>
-                  <Tooltip delayDuration={0}>
+                  <Tooltip 
+                    delayDuration={0}
+                    open={sidebarCollapsed ? tooltipsOpen['theme-toggle'] : false}
+                    onOpenChange={(open) => setTooltipsOpen({...tooltipsOpen, 'theme-toggle': open})}
+                  >
                     <TooltipTrigger asChild>
                        <Button 
                         variant="outline" 
@@ -362,7 +381,11 @@ export function AppShell({ children }: AppShellProps) {
                       )}
                   </Tooltip>
     
-                  <Tooltip delayDuration={0}>
+                  <Tooltip 
+                    delayDuration={0}
+                    open={sidebarCollapsed ? tooltipsOpen['logout'] : false}
+                    onOpenChange={(open) => setTooltipsOpen({...tooltipsOpen, 'logout': open})}
+                  >
                     <TooltipTrigger asChild>
                        <Button 
                         variant="outline" 

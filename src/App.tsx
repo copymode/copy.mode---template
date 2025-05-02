@@ -82,7 +82,7 @@ const App = () => {
   return (
     <QueryClientProvider client={queryClient}>
       <ThemeProvider>
-        <TooltipProvider delayDuration={0}>
+        <TooltipProvider delayDuration={0} skipDelayDuration={0}>
           <Toaster />
           <Sonner />
           <AuthProvider>
