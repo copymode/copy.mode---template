@@ -1,12 +1,13 @@
-import { useState, ReactNode } from "react";
+import { useState, ReactNode, useEffect } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { useTheme } from "@/context/ThemeContext";
 import { useData } from "@/context/DataContext";
 import { Link, useLocation } from "react-router-dom";
-import { Menu, X, Home, Users, Settings, ChevronRight, Moon, Sun, LogOut, ChevronsLeft, ChevronsRight, Trash2, Pencil, Plus, Bot } from "lucide-react";
+import { Menu, X, Home, Users, Settings, ChevronRight, Moon, Sun, LogOut, ChevronsLeft, ChevronsRight, Trash2, Pencil, Plus, Bot, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Input } from "@/components/ui/input";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -32,9 +33,36 @@ export function AppShell({ children }: AppShellProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [chatToDelete, setChatToDelete] = useState<string | null>(null);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [filteredChats, setFilteredChats] = useState(chats);
   const location = useLocation();
 
   const chatHistory = chats;
+
+  useEffect(() => {
+    if (!searchTerm.trim()) {
+      setFilteredChats(chatHistory);
+      return;
+    }
+
+    const lowerSearchTerm = searchTerm.toLowerCase();
+    
+    const filtered = chatHistory.filter(chat => {
+      const hasTermInMessages = chat.messages.some(msg => 
+        msg.content.toLowerCase().includes(lowerSearchTerm)
+      );
+      
+      const chatDate = new Date(chat.createdAt);
+      const day = chatDate.getDate().toString().padStart(2, "0");
+      const month = (chatDate.getMonth() + 1).toString().padStart(2, "0");
+      const formattedDate = `${day} - ${month}`;
+      const hasTermInDate = formattedDate.includes(lowerSearchTerm);
+      
+      return hasTermInMessages || hasTermInDate;
+    });
+    
+    setFilteredChats(filtered);
+  }, [searchTerm, chatHistory]);
 
   const isActive = (path: string) => {
     return location.pathname === path;
@@ -60,7 +88,7 @@ export function AppShell({ children }: AppShellProps) {
   };
 
   const handleDeleteChat = (chatId: string, e: React.MouseEvent) => {
-    e.stopPropagation(); // Evita ativar a seleção do chat
+    e.stopPropagation();
     setChatToDelete(chatId);
   };
 
@@ -72,11 +100,9 @@ export function AppShell({ children }: AppShellProps) {
   };
 
   if (!currentUser) {
-    // Or redirect, depending on desired behavior when logged out
     return <>{children}</>; 
   }
 
-  // Helper function defined outside the return statement
   function generateChatSubtitle(content: string | undefined, maxLength = 35): string | null {
      if (!content) return null;
      const trimmedContent = content.trim();
@@ -87,7 +113,6 @@ export function AppShell({ children }: AppShellProps) {
      return `${trimmedContent.substring(0, maxLength)}...`;
   }
   
-  // Formatação da data no formato "DD - MM"
   const formatCreationDate = (date: Date) => {
     try {
       const chatDate = new Date(date);
@@ -100,7 +125,6 @@ export function AppShell({ children }: AppShellProps) {
     }
   };
 
-  // Helper to get initials
   const getInitials = (name: string | undefined): string => {
     if (!name) return "?";
     const names = name.split(' ');
@@ -171,6 +195,29 @@ export function AppShell({ children }: AppShellProps) {
              </nav>
              <hr className={`mx-2 my-4 border-sidebar-border ${sidebarCollapsed ? 'hidden' : 'block'}`} />
 
+             <div className={`mb-3 px-1 ${sidebarCollapsed ? 'hidden' : 'block'}`}>
+               <div className="relative">
+                 <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                 <Input
+                   type="text"
+                   placeholder="Pesquisar conversas..."
+                   value={searchTerm}
+                   onChange={(e) => setSearchTerm(e.target.value)}
+                   className="w-full pl-8 h-8 text-sm bg-sidebar focus-visible:ring-sidebar-accent"
+                 />
+                 {searchTerm && (
+                   <Button
+                     variant="ghost"
+                     size="icon"
+                     onClick={() => setSearchTerm("")}
+                     className="absolute right-1 top-1/2 -translate-y-1/2 h-6 w-6 p-0"
+                   >
+                     <X size={14} className="text-muted-foreground" />
+                   </Button>
+                 )}
+               </div>
+             </div>
+             
              <div className="mb-2 px-1">
                <Tooltip delayDuration={0}>
                  <TooltipTrigger asChild>
@@ -194,7 +241,7 @@ export function AppShell({ children }: AppShellProps) {
              <h3 className={`px-1 py-1 text-xs font-semibold text-muted-foreground tracking-wider uppercase ${sidebarCollapsed ? 'hidden' : 'block'}`}>Histórico</h3>
              
              <ul className="space-y-1 mt-1">
-               {chatHistory.map((chat) => {
+               {(searchTerm ? filteredChats : chatHistory).map((chat) => {
                    const subtitle = generateChatSubtitle(chat.messages[0]?.content);
                    return (
                      <li key={chat.id}>
@@ -261,6 +308,11 @@ export function AppShell({ children }: AppShellProps) {
                      </li>
                    );
                })}
+               {searchTerm && filteredChats.length === 0 && (
+                 <li className="px-3 py-2 text-sm text-muted-foreground text-center">
+                   Nenhuma conversa encontrada
+                 </li>
+               )}
              </ul>
           </div>
           
