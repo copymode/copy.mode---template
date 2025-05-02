@@ -1,10 +1,10 @@
-
 import { useState, useEffect } from "react";
 import { useData } from "@/context/DataContext";
 import { Chat } from "@/types";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Menu, X, Plus, MessageSquare } from "lucide-react";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 interface ChatSidebarProps {
   isOpen: boolean;
@@ -13,7 +13,7 @@ interface ChatSidebarProps {
 }
 
 export function ChatSidebar({ isOpen, onToggle, onNewChat }: ChatSidebarProps) {
-  const { chats, setCurrentChat, currentChat } = useData();
+  const { chats, setCurrentChat, currentChat, contentTypes } = useData();
   const [sortedChats, setSortedChats] = useState<Chat[]>([]);
   
   // Sort chats by date
@@ -51,6 +51,13 @@ export function ChatSidebar({ isOpen, onToggle, onNewChat }: ChatSidebarProps) {
     
     // Older
     return chatDate.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+  };
+
+  // Função para obter o avatar do tipo de conteúdo
+  const getContentTypeAvatar = (contentTypeName: string) => {
+    if (!contentTypeName) return null;
+    const contentType = contentTypes.find(ct => ct.name === contentTypeName);
+    return contentType?.avatar || null;
   };
 
   return (
@@ -103,21 +110,37 @@ export function ChatSidebar({ isOpen, onToggle, onNewChat }: ChatSidebarProps) {
                     }`}
                     onClick={() => setCurrentChat(chat)}
                   >
-                    <div className="flex flex-col w-full truncate">
-                      <div className="flex items-center justify-between w-full">
-                        <span className="font-medium truncate">
-                          {formatTitle(chat)}
-                        </span>
-                        <span className="text-xs text-muted-foreground ml-2">
-                          {formatDate(chat.updatedAt)}
-                        </span>
+                    <div className="flex items-center w-full">
+                      <Avatar className="h-8 w-8 mr-2 flex-shrink-0">
+                        {getContentTypeAvatar(chat.contentType) ? (
+                          <AvatarImage 
+                            src={getContentTypeAvatar(chat.contentType) || ''} 
+                            alt={chat.contentType} 
+                            className="object-cover"
+                          />
+                        ) : (
+                          <AvatarFallback>
+                            {(chat.contentType ? chat.contentType[0] : "C").toUpperCase()}
+                          </AvatarFallback>
+                        )}
+                      </Avatar>
+                      
+                      <div className="flex flex-col flex-1 min-w-0">
+                        <div className="flex items-center justify-between w-full">
+                          <span className="font-medium truncate">
+                            {formatTitle(chat)}
+                          </span>
+                          <span className="text-xs text-muted-foreground ml-2 flex-shrink-0">
+                            {formatDate(chat.updatedAt)}
+                          </span>
+                        </div>
+                        {chat.messages.length > 0 && (
+                          <span className="text-xs text-muted-foreground truncate">
+                            {chat.messages[chat.messages.length - 1].content.substring(0, 40)}
+                            {chat.messages[chat.messages.length - 1].content.length > 40 ? "..." : ""}
+                          </span>
+                        )}
                       </div>
-                      {chat.messages.length > 0 && (
-                        <span className="text-xs text-muted-foreground truncate">
-                          {chat.messages[chat.messages.length - 1].content.substring(0, 40)}
-                          {chat.messages[chat.messages.length - 1].content.length > 40 ? "..." : ""}
-                        </span>
-                      )}
                     </div>
                   </Button>
                 ))}

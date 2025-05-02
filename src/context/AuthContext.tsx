@@ -26,6 +26,7 @@ interface AuthContextType {
   login: (email: string, password: string) => Promise<User | null>;
   logout: () => Promise<void>;
   updateUserApiKey: (apiKey: string) => Promise<void>;
+  updateUserAvatar: (avatarUrl: string) => Promise<void>;
   isLoading: boolean;
 }
 
@@ -50,6 +51,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 if (storedApiKey && user) {
                   user.apiKey = storedApiKey;
                 }
+                
+                // Se o usuário tem uma URL de avatar nos metadados da autenticação, use essa URL
+                if (newSession.user.user_metadata?.avatar_url && user) {
+                  user.avatar_url = newSession.user.user_metadata.avatar_url;
+                }
+                
+                console.log("AUTH: Usuário carregado com avatar_url:", user?.avatar_url);
                 setCurrentUser(user);
               })
               .catch(err => {
@@ -61,7 +69,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                   name: newSession.user.email || "",
                   email: newSession.user.email || "",
                   role: "user",
-                  apiKey: storedApiKey || undefined
+                  apiKey: storedApiKey || undefined,
+                  avatar_url: newSession.user.user_metadata?.avatar_url || null,
                 });
               });
           }, 0);
@@ -80,6 +89,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             if (storedApiKey && user) {
               user.apiKey = storedApiKey;
             }
+            
+            // Se o usuário tem uma URL de avatar nos metadados da autenticação, use essa URL
+            if (initialSession.user.user_metadata?.avatar_url && user) {
+              user.avatar_url = initialSession.user.user_metadata.avatar_url;
+            }
+            
+            console.log("AUTH: Carregando sessão inicial com avatar_url:", user?.avatar_url);
             setCurrentUser(user);
             setSession(initialSession);
           })
@@ -92,7 +108,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               name: initialSession.user.email || "",
               email: initialSession.user.email || "",
               role: "user",
-              apiKey: storedApiKey || undefined
+              apiKey: storedApiKey || undefined,
+              avatar_url: initialSession.user.user_metadata?.avatar_url || null,
             });
             setSession(initialSession);
           })
@@ -211,8 +228,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  // Nova função para atualizar o avatar do usuário sem reload
+  const updateUserAvatar = async (avatarUrl: string): Promise<void> => {
+    if (!currentUser) return;
+    
+    try {
+      // Criar uma cópia atualizada do usuário com o novo avatar
+      const updatedUser = { ...currentUser, avatar_url: avatarUrl };
+      
+      // Atualizar o estado local
+      setCurrentUser(updatedUser);
+      
+      console.log("Avatar do usuário atualizado no contexto com sucesso:", avatarUrl);
+    } catch (error) {
+      console.error("Erro ao atualizar avatar no contexto:", error);
+      throw error;
+    }
+  };
+
   return (
-    <AuthContext.Provider value={{ currentUser, session, login, logout, updateUserApiKey, isLoading }}>
+    <AuthContext.Provider value={{ 
+      currentUser, 
+      session, 
+      login, 
+      logout, 
+      updateUserApiKey, 
+      updateUserAvatar, 
+      isLoading 
+    }}>
       {children}
     </AuthContext.Provider>
   );

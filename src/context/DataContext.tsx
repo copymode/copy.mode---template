@@ -211,27 +211,32 @@ export function DataProvider({ children }: { children: ReactNode }) {
           userId: dbExpert.user_id
         })) : []);
 
-        // Temporariamente desabilitar busca de ContentTypes
-        /*
-        // Buscar ContentTypes do DB
-        const { data: contentTypesData, error: contentTypesError } = await supabase
-          .from(CONTENT_TYPES_TABLE)
-          .select('*')
-          .order('created_at', { ascending: false });
-          
-        if (contentTypesError) throw contentTypesError;
-        
-        setContentTypes(contentTypesData ? contentTypesData.map((dbContentType: DbContentType) => ({
-          id: dbContentType.id,
-          name: dbContentType.name,
-          avatar: dbContentType.avatar,
-          description: dbContentType.description,
-          createdAt: new Date(dbContentType.created_at),
-          updatedAt: new Date(dbContentType.updated_at),
-          userId: dbContentType.user_id
-        })) : []);
-        */
-        
+        // Buscar ContentTypes do DB com tratamento de erro específico
+        try {
+          const { data: contentTypesData, error: contentTypesError } = await supabase
+            .from(CONTENT_TYPES_TABLE)
+            .select('*')
+            .order('created_at', { ascending: false });
+            
+          if (!contentTypesError) {
+            setContentTypes(contentTypesData ? contentTypesData.map((dbContentType: any) => ({
+              id: dbContentType.id,
+              name: dbContentType.name,
+              avatar: dbContentType.avatar,
+              description: dbContentType.description,
+              createdAt: new Date(dbContentType.created_at),
+              updatedAt: new Date(dbContentType.updated_at),
+              userId: dbContentType.user_id
+            })) : []);
+          } else {
+            console.log("Usando tipos de conteúdo mocados devido a erro:", contentTypesError);
+            // Manter os mocks se a tabela não existir ainda
+          }
+        } catch (error) {
+          console.log("Usando tipos de conteúdo mocados devido a erro:", error);
+          // Manter os mocks se houver qualquer erro
+        }
+
         // TODO: Fetch Chats from DB (similar pattern)
         // const { data: chatsData, error: chatsError } = await supabase.from(CHATS_TABLE)...;
         // setChats(chatsData ? chatsData.map(adaptChatFromDb) : []);
@@ -603,7 +608,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
       throw error;
     }
   }, [currentUser]);
-
+  
   // --- Manter refetchAgentData (OPCIONAL - pode ser removido se não usado em outro lugar) ---
   // Se mantido, deve usar getAgentById para atualizar o estado global 'agents'
   const refetchAgentData = useCallback(async (agentId: string) => {
@@ -731,7 +736,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
         userId: dbExpert.user_id
       };
     
-    setExperts(prevExperts =>
+    setExperts(prevExperts => 
         prevExperts.map(expert => (expert.id === id ? updatedExpert : expert))
       );
       
@@ -1015,69 +1020,189 @@ Use estas informações como base para dar mais relevância e especificidade à 
     }
   }, [currentUser, agents, experts, currentChat]);
 
-  // --- ContentTypes CRUD --- (MOCK temporário)
+  // --- ContentTypes CRUD --- 
 
   const createContentType = useCallback(async (
     contentTypeData: Omit<ContentType, "id" | "createdAt" | "updatedAt" | "userId">
   ): Promise<ContentType> => {
-    if (!currentUser || currentUser.role !== "admin") {
-      throw new Error("Apenas administradores podem criar tipos de conteúdo.");
+    if (!currentUser) {
+      throw new Error("Usuário não autenticado.");
     }
     
-    // Criar mock temporário
-    const newContentType: ContentType = {
-      id: uuidv4(),
-      name: contentTypeData.name,
-      description: contentTypeData.description || "",
-      avatar: contentTypeData.avatar || null,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-      userId: currentUser.id
-    };
-    
-    // Update local state
-    setContentTypes(prev => [newContentType, ...prev]);
-    
-    return newContentType;
-  }, [currentUser]);
+    try {
+      console.log("[DataContext] Criando tipo de conteúdo:", contentTypeData);
+      
+      // Preparar dados para inserção
+      const dbData = {
+        name: contentTypeData.name,
+        description: contentTypeData.description || null,
+        avatar: contentTypeData.avatar || null,
+        user_id: currentUser.id
+      };
+      
+      // Inserir no banco de dados
+      const { data, error } = await supabase
+        .from(CONTENT_TYPES_TABLE)
+        .insert(dbData)
+        .select('*')
+        .single();
+      
+      if (error) {
+        console.error("[DataContext] Erro ao criar tipo de conteúdo:", error);
+        // Fallback para dados locais se a tabela não existir
+        if (error.code === "42P01") { // código para tabela não existe
+          console.log("[DataContext] Tabela não existe, usando mock temporariamente");
+          const newContentType: ContentType = {
+            id: uuidv4(),
+            name: contentTypeData.name,
+            description: contentTypeData.description || "",
+            avatar: contentTypeData.avatar || null,
+            createdAt: new Date(),
+            updatedAt: new Date(),
+            userId: currentUser.id
+          };
+          
+          setContentTypes(prev => [newContentType, ...prev]);
+          return newContentType;
+        }
+        throw new Error(`Erro ao criar tipo de conteúdo: ${error.message}`);
+      }
+      
+      // Converter para o formato da aplicação
+      const newContentType: ContentType = {
+        id: data.id,
+        name: data.name,
+        description: data.description || "",
+        avatar: data.avatar,
+        createdAt: new Date(data.created_at),
+        updatedAt: new Date(data.updated_at),
+        userId: data.user_id
+      };
+      
+      // Atualizar o estado local
+      setContentTypes(prev => [newContentType, ...prev]);
+      
+      console.log("[DataContext] Tipo de conteúdo criado:", newContentType);
+      return newContentType;
+    } catch (error) {
+      console.error("[DataContext] Erro ao criar tipo de conteúdo:", error);
+      throw error;
+    }
+  }, [currentUser, supabase]);
   
   const updateContentType = useCallback(async (
     id: string, 
     contentTypeData: Partial<Omit<ContentType, "id" | "createdAt" | "updatedAt" | "userId">>
   ): Promise<ContentType> => {
-    if (!currentUser || currentUser.role !== "admin") {
-      throw new Error("Apenas administradores podem atualizar tipos de conteúdo.");
+    if (!currentUser) {
+      throw new Error("Usuário não autenticado.");
     }
     
-    // Find the content type to update
-    const contentTypeIndex = contentTypes.findIndex(ct => ct.id === id);
-    if (contentTypeIndex === -1) {
-      throw new Error("Tipo de conteúdo não encontrado.");
+    try {
+      console.log("[DataContext] Atualizando tipo de conteúdo:", id, contentTypeData);
+      
+      // Preparar dados para atualização
+      const dbData: any = {
+        updated_at: new Date().toISOString()
+      };
+      
+      if (contentTypeData.name !== undefined) dbData.name = contentTypeData.name;
+      if (contentTypeData.description !== undefined) dbData.description = contentTypeData.description;
+      if (contentTypeData.avatar !== undefined) dbData.avatar = contentTypeData.avatar;
+      
+      // Atualizar no banco de dados
+      const { data, error } = await supabase
+        .from(CONTENT_TYPES_TABLE)
+        .update(dbData)
+        .eq('id', id)
+        .select('*')
+        .single();
+      
+      if (error) {
+        console.error("[DataContext] Erro ao atualizar tipo de conteúdo:", error);
+        // Fallback para dados locais se a tabela não existir
+        if (error.code === "42P01") { // código para tabela não existe
+          console.log("[DataContext] Tabela não existe, usando mock temporariamente");
+          
+          // Find and update local state
+          const contentTypeIndex = contentTypes.findIndex(ct => ct.id === id);
+          if (contentTypeIndex === -1) {
+            throw new Error("Tipo de conteúdo não encontrado.");
+          }
+          
+          const updatedContentType: ContentType = {
+            ...contentTypes[contentTypeIndex],
+            ...contentTypeData,
+            updatedAt: new Date()
+          };
+          
+          const newContentTypes = [...contentTypes];
+          newContentTypes[contentTypeIndex] = updatedContentType;
+          setContentTypes(newContentTypes);
+          
+          return updatedContentType;
+        }
+        throw new Error(`Erro ao atualizar tipo de conteúdo: ${error.message}`);
+      }
+      
+      // Converter para o formato da aplicação
+      const updatedContentType: ContentType = {
+        id: data.id,
+        name: data.name,
+        description: data.description || "",
+        avatar: data.avatar,
+        createdAt: new Date(data.created_at),
+        updatedAt: new Date(data.updated_at),
+        userId: data.user_id
+      };
+      
+      // Atualizar o estado local
+      setContentTypes(prev => 
+        prev.map(ct => ct.id === id ? updatedContentType : ct)
+      );
+      
+      console.log("[DataContext] Tipo de conteúdo atualizado:", updatedContentType);
+      return updatedContentType;
+    } catch (error) {
+      console.error("[DataContext] Erro ao atualizar tipo de conteúdo:", error);
+      throw error;
     }
-    
-    // Create updated content type
-    const updatedContentType: ContentType = {
-      ...contentTypes[contentTypeIndex],
-      ...contentTypeData,
-      updatedAt: new Date()
-    };
-    
-    // Update local state
-    const newContentTypes = [...contentTypes];
-    newContentTypes[contentTypeIndex] = updatedContentType;
-    setContentTypes(newContentTypes);
-    
-    return updatedContentType;
-  }, [currentUser, contentTypes]);
+  }, [currentUser, contentTypes, supabase]);
   
   const deleteContentType = useCallback(async (id: string): Promise<void> => {
-    if (!currentUser || currentUser.role !== "admin") {
-      throw new Error("Apenas administradores podem excluir tipos de conteúdo.");
+    if (!currentUser) {
+      throw new Error("Usuário não autenticado.");
     }
     
-    // Update local state
-    setContentTypes(prev => prev.filter(ct => ct.id !== id));
-  }, [currentUser]);
+    try {
+      console.log("[DataContext] Excluindo tipo de conteúdo:", id);
+      
+      // Excluir do banco de dados
+      const { error } = await supabase
+        .from(CONTENT_TYPES_TABLE)
+        .delete()
+        .eq('id', id);
+      
+      if (error) {
+        console.error("[DataContext] Erro ao excluir tipo de conteúdo:", error);
+        // Fallback para dados locais se a tabela não existir
+        if (error.code === "42P01") { // código para tabela não existe
+          console.log("[DataContext] Tabela não existe, usando mock temporariamente");
+          setContentTypes(prev => prev.filter(ct => ct.id !== id));
+          return;
+        }
+        throw new Error(`Erro ao excluir tipo de conteúdo: ${error.message}`);
+      }
+      
+      // Atualizar o estado local
+      setContentTypes(prev => prev.filter(ct => ct.id !== id));
+      
+      console.log("[DataContext] Tipo de conteúdo excluído com sucesso");
+    } catch (error) {
+      console.error("[DataContext] Erro ao excluir tipo de conteúdo:", error);
+      throw error;
+    }
+  }, [currentUser, supabase]);
   
   const getContentTypeById = useCallback(async (id: string): Promise<ContentType | null> => {
     const contentType = contentTypes.find(ct => ct.id === id);
@@ -1086,7 +1211,7 @@ Use estas informações como base para dar mais relevância e especificidade à 
 
   // Value object for context
   const value = useMemo(() => ({
-    isLoading,
+    isLoading, 
     agents,
     createAgent,
     updateAgent,

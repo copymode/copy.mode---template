@@ -8,7 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { ContentTypeAvatarUploader } from "./ContentTypeAvatarUploader";
+import { ContentTypeAvatarUploaderDebug } from "./ContentTypeAvatarUploaderDebug";
 
 interface ContentTypeFormProps {
   onCancel: () => void;
@@ -96,7 +96,7 @@ export function ContentTypeForm({ onCancel, contentTypeToEdit }: ContentTypeForm
   };
 
   return (
-    <Card>
+    <Card className="w-full max-w-lg mx-auto">
       <CardHeader>
         <CardTitle>
           {contentTypeToEdit ? "Editar Tipo de Conteúdo" : "Novo Tipo de Conteúdo"}
@@ -104,38 +104,45 @@ export function ContentTypeForm({ onCancel, contentTypeToEdit }: ContentTypeForm
       </CardHeader>
       <form onSubmit={handleSubmit}>
         <CardContent className="space-y-6">
-          <div className="flex flex-col md:flex-row gap-8">
-            <div className="w-full md:w-1/3 flex justify-center">
-              <ContentTypeAvatarUploader 
-                contentTypeId={contentTypeToEdit?.id} 
-                initialImage={avatar}
-                onAvatarChange={handleAvatarChange} 
+          <div className="flex flex-col items-center gap-4 mb-4">
+            <ContentTypeAvatarUploaderDebug 
+              contentTypeId={contentTypeToEdit?.id} 
+              initialImage={avatar}
+              onAvatarChange={handleAvatarChange} 
+            />
+            <p className="text-sm text-muted-foreground text-center">
+              Imagem do tipo de conteúdo (opcional)
+            </p>
+          </div>
+          
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="name">Nome *</Label>
+              <Input
+                id="name"
+                name="name"
+                value={formData.name}
+                onChange={handleChange}
+                placeholder="Ex: Stories, Reels, Post de Feed, etc."
+                disabled={isLoading}
               />
             </div>
             
-            <div className="space-y-4 flex-1">
-              <div className="space-y-2">
-                <Label htmlFor="name">Nome *</Label>
-                <Input
-                  id="name"
-                  name="name"
-                  value={formData.name}
-                  onChange={handleChange}
-                  placeholder="Ex: Stories, Reels, Post de Feed, etc."
-                />
-              </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="description">Descrição</Label>
-                <Textarea
-                  id="description"
-                  name="description"
-                  value={formData.description}
-                  onChange={handleChange}
-                  placeholder="Descreva o tipo de conteúdo..."
-                  rows={4}
-                />
-              </div>
+            <div className="space-y-2">
+              <Label htmlFor="description">Descrição</Label>
+              <Textarea
+                id="description"
+                name="description"
+                value={formData.description}
+                onChange={handleChange}
+                placeholder="Descreva o tipo de conteúdo..."
+                rows={4}
+                className="resize-y min-h-[100px]"
+                disabled={isLoading}
+              />
+              <p className="text-sm text-muted-foreground">
+                Descreva o formato e características deste tipo de conteúdo.
+              </p>
             </div>
           </div>
         </CardContent>

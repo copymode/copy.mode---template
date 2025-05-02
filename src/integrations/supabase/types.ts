@@ -246,6 +246,43 @@ export type Database = {
         }
         Relationships: []
       }
+      content_types: {
+        Row: {
+          id: string;
+          name: string;
+          description: string | null;
+          avatar: string | null;
+          created_at: string;
+          updated_at: string;
+          user_id: string;
+        };
+        Insert: {
+          id?: string;
+          name: string;
+          description?: string | null;
+          avatar?: string | null;
+          created_at?: string;
+          updated_at?: string;
+          user_id: string;
+        };
+        Update: {
+          id?: string;
+          name?: string;
+          description?: string | null;
+          avatar?: string | null;
+          created_at?: string;
+          updated_at?: string;
+          user_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "content_types_user_id_fkey";
+            columns: ["user_id"];
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          }
+        ];
+      };
     }
     Views: {
       [_ in never]: never

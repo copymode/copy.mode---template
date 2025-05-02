@@ -1,5 +1,4 @@
-
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useAuth } from "@/context/AuthContext";
 import { AvatarUploader } from "./AvatarUploader";
@@ -10,8 +9,17 @@ const ProfileCard = () => {
   const { currentUser } = useAuth();
   const [avatarUrl, setAvatarUrl] = useState<string | null>(currentUser?.avatar_url || null);
 
+  // Atualizar o avatar quando o usuário mudar ou quando a página for carregada
+  useEffect(() => {
+    if (currentUser?.avatar_url) {
+      console.log("Atualizando avatar do perfil para:", currentUser.avatar_url);
+      setAvatarUrl(currentUser.avatar_url);
+    }
+  }, [currentUser]);
+
   // Handler for when avatar is updated by child component
   const handleAvatarUpdated = (url: string) => {
+    console.log("Avatar atualizado para:", url);
     setAvatarUrl(url);
   };
 

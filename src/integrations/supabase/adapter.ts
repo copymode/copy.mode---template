@@ -1,6 +1,14 @@
 import { supabase } from "./client";
-import { Agent, Chat, Document, Expert, Message, User } from "@/types";
+import { Agent, Chat, Expert, Message, User } from "@/types";
 import { Database } from "./types";
+
+// Interfaces locais para tipos não exportados globalmente
+interface Document {
+  id: string;
+  name: string;
+  content: string;
+  agentId: string;
+}
 
 // Type conversions from Supabase DB types to our app types
 export type DbAgent = Database["public"]["Tables"]["agents"]["Row"];
@@ -69,7 +77,8 @@ export function adaptProfileFromDB(dbProfile: DbProfile): User {
     name: dbProfile.name || "",
     email: dbProfile.email || "",
     role: dbProfile.role as "admin" | "user",
-    apiKey: dbProfile.api_key || undefined
+    apiKey: dbProfile.api_key || undefined,
+    avatar_url: dbProfile.avatar_url || undefined
   };
 }
 

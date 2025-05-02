@@ -274,25 +274,30 @@ export default function Home() {
                 </SelectContent>
               </Select>
 
-              <div className="w-full sm:w-[180px] text-sm text-muted-foreground px-3 py-2 border rounded-md bg-muted truncate flex items-center">
-                 {selectedContentType ? (
-                   <>
-                     {contentTypes.find(ct => ct.name === selectedContentType)?.avatar && (
-                       <Avatar className="h-6 w-6 mr-2 flex-shrink-0">
-                         <AvatarImage 
-                           src={contentTypes.find(ct => ct.name === selectedContentType)?.avatar || ''} 
-                           alt={selectedContentType} 
-                           className="object-cover"
-                         />
-                         <AvatarFallback>{selectedContentType[0]}</AvatarFallback>
-                       </Avatar>
-                     )}
-                     <span className="truncate">{selectedContentType}</span>
-                   </>
-                 ) : (
-                   "Tipo não definido"
-                 )}
-               </div>
+              <Select value={selectedContentType} disabled>
+                <SelectTriggerWithAvatar 
+                  className="w-full sm:w-[180px]"
+                  avatarSrc={selectedContentType ? contentTypes.find(ct => ct.name === selectedContentType)?.avatar : null}
+                  selectedName={selectedContentType || null}
+                >
+                  <SelectValue placeholder="Selecione o Tipo de Conteúdo" />
+                </SelectTriggerWithAvatar>
+                <SelectContent>
+                  {contentTypes.map((contentType) => (
+                    <SelectItemWithAvatar 
+                      key={contentType.id} 
+                      value={contentType.name} 
+                      avatarSrc={contentType.avatar || null}
+                      name={contentType.name}
+                    >
+                      {contentType.name}
+                    </SelectItemWithAvatar>
+                  ))}
+                  {selectedContentType && !contentTypes.find(ct => ct.name === selectedContentType) && (
+                     <SelectItem value={selectedContentType} disabled>{selectedContentType}</SelectItem>
+                  )}
+                </SelectContent>
+              </Select>
             </div>
           </div>
 

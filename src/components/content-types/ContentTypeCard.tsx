@@ -2,8 +2,9 @@ import { ContentType } from "@/types";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Edit, Trash2 } from "lucide-react";
-import { formatRelativeDate } from "@/lib/utils";
+import { Edit, Trash } from "lucide-react";
+import { useData } from "@/context/DataContext";
+import { useState } from "react";
 
 interface ContentTypeCardProps {
   contentType: ContentType;
@@ -12,43 +13,75 @@ interface ContentTypeCardProps {
 }
 
 export function ContentTypeCard({ contentType, onEdit, onDelete }: ContentTypeCardProps) {
+  const [isDeleting, setIsDeleting] = useState(false);
+  const { deleteContentType } = useData();
+  
+  const handleDelete = async () => {
+    if (!onDelete) return;
+    
+    setIsDeleting(true);
+    try {
+      await deleteContentType(contentType.id);
+      onDelete();
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
   return (
-    <Card>
-      <CardHeader className="flex flex-row items-center gap-4">
-        <Avatar className="h-14 w-14">
-          {contentType.avatar ? (
-            <AvatarImage src={contentType.avatar} alt={contentType.name} className="object-cover" />
-          ) : (
-            <AvatarFallback className="text-xl">
-              {contentType.name.charAt(0).toUpperCase()}
-            </AvatarFallback>
-          )}
-        </Avatar>
-        <div className="flex-1">
-          <CardTitle>{contentType.name}</CardTitle>
-          <p className="text-sm text-muted-foreground">
-            Criado {formatRelativeDate(contentType.createdAt)}
-          </p>
+    <Card className="w-full">
+      <CardHeader className="pb-2">
+        <div className="flex justify-between items-start">
+          <div className="flex items-center gap-3">
+            <Avatar className="h-10 w-10">
+              {contentType.avatar ? (
+                <AvatarImage 
+                  src={contentType.avatar} 
+                  alt={contentType.name} 
+                  className="object-cover"
+                />
+              ) : (
+                <AvatarFallback>
+                  {contentType.name[0].toUpperCase()}
+                </AvatarFallback>
+              )}
+            </Avatar>
+            <CardTitle className="text-lg">{contentType.name}</CardTitle>
+          </div>
+          
+          <div className="flex space-x-1">
+            {onEdit && (
+              <Button variant="ghost" size="icon" onClick={onEdit}>
+                <Edit size={16} />
+                <span className="sr-only">Editar</span>
+              </Button>
+            )}
+            
+            {onDelete && (
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                onClick={handleDelete} 
+                disabled={isDeleting}
+              >
+                <Trash size={16} />
+                <span className="sr-only">Excluir</span>
+              </Button>
+            )}
+          </div>
         </div>
       </CardHeader>
       
-      <CardContent>
+      <CardContent className="pb-2 text-sm text-muted-foreground">
         {contentType.description ? (
-          <p className="text-sm">{contentType.description}</p>
+          <p>{contentType.description}</p>
         ) : (
-          <p className="text-sm text-muted-foreground italic">Sem descrição</p>
+          <p className="italic">Sem descrição</p>
         )}
       </CardContent>
       
-      <CardFooter className="flex justify-end gap-2">
-        <Button variant="outline" size="sm" onClick={onEdit}>
-          <Edit className="h-4 w-4 mr-1" />
-          Editar
-        </Button>
-        <Button variant="outline" size="sm" className="text-destructive hover:bg-destructive/10" onClick={onDelete}>
-          <Trash2 className="h-4 w-4 mr-1" />
-          Excluir
-        </Button>
+      <CardFooter className="pt-2 text-xs text-muted-foreground">
+        {new Date(contentType.createdAt).toLocaleDateString('pt-BR')}
       </CardFooter>
     </Card>
   );

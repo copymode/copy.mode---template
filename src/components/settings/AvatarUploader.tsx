@@ -1,4 +1,3 @@
-
 import { useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -6,6 +5,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { Pencil, Upload } from "lucide-react";
+import { useAuth } from "@/context/AuthContext";
 
 interface AvatarUploaderProps {
   userId: string;
@@ -18,16 +18,30 @@ export const AvatarUploader = ({ userId, userName, avatarUrl, onAvatarUpdated }:
   const { toast } = useToast();
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [localAvatarUrl, setLocalAvatarUrl] = useState<string | null>(avatarUrl);
+  const { updateUserAvatar } = useAuth();
+
+  // Atualiza apenas a sessão, sem recarregar a página
+  const updateSessionQuietly = async (newAvatarUrl: string) => {
+    try {
+      // Atualizar a sessão atual, sem forçar reload
+      await supabase.auth.refreshSession();
+      console.log("✅ Sessão atualizada silenciosamente");
+    } catch (error) {
+      console.error("Erro ao atualizar sessão silenciosamente:", error);
+    }
+  };
 
   const handleAvatarUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file || !userId) return;
 
-    // Validate file type
-    const fileExt = file.name.split('.').pop();
+    // Validar o formato do arquivo
+    const fileExt = file.name.split('.').pop()?.toLowerCase();
     const allowedExts = ['jpg', 'jpeg', 'png', 'webp'];
     
-    if (!allowedExts.includes(fileExt?.toLowerCase() || '')) {
+    if (!allowedExts.includes(fileExt || '')) {
       toast({
         title: "Formato inválido",
         description: "Por favor, selecione uma imagem no formato JPG, PNG ou WEBP.",
@@ -36,7 +50,7 @@ export const AvatarUploader = ({ userId, userName, avatarUrl, onAvatarUpdated }:
       return;
     }
 
-    // Validate file size (max 2MB)
+    // Validar o tamanho do arquivo (máx 2MB)
     if (file.size > 2 * 1024 * 1024) {
       toast({
         title: "Arquivo muito grande",
@@ -46,13 +60,15 @@ export const AvatarUploader = ({ userId, userName, avatarUrl, onAvatarUpdated }:
       return;
     }
 
+    setIsUploadingAvatar(true);
+
     try {
-      setIsUploadingAvatar(true);
-      
-      // Generate a unique file path for the user's avatar
+      // Nome único para o arquivo, usando ID do usuário e timestamp
       const filePath = `${userId}/${Date.now()}-${file.name}`;
       
-      // Upload file to Supabase Storage
+      console.log("⚠️ Tentando fazer upload para o bucket 'avatars' com caminho:", filePath);
+      
+      // Upload do arquivo
       const { data: uploadData, error: uploadError } = await supabase.storage
         .from('avatars')
         .upload(filePath, file, {
@@ -60,24 +76,53 @@ export const AvatarUploader = ({ userId, userName, avatarUrl, onAvatarUpdated }:
           upsert: true,
         });
 
-      if (uploadError) throw uploadError;
+      if (uploadError) {
+        throw uploadError;
+      }
 
-      // Get public URL for the uploaded file
+      console.log("✅ Upload realizado com sucesso:", uploadData);
+
+      // Obter URL pública para o arquivo
       const { data: publicUrlData } = supabase.storage
         .from('avatars')
         .getPublicUrl(filePath);
 
-      if (!publicUrlData.publicUrl) throw new Error('Failed to get public URL for avatar');
+      if (!publicUrlData || !publicUrlData.publicUrl) {
+        throw new Error('Não foi possível obter URL pública para o avatar');
+      }
 
-      // Update user profile with new avatar URL
+      console.log("✅ URL pública obtida:", publicUrlData.publicUrl);
+
+      // Atualizar o perfil do usuário com a nova URL do avatar
       const { error: updateError } = await supabase
         .from('profiles')
         .update({ avatar_url: publicUrlData.publicUrl })
         .eq('id', userId);
 
-      if (updateError) throw updateError;
+      if (updateError) {
+        throw updateError;
+      }
 
-      // Notify parent component
+      console.log("✅ Perfil atualizado com sucesso no banco de dados");
+
+      // Atualizar também o objeto auth.user.user_metadata para manter consistência
+      const { error: updateUserError } = await supabase.auth.updateUser({
+        data: { avatar_url: publicUrlData.publicUrl }
+      });
+
+      if (updateUserError) {
+        console.warn("⚠️ Não foi possível atualizar os metadados do usuário:", updateUserError);
+      } else {
+        console.log("✅ Metadados do usuário atualizados com sucesso");
+      }
+
+      // Atualizar estado local para refletir a mudança na UI imediatamente
+      setLocalAvatarUrl(publicUrlData.publicUrl);
+
+      // Atualizar o avatar no contexto de autenticação para toda a aplicação
+      await updateUserAvatar(publicUrlData.publicUrl);
+
+      // Notificar o componente pai
       onAvatarUpdated(publicUrlData.publicUrl);
       
       toast({
@@ -85,15 +130,30 @@ export const AvatarUploader = ({ userId, userName, avatarUrl, onAvatarUpdated }:
         description: "Sua foto de perfil foi atualizada com sucesso.",
       });
       
-      // Force a refresh of the page after a short delay to ensure the context updates
-      setTimeout(() => {
-        window.location.reload();
-      }, 500);
+      // Fechar o dialog
+      setDialogOpen(false);
+      
+      // Atualizar a sessão silenciosamente, sem recarregar a página
+      updateSessionQuietly(publicUrlData.publicUrl);
+      
     } catch (error) {
-      console.error("Error uploading avatar:", error);
+      let errorMessage = "Erro ao atualizar foto de perfil.";
+      
+      if (error instanceof Error) {
+        errorMessage = error.message;
+        console.error("⚠️ Erro detalhado:", error);
+        
+        // Melhorar as mensagens de erro relacionadas a buckets
+        if (errorMessage.includes("bucket") && errorMessage.includes("not found")) {
+          errorMessage = "O bucket de armazenamento 'avatars' não foi encontrado. Contate o administrador.";
+        } else if (errorMessage.includes("permission") || errorMessage.includes("access")) {
+          errorMessage = "Sem permissão para upload de arquivos. Contate o administrador.";
+        }
+      }
+      
       toast({
-        title: "Erro ao atualizar foto",
-        description: error instanceof Error ? error.message : "Ocorreu um erro ao atualizar sua foto de perfil.",
+        title: "Erro",
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {
@@ -108,8 +168,8 @@ export const AvatarUploader = ({ userId, userName, avatarUrl, onAvatarUpdated }:
   return (
     <div className="relative">
       <Avatar className="h-24 w-24">
-        {avatarUrl ? (
-          <AvatarImage src={avatarUrl} alt={userName || "Avatar"} />
+        {localAvatarUrl ? (
+          <AvatarImage src={localAvatarUrl} alt={userName || "Avatar"} />
         ) : (
           <AvatarFallback className="text-2xl">
             {(userName || "U")[0].toUpperCase()}
@@ -117,7 +177,7 @@ export const AvatarUploader = ({ userId, userName, avatarUrl, onAvatarUpdated }:
         )}
       </Avatar>
       
-      <Dialog>
+      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogTrigger asChild>
           <Button 
             variant="secondary"
@@ -134,8 +194,8 @@ export const AvatarUploader = ({ userId, userName, avatarUrl, onAvatarUpdated }:
           </DialogHeader>
           <div className="flex flex-col items-center gap-4 py-4">
             <Avatar className="h-32 w-32">
-              {avatarUrl ? (
-                <AvatarImage src={avatarUrl} alt={userName || "Avatar"} />
+              {localAvatarUrl ? (
+                <AvatarImage src={localAvatarUrl} alt={userName || "Avatar"} />
               ) : (
                 <AvatarFallback className="text-4xl">
                   {(userName || "U")[0].toUpperCase()}

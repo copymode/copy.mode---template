@@ -189,7 +189,11 @@ export function AppShell({ children }: AppShellProps) {
              <div className={`px-4 py-3 ${sidebarCollapsed ? 'hidden' : 'block'}`}>
                <div className="flex items-center">
                   <Avatar className="h-9 w-9 mr-3">
-                     <AvatarFallback>{getInitials(currentUser.name)}</AvatarFallback>
+                     {currentUser?.avatar_url ? (
+                       <AvatarImage src={currentUser.avatar_url} alt={currentUser.name || "Avatar"} />
+                     ) : (
+                       <AvatarFallback>{getInitials(currentUser.name)}</AvatarFallback>
+                     )}
                    </Avatar>
                    <div className="overflow-hidden">
                      <p className="text-sm font-medium text-sidebar-foreground truncate">{currentUser.name}</p>
