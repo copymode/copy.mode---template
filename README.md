@@ -2,9 +2,10 @@
 
 ## Versões do Projeto
 
-**Versão Atual**: v1.16.0
+**Versão Atual**: v1.17.0
 
 ### Histórico de Versões
+- **v1.17.0**: Adição de campo de pesquisa no sidebar para busca de conversas por palavras e datas
 - **v1.16.0**: Posicionamento do campo de entrada fixo no rodapé enquanto a área de chat rola
 - **v1.15.0**: Substituição da exibição de expert/agente/tipo de conteúdo por data no formato DD - MM no sidebar
 - **v1.13.0**: Atualizações visuais na barra de rolagem e no formato de data no ChatSidebar
