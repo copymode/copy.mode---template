@@ -1,5 +1,22 @@
 # Welcome to your Lovable project
 
+## Versões do Projeto
+
+**Versão Atual**: v1.13.0
+
+### Histórico de Versões
+- **v1.13.0**: Atualizações visuais na barra de rolagem e no formato de data no ChatSidebar
+- **v1.12.0**: Atualização para modelo Llama4 Maverick e correção da navegação para Home
+
+Se precisar reverter para uma versão anterior, você pode usar os comandos git:
+```bash
+# Para ver todas as tags disponíveis
+git tag
+
+# Para voltar para uma versão específica
+git checkout v1.12
+```
+
 ## Project info
 
 **URL**: https://lovable.dev/projects/fb9985b6-b9d4-4ab4-b998-6fbc6a07ed12
