@@ -597,7 +597,7 @@ export default function Home() {
                  <Button 
                    type="button"
                    size="icon" 
-                   className="absolute right-3 bottom-3 h-8 w-8"
+                   className="absolute right-3 bottom-3 h-10 w-10 rounded-full"
                    onClick={() => handleSendMessage(promptInput)} 
                    disabled={isGenerating || !promptInput.trim() || !selectedAgent || !selectedContentType}
                    aria-label="Gerar Copy"

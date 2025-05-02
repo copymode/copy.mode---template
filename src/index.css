@@ -44,6 +44,10 @@
     --sidebar-accent-foreground: 222 47% 11%; /* Dark Gray */
     --sidebar-border: 220 20% 88%; /* Slightly darker border for sidebar */
     --sidebar-ring: 358 100% 67%; /* Airbnb Red */
+
+    /* Scrollbar Colors (Light) */
+    --scrollbar-thumb: 215 20% 80%; /* Light gray for thumb */
+    --scrollbar-track: 0 0% 100%; /* White/transparent for track */
   }
 
   .dark {
@@ -85,6 +89,10 @@
     --sidebar-accent-foreground: 210 40% 98%; /* Almost White */
     --sidebar-border: 217 33% 18%; /* Slightly darker border */
     --sidebar-ring: 358 90% 70%; /* Airbnb Red */
+
+    /* Scrollbar Colors (Dark) */
+    --scrollbar-thumb: 217 33% 30%; /* Darker gray for thumb */
+    --scrollbar-track: 222 47% 12%; /* Similar to background */
   }
 }
 
@@ -139,4 +147,49 @@
 
 .animate-slideIn {
   animation: slideIn 0.4s ease-out;
+}
+
+/* Estilos personalizados para a barra de rolagem */
+/* Para navegadores baseados em WebKit (Chrome, Safari, Opera) */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background-color: hsl(var(--scrollbar-track));
+  border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb {
+  background-color: hsl(var(--scrollbar-thumb));
+  border-radius: 10px;
+  transition: background-color 0.3s ease;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background-color: hsl(var(--scrollbar-thumb) / 0.8);
+}
+
+/* Customização específica para o ScrollArea do Radix UI */
+.scrollbar {
+  display: flex;
+  touch-action: none;
+  user-select: none;
+  transition: background-color 0.2s ease, width 0.2s ease;
+  border: none !important;
+  background: transparent !important;
+  width: 8px !important;
+  padding: 0 !important;
+}
+
+.scrollbar [data-radix-scroll-area-thumb] {
+  background-color: hsl(var(--scrollbar-thumb)) !important;
+  border-radius: 10px !important;
+  position: relative;
+  flex: 1;
+  transition: background-color 0.2s ease;
+}
+
+.scrollbar:hover [data-radix-scroll-area-thumb] {
+  background-color: hsl(var(--scrollbar-thumb) / 0.8) !important;
 }

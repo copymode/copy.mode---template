@@ -1,7 +1,7 @@
 import { useState, FormEvent } from "react";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
-import { SendIcon } from "lucide-react";
+import { SendHorizonal } from "lucide-react";
 
 interface ChatInputProps {
   onSendMessage: (message: string) => void;
@@ -54,7 +54,7 @@ export function ChatInput({ onSendMessage, disabled = false }: ChatInputProps) {
           }`}
           disabled={!isTyping || disabled}
         >
-          <SendIcon className="h-5 w-5" />
+          <SendHorizonal className="h-5 w-5" />
         </Button>
       </div>
     </form>

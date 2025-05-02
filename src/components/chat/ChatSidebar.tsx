@@ -3,8 +3,7 @@ import { useData } from "@/context/DataContext";
 import { Chat } from "@/types";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Menu, X, Plus, MessageSquare } from "lucide-react";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { X, Plus, MessageSquare, Trash2 } from "lucide-react";
 
 interface ChatSidebarProps {
   isOpen: boolean;
@@ -13,7 +12,7 @@ interface ChatSidebarProps {
 }
 
 export function ChatSidebar({ isOpen, onToggle, onNewChat }: ChatSidebarProps) {
-  const { chats, setCurrentChat, currentChat, contentTypes } = useData();
+  const { chats, setCurrentChat, currentChat, deleteChat } = useData();
   const [sortedChats, setSortedChats] = useState<Chat[]>([]);
   
   // Sort chats by date
@@ -24,40 +23,35 @@ export function ChatSidebar({ isOpen, onToggle, onNewChat }: ChatSidebarProps) {
     setSortedChats(sorted);
   }, [chats]);
   
-  const formatTitle = (chat: Chat) => {
-    if (chat.title && chat.title !== "Nova conversa") {
-      return chat.title;
-    }
-    
-    // Format date
-    const date = new Date(chat.createdAt);
-    return `Conversa ${date.toLocaleDateString('pt-BR')}`;
+  // Formatação da data no formato "DD - MM"
+  const formatCreationDate = (date: Date) => {
+    const chatDate = new Date(date);
+    const day = chatDate.getDate().toString().padStart(2, "0");
+    const month = (chatDate.getMonth() + 1).toString().padStart(2, "0");
+    return `${day}-${month}`;
   };
   
-  const formatDate = (date: Date) => {
-    const now = new Date();
-    const chatDate = new Date(date);
-    
-    // Today
-    if (chatDate.toDateString() === now.toDateString()) {
-      return chatDate.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+  // Obtém o conteúdo da primeira mensagem do usuário
+  const getFirstUserMessage = (chat: Chat) => {
+    if (!chat.messages || chat.messages.length === 0) {
+      return "Nova conversa";
     }
     
-    // This week
-    const diffDays = Math.floor((now.getTime() - chatDate.getTime()) / (1000 * 60 * 60 * 24));
-    if (diffDays < 7) {
-      return chatDate.toLocaleDateString('pt-BR', { weekday: 'short' });
+    // Procura pela primeira mensagem do usuário
+    const userMessage = chat.messages.find(msg => msg.role === "user");
+    if (userMessage) {
+      return userMessage.content.substring(0, 40) + (userMessage.content.length > 40 ? "..." : "");
     }
     
-    // Older
-    return chatDate.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+    return "Nova conversa";
   };
 
-  // Função para obter o avatar do tipo de conteúdo
-  const getContentTypeAvatar = (contentTypeName: string) => {
-    if (!contentTypeName) return null;
-    const contentType = contentTypes.find(ct => ct.name === contentTypeName);
-    return contentType?.avatar || null;
+  // Handler para excluir chat
+  const handleDeleteChat = (e: React.MouseEvent, chatId: string) => {
+    e.stopPropagation(); // Impede que o click afete o botão do chat
+    if (deleteChat) {
+      deleteChat(chatId);
+    }
   };
 
   return (
@@ -109,43 +103,30 @@ export function ChatSidebar({ isOpen, onToggle, onNewChat }: ChatSidebarProps) {
                       currentChat?.id === chat.id ? "bg-accent" : ""
                     }`}
                     onClick={() => {
-                      // Limpar qualquer flag de navegação para evitar que o chat seja resetado
-                      sessionStorage.removeItem('fromNavigation');
-                      // Definir o chat atual
-                      console.log("Selecionando chat do histórico:", chat.id);
+                      sessionStorage.removeItem("fromNavigation");
                       setCurrentChat(chat);
                     }}
                   >
                     <div className="flex items-center w-full">
-                      <Avatar className="h-8 w-8 mr-2 flex-shrink-0">
-                        {getContentTypeAvatar(chat.contentType) ? (
-                          <AvatarImage 
-                            src={getContentTypeAvatar(chat.contentType) || ''} 
-                            alt={chat.contentType} 
-                            className="object-cover"
-                          />
-                        ) : (
-                          <AvatarFallback>
-                            {(chat.contentType ? chat.contentType[0] : "C").toUpperCase()}
-                          </AvatarFallback>
-                        )}
-                      </Avatar>
-                      
                       <div className="flex flex-col flex-1 min-w-0">
                         <div className="flex items-center justify-between w-full">
                           <span className="font-medium truncate">
-                            {formatTitle(chat)}
+                            {getFirstUserMessage(chat)}
                           </span>
-                          <span className="text-xs text-muted-foreground ml-2 flex-shrink-0">
-                            {formatDate(chat.updatedAt)}
-                          </span>
+                          <div className="flex items-center ml-2 flex-shrink-0">
+                            <span className="text-xs text-muted-foreground mr-2">
+                              {formatCreationDate(chat.createdAt)}
+                            </span>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-6 w-6 p-0"
+                              onClick={(e) => handleDeleteChat(e, chat.id)}
+                            >
+                              <Trash2 size={14} className="text-muted-foreground hover:text-destructive" />
+                            </Button>
+                          </div>
                         </div>
-                        {chat.messages.length > 0 && (
-                          <span className="text-xs text-muted-foreground truncate">
-                            {chat.messages[chat.messages.length - 1].content.substring(0, 40)}
-                            {chat.messages[chat.messages.length - 1].content.length > 40 ? "..." : ""}
-                          </span>
-                        )}
                       </div>
                     </div>
                   </Button>
