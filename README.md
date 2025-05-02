@@ -2,9 +2,10 @@
 
 ## Versões do Projeto
 
-**Versão Atual**: v1.18.0
+**Versão Atual**: v1.19.0
 
 ### Histórico de Versões
+- **v1.19.0**: Correção de scroll indesejado para garantir que elementos do rodapé fiquem fixos na tela
 - **v1.18.0**: Correções de navegação: destaque da aba Home e acesso direto às conversas pelo sidebar em qualquer página
 - **v1.17.0**: Adição de campo de pesquisa no sidebar para busca de conversas por palavras e datas
 - **v1.16.0**: Posicionamento do campo de entrada fixo no rodapé enquanto a área de chat rola
