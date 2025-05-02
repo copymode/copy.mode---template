@@ -155,10 +155,10 @@ const mockContentTypes: ContentType[] = [
 export function DataProvider({ children }: { children: ReactNode }) {
   const { currentUser } = useAuth();
   const [agents, setAgents] = useState<Agent[]>([]); 
-  const [experts, setExperts] = useState<Expert[]>([]); // Substituído: não usar mais mocks
-  const [chats, setChats] = useState<Chat[]>(mockChats);       // Keep using mocks for now
+  const [experts, setExperts] = useState<Expert[]>([]); 
+  const [chats, setChats] = useState<Chat[]>([]);  // Iniciar com array vazio em vez de mocks
   const [currentChat, setCurrentChat] = useState<Chat | null>(null);
-  const [contentTypes, setContentTypes] = useState<ContentType[]>(mockContentTypes); // Usar mocks temporariamente
+  const [contentTypes, setContentTypes] = useState<ContentType[]>(mockContentTypes); 
   const [isLoading, setIsLoading] = useState(true);
   const [initialLoadComplete, setInitialLoadComplete] = useState(false);
 
@@ -237,10 +237,68 @@ export function DataProvider({ children }: { children: ReactNode }) {
           // Manter os mocks se houver qualquer erro
         }
 
-        // TODO: Fetch Chats from DB (similar pattern)
-        // const { data: chatsData, error: chatsError } = await supabase.from(CHATS_TABLE)...;
-        // setChats(chatsData ? chatsData.map(adaptChatFromDb) : []);
-        setChats(mockChats); // Keep using mock for now
+        // Buscar Chats do usuário do banco de dados
+        try {
+          if (currentUser) {
+            const { data: chatsData, error: chatsError } = await supabase
+              .from(CHATS_TABLE)
+              .select('*')
+              .eq('user_id', currentUser.id)
+              .order('updated_at', { ascending: false });
+            
+            if (chatsError) {
+              console.error("Erro ao carregar chats:", chatsError);
+              setChats([]); // Iniciar com lista vazia em caso de erro
+            } else if (chatsData) {
+              // Buscar mensagens para cada chat
+              const chatIds = chatsData.map(chat => chat.id);
+              const { data: messagesData, error: messagesError } = await supabase
+                .from('messages')
+                .select('*')
+                .in('chat_id', chatIds)
+                .order('created_at', { ascending: true });
+              
+              if (messagesError) {
+                console.error("Erro ao carregar mensagens:", messagesError);
+              }
+              
+              // Agrupar mensagens por chat_id
+              const messagesByChatId: Record<string, Message[]> = {};
+              if (messagesData) {
+                messagesData.forEach(msg => {
+                  if (!messagesByChatId[msg.chat_id]) {
+                    messagesByChatId[msg.chat_id] = [];
+                  }
+                  messagesByChatId[msg.chat_id].push({
+                    id: msg.id,
+                    content: msg.content,
+                    role: msg.role as "user" | "assistant",
+                    chatId: msg.chat_id,
+                    createdAt: new Date(msg.created_at)
+                  });
+                });
+              }
+              
+              // Montar objetos Chat completos
+              const loadedChats: Chat[] = chatsData.map(chat => ({
+                id: chat.id,
+                title: chat.title,
+                messages: messagesByChatId[chat.id] || [],
+                expertId: chat.expert_id || undefined,
+                agentId: chat.agent_id,
+                contentType: chat.content_type,
+                userId: chat.user_id,
+                createdAt: new Date(chat.created_at),
+                updatedAt: new Date(chat.updated_at)
+              }));
+              
+              setChats(loadedChats);
+            }
+          }
+        } catch (error) {
+          console.error("Erro ao carregar chats e mensagens:", error);
+          setChats([]);
+        }
 
         setInitialLoadComplete(true); // Mark load as complete
 
@@ -822,14 +880,25 @@ export function DataProvider({ children }: { children: ReactNode }) {
     setCurrentChat(chat);
   }, []);
 
-  const createChat = useCallback((copyRequest: CopyRequest) => {
-     // ... mock implementation ...
-    if (!currentUser) throw new Error("Usuário não autenticado");
+  const createChat = useCallback((copyRequest: CopyRequest): Chat => {
+    if (!currentUser) {
+      throw new Error("Usuário não autenticado");
+    }
+
+    // Encontrar o tipo de conteúdo para usar no título
+    const contentTypeName = contentTypes.find(ct => ct.id === copyRequest.contentType)?.name || copyRequest.contentType;
     
+    // Encontrar o agente para usar no título
+    const agentName = agents.find(a => a.id === copyRequest.agentId)?.name || "Agente";
+    
+    // Criar título baseado no agente e tipo de conteúdo
+    const title = `${agentName} - ${contentTypeName}`;
+    
+    // Criar o objeto do chat para a UI
     const newChat: Chat = {
-      id: `chat-${uuidv4()}`,
-      title: `Nova conversa - ${new Date().toLocaleString('pt-BR')}`,
-      messages: [],
+      id: uuidv4(),
+      title,
+      messages: [], // Inicialmente vazio
       expertId: copyRequest.expertId,
       agentId: copyRequest.agentId,
       contentType: copyRequest.contentType,
@@ -838,31 +907,59 @@ export function DataProvider({ children }: { children: ReactNode }) {
       updatedAt: new Date()
     };
     
-    setChats(prevChats => [...prevChats, newChat]);
-    setCurrentChat(newChat);
+    // Iniciar salvamento assíncrono no banco de dados
+    (async () => {
+      try {
+        const { data, error } = await supabase
+          .from(CHATS_TABLE)
+          .insert({
+            id: newChat.id,
+            title: newChat.title,
+            expert_id: newChat.expertId,
+            agent_id: newChat.agentId,
+            content_type: newChat.contentType,
+            user_id: newChat.userId,
+            created_at: newChat.createdAt.toISOString(),
+            updated_at: newChat.updatedAt.toISOString()
+          })
+          .select('*')
+          .single();
+        
+        if (error) {
+          console.error("Erro ao salvar chat no banco de dados:", error);
+        } else {
+          console.log("Chat salvo com sucesso:", data);
+        }
+      } catch (error) {
+        console.error("Erro ao salvar chat:", error);
+      }
+    })();
     
+    // Atualizar estado local e retornar o chat
+    setChats(prevChats => [newChat, ...prevChats]);
     return newChat;
-  }, [currentUser]);
+  }, [contentTypes, agents, currentUser]);
   
   const addMessageToChat = useCallback((chatId: string, content: string, role: "user" | "assistant") => {
-    // ... mock implementation ...
-     if (!currentUser) return;
+    if (!currentUser) return;
     
+    // Criar objeto de mensagem para a UI
     const newMessage: Message = {
-      id: `msg-${uuidv4()}`,
+      id: uuidv4(),
       content,
       role,
       chatId,
       createdAt: new Date()
     };
-
+    
+    // Atualizar estado local
     setChats(prevChats =>
       prevChats.map(chat => {
         if (chat.id === chatId && (currentUser.role === 'admin' || chat.userId === currentUser.id)) {
-          return {
-            ...chat,
+          return { 
+            ...chat, 
             messages: [...chat.messages, newMessage],
-            updatedAt: new Date()
+            updatedAt: new Date() 
           };
         }
         return chat;
@@ -879,28 +976,99 @@ export function DataProvider({ children }: { children: ReactNode }) {
       } 
       return prev;
     });
+    
+    // Salvar mensagem e atualizar chat no banco de dados
+    (async () => {
+      try {
+        // Salvar a mensagem
+        const { error: messageError } = await supabase
+          .from('messages')
+          .insert({
+            id: newMessage.id,
+            content: newMessage.content,
+            role: newMessage.role,
+            chat_id: newMessage.chatId,
+            created_at: newMessage.createdAt.toISOString()
+          });
+        
+        if (messageError) {
+          console.error("Erro ao salvar mensagem:", messageError);
+          return;
+        }
+        
+        // Atualizar a data de atualização do chat
+        const { error: chatError } = await supabase
+          .from(CHATS_TABLE)
+          .update({ updated_at: new Date().toISOString() })
+          .eq('id', chatId);
+        
+        if (chatError) {
+          console.error("Erro ao atualizar data do chat:", chatError);
+        }
+      } catch (error) {
+        console.error("Erro ao salvar mensagem e atualizar chat:", error);
+      }
+    })();
   }, [currentUser]);
   
-  const deleteChat = useCallback((id: string) => {
-    // ... mock implementation ...
+  const deleteChat = useCallback(async (id: string) => {
     if (!currentUser) return;
     
-    setChats(prevChats => 
-      prevChats.filter(chat => !(chat.id === id && (currentUser.role === 'admin' || chat.userId === currentUser.id)))
-    );
+    // Verificar se o usuário pode excluir o chat
+    const chatToDelete = chats.find(chat => chat.id === id);
+    if (!chatToDelete || (chatToDelete.userId !== currentUser.id && currentUser.role !== 'admin')) {
+      console.warn("Usuário não tem permissão para excluir este chat");
+      return;
+    }
+    
+    // Atualizar estado local imediatamente para UI responsiva
+    setChats(prevChats => prevChats.filter(chat => chat.id !== id));
     
     if (currentChat?.id === id) {
       setCurrentChat(null);
     }
-  }, [currentUser, currentChat]);
+    
+    // Excluir mensagens e chat do banco de dados
+    try {
+      // Excluir mensagens primeiro (devido à restrição de chave estrangeira)
+      const { error: messagesError } = await supabase
+        .from('messages')
+        .delete()
+        .eq('chat_id', id);
+      
+      if (messagesError) {
+        console.error("Erro ao excluir mensagens:", messagesError);
+      }
+      
+      // Excluir o chat
+      const { error: chatError } = await supabase
+        .from(CHATS_TABLE)
+        .delete()
+        .eq('id', id);
+      
+      if (chatError) {
+        console.error("Erro ao excluir chat:", chatError);
+      }
+    } catch (error) {
+      console.error("Erro ao excluir chat e mensagens:", error);
+    }
+  }, [currentUser, chats, currentChat]);
 
-  const deleteMessageFromChat = useCallback((chatId: string, messageId: string) => {
-    // ... mock implementation ...
+  // Também atualize a função deleteMessageFromChat para persistência
+  const deleteMessageFromChat = useCallback(async (chatId: string, messageId: string) => {
     if (!currentUser) return;
 
+    // Verificar permissões
+    const chat = chats.find(c => c.id === chatId);
+    if (!chat || (chat.userId !== currentUser.id && currentUser.role !== 'admin')) {
+      console.warn("Usuário não tem permissão para excluir mensagens deste chat");
+      return;
+    }
+
+    // Atualizar estado local
     setChats(prevChats =>
       prevChats.map(chat => {
-        if (chat.id === chatId && (currentUser.role === 'admin' || chat.userId === currentUser.id)) {
+        if (chat.id === chatId) {
           return { 
             ...chat, 
             messages: chat.messages.filter(msg => msg.id !== messageId), 
@@ -916,7 +1084,28 @@ export function DataProvider({ children }: { children: ReactNode }) {
         ? { ...prev, messages: prev.messages.filter(msg => msg.id !== messageId), updatedAt: new Date() } 
         : prev
     );
-  }, [currentUser]);
+
+    // Excluir a mensagem do banco de dados
+    try {
+      const { error } = await supabase
+        .from('messages')
+        .delete()
+        .eq('id', messageId);
+      
+      if (error) {
+        console.error("Erro ao excluir mensagem do banco de dados:", error);
+      }
+      
+      // Atualizar a data de atualização do chat
+      await supabase
+        .from(CHATS_TABLE)
+        .update({ updated_at: new Date().toISOString() })
+        .eq('id', chatId);
+        
+    } catch (error) {
+      console.error("Erro ao excluir mensagem:", error);
+    }
+  }, [currentUser, chats]);
 
   // Copy Generation (Keep as is)
   const generateCopy = useCallback(async (request: CopyRequest): Promise<string> => {

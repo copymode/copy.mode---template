@@ -7,6 +7,17 @@ import { Menu, X, Home, Users, Settings, ChevronRight, Moon, Sun, LogOut, Chevro
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 interface AppShellProps {
   children: ReactNode;
@@ -15,11 +26,12 @@ interface AppShellProps {
 export function AppShell({ children }: AppShellProps) {
   const { currentUser, logout } = useAuth();
   const { theme, toggleTheme } = useTheme();
-  const { setCurrentChat } = useData();
+  const { setCurrentChat, deleteChat } = useData();
   const { chats } = useData();
   const { currentChat } = useData();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [chatToDelete, setChatToDelete] = useState<string | null>(null);
   const location = useLocation();
 
   const chatHistory = chats;
@@ -43,6 +55,18 @@ export function AppShell({ children }: AppShellProps) {
     }
     if (sidebarOpen) {
       setSidebarOpen(false);
+    }
+  };
+
+  const handleDeleteChat = (chatId: string, e: React.MouseEvent) => {
+    e.stopPropagation(); // Evita ativar a seleção do chat
+    setChatToDelete(chatId);
+  };
+
+  const confirmDeleteChat = () => {
+    if (chatToDelete) {
+      deleteChat(chatToDelete);
+      setChatToDelete(null);
     }
   };
 
@@ -155,24 +179,59 @@ export function AppShell({ children }: AppShellProps) {
                      <li key={chat.id}>
                         <Tooltip delayDuration={sidebarCollapsed ? 0 : 500}>
                          <TooltipTrigger asChild>
-                           <button
-                             className={`flex items-center w-full p-3 rounded-lg text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors duration-150 text-left 
-                                          ${currentChat?.id === chat.id ? 'bg-sidebar-accent font-medium' : ''} 
-                                          ${sidebarCollapsed ? 'justify-center' : ''}`}
-                             onClick={() => setCurrentChat(chat)}
-                           >
-                             <MessageSquare size={18} className={`${sidebarCollapsed ? '' : 'mr-3'} flex-shrink-0`} />
-                             <div className={`flex flex-col overflow-hidden ${sidebarCollapsed ? 'hidden' : 'block'}`}>
-                               <span className="text-sm whitespace-nowrap overflow-hidden text-ellipsis font-medium">
-                                 {chat.title}
-                               </span>
-                               {subtitle && (
-                                 <span className="text-xs text-muted-foreground whitespace-nowrap overflow-hidden text-ellipsis">
-                                   {subtitle}
+                           <div className="relative group">
+                             <button
+                               className={`flex items-center w-full p-3 rounded-lg text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors duration-150 text-left 
+                                            ${currentChat?.id === chat.id ? 'bg-sidebar-accent font-medium' : ''} 
+                                            ${sidebarCollapsed ? 'justify-center' : ''}`}
+                               onClick={() => setCurrentChat(chat)}
+                             >
+                               <MessageSquare size={18} className={`${sidebarCollapsed ? '' : 'mr-3'} flex-shrink-0`} />
+                               <div className={`flex flex-col overflow-hidden ${sidebarCollapsed ? 'hidden' : 'block'}`}>
+                                 <span className="text-sm whitespace-nowrap overflow-hidden text-ellipsis font-medium">
+                                   {chat.title}
                                  </span>
-                               )}
-                             </div>
-                           </button>
+                                 {subtitle && (
+                                   <span className="text-xs text-muted-foreground whitespace-nowrap overflow-hidden text-ellipsis">
+                                     {subtitle}
+                                   </span>
+                                 )}
+                               </div>
+                             </button>
+                             {!sidebarCollapsed && (
+                               <div className="absolute right-2 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                 <AlertDialog>
+                                   <AlertDialogTrigger asChild>
+                                     <Button 
+                                       variant="ghost" 
+                                       size="icon" 
+                                       className="h-6 w-6 text-muted-foreground hover:text-destructive"
+                                       onClick={(e) => handleDeleteChat(chat.id, e)}
+                                     >
+                                       <Trash2 size={14} />
+                                     </Button>
+                                   </AlertDialogTrigger>
+                                   <AlertDialogContent>
+                                     <AlertDialogHeader>
+                                       <AlertDialogTitle>Excluir conversa</AlertDialogTitle>
+                                       <AlertDialogDescription>
+                                         Tem certeza que deseja excluir esta conversa? Esta ação não pode ser desfeita.
+                                       </AlertDialogDescription>
+                                     </AlertDialogHeader>
+                                     <AlertDialogFooter>
+                                       <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                       <AlertDialogAction 
+                                         onClick={confirmDeleteChat}
+                                         className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                       >
+                                         Excluir
+                                       </AlertDialogAction>
+                                     </AlertDialogFooter>
+                                   </AlertDialogContent>
+                                 </AlertDialog>
+                               </div>
+                             )}
+                           </div>
                          </TooltipTrigger>
                          <TooltipContent side="right" className="bg-popover text-popover-foreground">
                            <p className="font-medium">{chat.title}</p>
