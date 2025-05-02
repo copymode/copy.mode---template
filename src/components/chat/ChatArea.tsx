@@ -1,6 +1,5 @@
 import { useRef, useEffect } from "react";
 import { Message } from "@/types";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import { Copy } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
@@ -53,9 +52,9 @@ export function ChatArea({ messages, isTyping = false, typingContent = "" }: Cha
   };
 
   return (
-    <ScrollArea className="flex-1 p-4">
+    <div className="w-full h-full">
       {messages.length === 0 && !isTyping ? (
-        <div className="h-full flex items-center justify-center text-center">
+        <div className="h-full flex items-center justify-center text-center py-10">
           <div className="max-w-sm">
             <h3 className="text-lg font-medium">Nenhuma mensagem ainda</h3>
             <p className="text-muted-foreground mt-2">
@@ -64,7 +63,7 @@ export function ChatArea({ messages, isTyping = false, typingContent = "" }: Cha
           </div>
         </div>
       ) : (
-        <div className="space-y-4">
+        <div className="space-y-4 min-h-full">
           {/* Mensagens existentes */}
           {messages.map((message) => (
             <div
@@ -108,6 +107,6 @@ export function ChatArea({ messages, isTyping = false, typingContent = "" }: Cha
           <div ref={scrollRef} />
         </div>
       )}
-    </ScrollArea>
+    </div>
   );
 }

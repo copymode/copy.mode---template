@@ -111,10 +111,7 @@ export default function Home() {
 
   useEffect(() => {
     if (scrollAreaRef.current) {
-      const scrollElement = scrollAreaRef.current.querySelector('[data-radix-scroll-area-viewport]');
-      if (scrollElement) {
-        setTimeout(() => { scrollElement.scrollTop = scrollElement.scrollHeight; }, 0);
-      }
+      scrollAreaRef.current.scrollTop = scrollAreaRef.current.scrollHeight;
     }
   }, [currentChat?.messages, isGenerating]);
 
@@ -367,7 +364,8 @@ export default function Home() {
         </div>
       ) : !isInitialState ? (
         <>
-          <div className="flex-shrink-0 p-3 border-b bg-card">
+          {/* Cabeçalho fixo */}
+          <div className="flex-shrink-0 p-3 border-b bg-card sticky top-0 z-10">
             <div className="flex flex-wrap items-center justify-between gap-4 max-w-4xl mx-auto">
               <div className="flex flex-wrap items-center gap-4">
                 <Select value={selectedExpert} disabled>
@@ -448,22 +446,30 @@ export default function Home() {
             </div>
           </div>
 
-          <ScrollArea className="flex-1" ref={scrollAreaRef}>
-            <div className="max-w-3xl mx-auto space-y-4 p-4 pb-24">
-              <ChatArea 
-                messages={messages} 
-                isTyping={isGenerating}
-                typingContent={typingContent}
-              />
+          {/* Layout flexível com área de chat rolável e input fixo */}
+          <div className="flex flex-col h-[calc(100vh-140px)] overflow-hidden">
+            {/* Área de chat rolável */}
+            <div 
+              className="flex-1 overflow-y-auto pb-4 px-4"
+              ref={scrollAreaRef}
+            >
+              <div className="max-w-3xl mx-auto space-y-4 pt-4">
+                <ChatArea 
+                  messages={messages} 
+                  isTyping={isGenerating}
+                  typingContent={typingContent}
+                />
+              </div>
             </div>
-          </ScrollArea>
 
-          <div className="flex-shrink-0 p-4 border-t bg-background">
-            <div className="max-w-3xl mx-auto">
-              <ChatInput 
-                onSendMessage={handleSendMessage} 
-                disabled={isGenerating}
-              />
+            {/* Input fixo no rodapé */}
+            <div className="flex-shrink-0 p-4 border-t bg-background z-10 shadow-sm">
+              <div className="max-w-3xl mx-auto">
+                <ChatInput 
+                  onSendMessage={handleSendMessage} 
+                  disabled={isGenerating}
+                />
+              </div>
             </div>
           </div>
           
