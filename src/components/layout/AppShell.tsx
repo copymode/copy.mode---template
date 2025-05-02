@@ -255,7 +255,12 @@ export function AppShell({ children }: AppShellProps) {
                                className={`flex items-center w-full p-3 rounded-lg text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors duration-150 text-left 
                                             ${currentChat?.id === chat.id ? 'bg-sidebar-accent font-medium' : ''} 
                                             ${sidebarCollapsed ? 'justify-center' : ''}`}
-                               onClick={() => setCurrentChat(chat)}
+                               onClick={() => {
+                                 setCurrentChat(chat);
+                                 if (location.pathname !== "/" && location.pathname !== "/home") {
+                                   window.location.href = "/home";
+                                 }
+                               }}
                              >
                                <div className={`flex flex-col overflow-hidden ${sidebarCollapsed ? 'w-full text-center' : 'block'}`}>
                                  <span className="text-sm whitespace-nowrap overflow-hidden text-ellipsis font-medium">
