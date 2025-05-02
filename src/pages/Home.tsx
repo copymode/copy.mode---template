@@ -30,7 +30,8 @@ export default function Home() {
     addMessageToChat, 
     generateCopy,
     deleteChat,
-    deleteMessageFromChat
+    deleteMessageFromChat,
+    chats
   } = useData();
   const { currentUser } = useAuth();
   const { toast } = useToast();
@@ -42,6 +43,7 @@ export default function Home() {
   
   const [promptInput, setPromptInput] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
+  const [typingContent, setTypingContent] = useState("");
   const scrollAreaRef = useRef<HTMLDivElement>(null);
 
   const [showApiKeyAlert, setShowApiKeyAlert] = useState(
@@ -52,17 +54,27 @@ export default function Home() {
 
   const messages = currentChat?.messages || [];
   const isInitialState = !currentChat;
-  const [isTyping, setIsTyping] = useState(false);
+
+  // Log para depuração
+  useEffect(() => {
+    console.log("Current chat state:", { 
+      currentChatId: currentChat?.id,
+      messageCount: messages.length,
+      messages,
+      allChats: chats
+    });
+  }, [currentChat, messages, chats]);
 
   // Only update state from currentChat when it exists
   useEffect(() => {
     if (currentChat) {
+      console.log("Atualizando seletores do chat:", currentChat);
       setSelectedExpert(currentChat.expertId);
       setSelectedAgent(currentChat.agentId);
       setSelectedContentType(currentChat.contentType);
       setPromptInput("");
       setIsGenerating(false);
-      setIsTyping(false);
+      setTypingContent("");
     }
   }, [currentChat]);
 
@@ -75,75 +87,108 @@ export default function Home() {
     }
   }, [currentChat?.messages, isGenerating]);
 
-  const handleSendMessage = async () => {
-    console.log("handleSendMessage: Start", { currentChat, prompt: promptInput });
+  const handleSendMessage = async (message: string) => {
+    console.log("handleSendMessage: Start", { currentChat, prompt: message });
     // Validations
-    if (!promptInput.trim() || isGenerating) return;
+    if (!message.trim() || isGenerating) return;
     if (!selectedAgent) { toast({ title: "Agente não selecionado", description: "Por favor, selecione um agente para continuar.", variant: "destructive" }); return; }
     if (!selectedContentType) { toast({ title: "Tipo de conteúdo não selecionado", description: "Por favor, selecione um tipo de conteúdo.", variant: "destructive" }); return; }
     if (!currentUser?.apiKey) { setShowApiKeyAlert(true); return; }
 
-    const currentInput = promptInput;
-    setPromptInput("");
+    // Bloqueamos a UI e limpamos qualquer conteúdo de digitação anterior
     setIsGenerating(true);
+    setTypingContent("");
 
-    let finalChatId: string | null = currentChat?.id || null;
-    
     try {
-      // --- Fase 1: Garantir Chat e Mensagem User --- 
-      if (!finalChatId) {
-        console.log("handleSendMessage: Creating new chat...");
-        const request: CopyRequest = {
+      // --- FASE 1: Criar chat se necessário ---
+      // Primeiro verificamos se já temos um chat ou precisamos criar um
+      let chatId = currentChat?.id;
+      if (!chatId) {
+        console.log("Criando novo chat...");
+        const newChat = createChat({
           expertId: selectedExpert,
           agentId: selectedAgent,
           contentType: selectedContentType,
-          additionalInfo: "", // Not using additionalInfo to create chat title anymore
-        };
-        const newChat = createChat(request); // This sets currentChat in context
-        finalChatId = newChat.id;
-        console.log("handleSendMessage: New chat created", { newChat });
-      }
-
-      if (!finalChatId) {
-        throw new Error("Falha ao obter ou criar ID do chat.");
-      }
-
-      console.log(`handleSendMessage: Adding user message '${currentInput}' to chat ${finalChatId}`);
-      addMessageToChat(finalChatId, currentInput, 'user');
+          additionalInfo: "",
+        });
         
-      // --- Mostrar indicador de digitação ---
-      setIsTyping(true);
+        chatId = newChat.id;
+        console.log(`Chat criado: ${chatId}`);
+        
+        // Aguardar um pouco para garantir que o chat foi criado no banco
+        await new Promise(resolve => setTimeout(resolve, 500));
+        
+        // Atualizar o estado do chat atual
+        setCurrentChat(newChat);
+      }
       
-      // --- Fase 2: Chamar Geração --- 
-      console.log(`handleSendMessage: Calling generateCopy for chat ${finalChatId}`);
-      const generationRequest: CopyRequest = {
-          expertId: selectedExpert, 
-          agentId: selectedAgent, 
-          contentType: selectedContentType,
-          additionalInfo: currentInput, 
-      };
-      const responseContent = await generateCopy(generationRequest);
+      // --- FASE 2: Adicionar mensagem do usuário ---
+      console.log(`Adicionando mensagem do usuário ao chat ${chatId}`);
+      await addMessageToChat(chatId, message, 'user');
       
-      // --- Aguardar um pouco antes de mostrar a resposta ---
+      // Pequeno delay para garantir que a mensagem foi salva
+      await new Promise(resolve => setTimeout(resolve, 300));
+      
+      // --- FASE 3: Gerar resposta ---
+      console.log(`Gerando resposta via API para chat ${chatId}`);
+      const response = await generateCopy({
+        expertId: selectedExpert, 
+        agentId: selectedAgent, 
+        contentType: selectedContentType,
+        additionalInfo: message,
+      });
+      
+      console.log(`Resposta recebida: ${response.length} caracteres`);
+      
+      // --- FASE 4: Mostrar resposta com efeito typewriter ---
+      console.log("Iniciando animação typewriter");
+      
+      // IMPORTANTE: Definir o conteúdo e forçar o estado de digitação
+      setTypingContent(response);
+      setIsGenerating(true);
+      
+      // Garantir tempo para que a animação typewriter seja visível
+      // (não mais que 20 segundos, mesmo para respostas longas)
+      const typewriterDuration = Math.min(response.length * 20, 20000);
+      console.log(`Aguardando ${typewriterDuration}ms para animação typewriter`);
+      
+      await new Promise(resolve => setTimeout(resolve, typewriterDuration));
+      
+      // --- FASE 5: Adicionar resposta ao banco ---
+      console.log(`Salvando resposta no banco para chat ${chatId}`);
+      await addMessageToChat(chatId, response, 'assistant');
+      
+      // Aguardar um pouco para garantir que a mensagem foi salva
       await new Promise(resolve => setTimeout(resolve, 500));
       
-      // --- Esconder o indicador de digitação ---
-      setIsTyping(false);
+      // --- FASE 6: Atualizar UI ---
+      console.log("Atualizando UI com nova mensagem");
       
-      console.log(`handleSendMessage: Received response for chat ${finalChatId}`);
-      addMessageToChat(finalChatId, responseContent, 'assistant');
-
-    } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : "Erro desconhecido durante a geração.";
-        console.error("Error during generateCopy or message add:", error);
-        toast({ title: "Erro na Geração", description: errorMessage, variant: "destructive" });
-        setIsTyping(false);
-        if (finalChatId) {
-            addMessageToChat(finalChatId, `⚠️ Erro ao gerar resposta: ${errorMessage}`, 'assistant');
-        }
-    } finally {
+      // IMPORTANTE: Limpar estado typewriter ANTES de atualizar o chat
+      setTypingContent("");
       setIsGenerating(false);
-      console.log(`handleSendMessage: Finished for chat ${finalChatId}`);
+      
+      // Pequeno delay antes de atualizar o chat
+      await new Promise(resolve => setTimeout(resolve, 300));
+      
+      // Buscar o chat atualizado e redefinir o estado
+      const updatedChat = chats.find(c => c.id === chatId);
+      if (updatedChat) {
+        console.log("Atualizando chat com mensagens:", updatedChat.messages.length);
+        setCurrentChat({...updatedChat});
+      }
+      
+    } catch (error) {
+      console.error("Erro durante o processo:", error);
+      const errorMessage = error instanceof Error ? error.message : "Erro desconhecido";
+      toast({ 
+        title: "Erro na Geração", 
+        description: errorMessage, 
+        variant: "destructive" 
+      });
+      
+      setIsGenerating(false);
+      setTypingContent("");
     }
   };
   
@@ -162,8 +207,13 @@ export default function Home() {
       return;
     }
     
+    // Preparar UI
     setIsGenerating(true);
+    setTypingContent("");
+    
     try {
+      // --- FASE 1: Criar novo chat ---
+      console.log("Criando novo chat para copy generation");
       const chat = createChat({
         expertId,
         agentId,
@@ -171,15 +221,25 @@ export default function Home() {
         additionalInfo: info,
       });
       
-      addMessageToChat(
-        chat.id,
+      const chatId = chat.id;
+      console.log(`Chat criado: ${chatId}`);
+      
+      // Aguardar criação do chat
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      // --- FASE 2: Adicionar mensagem do usuário ---
+      console.log(`Adicionando mensagem do usuário ao chat ${chatId}`);
+      await addMessageToChat(
+        chatId,
         `Crie uma copy para ${contentType} com as seguintes informações:\n\n${info}`,
         "user"
       );
       
-      // Mostrar indicador de digitação
-      setIsTyping(true);
+      // Aguardar persistência da mensagem
+      await new Promise(resolve => setTimeout(resolve, 300));
       
+      // --- FASE 3: Gerar resposta ---
+      console.log(`Gerando resposta via API para chat ${chatId}`);
       const response = await generateCopy({
         expertId,
         agentId,
@@ -187,27 +247,58 @@ export default function Home() {
         additionalInfo: info,
       });
       
-      // Aguardar um pouco antes de mostrar a resposta
+      console.log(`Resposta recebida: ${response.length} caracteres`);
+      
+      // --- FASE 4: Mostrar resposta com efeito typewriter ---
+      console.log("Iniciando animação typewriter");
+      setTypingContent(response);
+      setIsGenerating(true);
+      
+      // Tempo para animação (máximo 20 segundos)
+      const typewriterDuration = Math.min(response.length * 20, 20000);
+      console.log(`Aguardando ${typewriterDuration}ms para animação typewriter`);
+      
+      await new Promise(resolve => setTimeout(resolve, typewriterDuration));
+      
+      // --- FASE 5: Adicionar resposta ao banco ---
+      console.log(`Salvando resposta no banco para chat ${chatId}`);
+      await addMessageToChat(chatId, response, 'assistant');
+      
+      // Aguardar um pouco para garantir que a mensagem foi salva
       await new Promise(resolve => setTimeout(resolve, 500));
       
-      // Esconder o indicador de digitação
-      setIsTyping(false);
+      // --- FASE 6: Atualizar UI ---
+      console.log("Atualizando UI com nova mensagem");
       
-      addMessageToChat(chat.id, response, "assistant");
+      // Limpar estado typewriter
+      setTypingContent("");
+      setIsGenerating(false);
       
+      // Notificar usuário
       toast({
         title: "Copy gerada com sucesso!",
         description: "Sua copy foi criada e está pronta para uso.",
       });
+      
+      // Pequeno delay antes de atualizar o chat
+      await new Promise(resolve => setTimeout(resolve, 300));
+      
+      // Atualizar o chat atual
+      const updatedChat = chats.find(c => c.id === chatId);
+      if (updatedChat) {
+        console.log("Atualizando chat com mensagens:", updatedChat.messages.length);
+        setCurrentChat({...updatedChat});
+      }
+      
     } catch (error) {
-      setIsTyping(false);
+      console.error("Erro durante o processo:", error);
+      setIsGenerating(false);
+      setTypingContent("");
       toast({
         title: "Erro",
         description: error instanceof Error ? error.message : "Erro ao gerar copy",
         variant: "destructive",
       });
-    } finally {
-      setIsGenerating(false);
     }
   };
   
@@ -324,9 +415,18 @@ export default function Home() {
             </div>
           </div>
 
-          <div className="flex flex-1 overflow-hidden">
-            <div className="flex-1 flex flex-col max-w-4xl w-full mx-auto">
-              <ChatArea messages={messages} isTyping={isTyping} />
+          <ScrollArea className="flex-1" ref={scrollAreaRef}>
+            <div className="max-w-3xl mx-auto space-y-4 p-4 pb-24">
+              <ChatArea 
+                messages={messages} 
+                isTyping={isGenerating}
+                typingContent={typingContent}
+              />
+            </div>
+          </ScrollArea>
+
+          <div className="flex-shrink-0 p-4 border-t bg-background">
+            <div className="max-w-3xl mx-auto">
               <ChatInput 
                 onSendMessage={handleSendMessage} 
                 disabled={isGenerating}
@@ -456,7 +556,7 @@ export default function Home() {
                     onKeyDown={(e) => {
                       if (e.key === 'Enter' && !e.shiftKey) {
                         e.preventDefault();
-                        handleSendMessage(); 
+                        handleSendMessage(promptInput); 
                       }
                     }}
                    rows={6}
@@ -467,7 +567,7 @@ export default function Home() {
                    type="button"
                    size="icon" 
                    className="absolute right-3 bottom-3 h-8 w-8"
-                   onClick={handleSendMessage} 
+                   onClick={() => handleSendMessage(promptInput)} 
                    disabled={isGenerating || !promptInput.trim() || !selectedAgent || !selectedContentType}
                    aria-label="Gerar Copy"
                  >
@@ -475,6 +575,15 @@ export default function Home() {
                  </Button>
                </div>
 
+               {isGenerating && (
+                 <div className="mt-4">
+                   <ChatArea 
+                     messages={[]} 
+                     isTyping={true}
+                     typingContent={typingContent}
+                   />
+                 </div>
+               )}
             </CardContent>
           </Card>
           
