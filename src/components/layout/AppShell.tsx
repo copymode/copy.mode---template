@@ -139,7 +139,7 @@ export function AppShell({ children }: AppShellProps) {
   return (
     <div className="grid md:grid-cols-[auto_1fr] min-h-screen bg-background h-screen">
       <aside 
-        className={`bg-sidebar fixed inset-y-0 left-0 z-30 transform transition-all duration-300 ease-in-out border-r border-sidebar-border overflow-hidden 
+        className={`bg-sidebar fixed inset-y-0 left-0 z-30 transform transition-all duration-300 ease-in-out border-r border-sidebar-border
                     md:relative md:translate-x-0 md:h-full ${sidebarOpen ? "translate-x-0" : "-translate-x-full"} 
                     ${sidebarCollapsed ? "md:w-20" : "md:w-64"}`}
       >
@@ -158,7 +158,7 @@ export function AppShell({ children }: AppShellProps) {
               {sidebarCollapsed ? <ChevronsRight size={20} /> : <ChevronsLeft size={20} />}
             </Button>
           </div>
-          <div className="flex-1 overflow-y-auto min-h-0 px-2 py-4"> 
+          <div className="flex-1 overflow-y-auto min-h-0 px-2 py-4 relative"> 
              <nav>
                <ul className="space-y-1">
                  {[ 
@@ -188,7 +188,7 @@ export function AppShell({ children }: AppShellProps) {
                         </Link>
                       </TooltipTrigger>
                       {sidebarCollapsed && (
-                        <TooltipContent side="right" className="bg-popover text-popover-foreground">
+                        <TooltipContent side="right" className="bg-popover text-popover-foreground z-[999]">
                           {label}
                         </TooltipContent>
                       )}
@@ -235,7 +235,7 @@ export function AppShell({ children }: AppShellProps) {
                     </Button>
                    </TooltipTrigger>
                    {sidebarCollapsed && (
-                      <TooltipContent side="right" className="bg-popover text-popover-foreground">
+                      <TooltipContent side="right" className="bg-popover text-popover-foreground z-[999]">
                         Nova Conversa
                       </TooltipContent>
                     )}
@@ -310,7 +310,7 @@ export function AppShell({ children }: AppShellProps) {
                              )}
                            </div>
                          </TooltipTrigger>
-                         <TooltipContent side="right" className="bg-popover text-popover-foreground">
+                         <TooltipContent side="right" className="bg-popover text-popover-foreground z-[999]">
                            <p className="font-medium">{formatCreationDate(chat.createdAt)}</p>
                            {subtitle && <p className="text-xs text-muted-foreground">{subtitle}</p>}
                          </TooltipContent>
@@ -356,7 +356,7 @@ export function AppShell({ children }: AppShellProps) {
                       </Button>
                     </TooltipTrigger>
                       {sidebarCollapsed && (
-                        <TooltipContent side="right" className="bg-popover text-popover-foreground">
+                        <TooltipContent side="right" className="bg-popover text-popover-foreground z-[999]">
                            {theme === "light" ? "Modo Escuro" : "Modo Claro"}
                         </TooltipContent>
                       )}
@@ -375,7 +375,7 @@ export function AppShell({ children }: AppShellProps) {
                       </Button>
                     </TooltipTrigger>
                       {sidebarCollapsed && (
-                        <TooltipContent side="right" className="bg-popover text-popover-foreground">
+                        <TooltipContent side="right" className="bg-popover text-popover-foreground z-[999]">
                            Sair
                         </TooltipContent>
                       )}
