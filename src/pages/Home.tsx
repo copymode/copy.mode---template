@@ -18,6 +18,7 @@ import { Expert, Agent, Message, CopyRequest, Chat } from "@/types";
 import { v4 as uuidv4 } from "uuid";
 import { SelectItemWithAvatar, SelectTriggerWithAvatar } from "@/components/ui/select-with-avatar";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import { useLocation } from "react-router-dom";
 
 export default function Home() {
   const { 
@@ -35,6 +36,7 @@ export default function Home() {
   } = useData();
   const { currentUser } = useAuth();
   const { toast } = useToast();
+  const location = useLocation();
   
   // Initialize state with undefined, not depending on currentChat which might be null initially
   const [selectedExpert, setSelectedExpert] = useState<string | undefined>(undefined);
@@ -55,6 +57,34 @@ export default function Home() {
   const messages = currentChat?.messages || [];
   const isInitialState = !currentChat;
 
+  // Efeito para monitorar alterações de rota e garantir que o estado seja limpo ao navegar para Home
+  useEffect(() => {
+    console.log("Navegação detectada para Home, verificando se é necessário resetar estado");
+    // Se navegamos diretamente para /home ou /, garantir que currentChat seja null
+    // Mas apenas quando a página for carregada inicialmente, não quando um chat for selecionado
+    const fromNavigation = sessionStorage.getItem('fromNavigation') === 'true';
+    
+    if ((location.pathname === "/" || location.pathname === "/home") && fromNavigation) {
+      console.log("Resetando currentChat para exibir o formulário inicial");
+      setCurrentChat(null);
+      sessionStorage.removeItem('fromNavigation');
+    }
+  }, [location.pathname, setCurrentChat]);
+
+  // Efeito para detectar navegação externa
+  useEffect(() => {
+    // Esta função será chamada antes de cada navegação
+    const handleBeforeNavigate = () => {
+      sessionStorage.setItem('fromNavigation', 'true');
+    };
+    
+    window.addEventListener('beforeunload', handleBeforeNavigate);
+    
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeNavigate);
+    };
+  }, []);
+
   // Log para depuração
   useEffect(() => {
     console.log("Current chat state:", { 
@@ -69,6 +99,7 @@ export default function Home() {
   useEffect(() => {
     if (currentChat) {
       console.log("Atualizando seletores do chat:", currentChat);
+      sessionStorage.removeItem('fromNavigation'); // Limpar flag de navegação
       setSelectedExpert(currentChat.expertId);
       setSelectedAgent(currentChat.agentId);
       setSelectedContentType(currentChat.contentType);

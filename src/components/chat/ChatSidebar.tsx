@@ -108,7 +108,13 @@ export function ChatSidebar({ isOpen, onToggle, onNewChat }: ChatSidebarProps) {
                     className={`w-full justify-start text-left px-3 py-2 h-auto ${
                       currentChat?.id === chat.id ? "bg-accent" : ""
                     }`}
-                    onClick={() => setCurrentChat(chat)}
+                    onClick={() => {
+                      // Limpar qualquer flag de navegação para evitar que o chat seja resetado
+                      sessionStorage.removeItem('fromNavigation');
+                      // Definir o chat atual
+                      console.log("Selecionando chat do histórico:", chat.id);
+                      setCurrentChat(chat);
+                    }}
                   >
                     <div className="flex items-center w-full">
                       <Avatar className="h-8 w-8 mr-2 flex-shrink-0">

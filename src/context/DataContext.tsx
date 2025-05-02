@@ -943,6 +943,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const addMessageToChat = useCallback((chatId: string, content: string, role: "user" | "assistant") => {
     if (!currentUser) return;
     
+    console.log("addMessageToChat: Adding message to chat", { chatId, role, contentLength: content.length });
+    
     // Criar objeto de mensagem para a UI
     const newMessage: Message = {
       id: uuidv4(),
@@ -953,9 +955,10 @@ export function DataProvider({ children }: { children: ReactNode }) {
     };
     
     // Atualizar estado local
-    setChats(prevChats =>
-      prevChats.map(chat => {
+    setChats(prevChats => {
+      const updatedChats = prevChats.map(chat => {
         if (chat.id === chatId && (currentUser.role === 'admin' || chat.userId === currentUser.id)) {
+          console.log("addMessageToChat: Updating chat in chats array", chat.id);
           return { 
             ...chat, 
             messages: [...chat.messages, newMessage],
@@ -963,11 +966,17 @@ export function DataProvider({ children }: { children: ReactNode }) {
           };
         }
         return chat;
-      })
-    );
+      });
+      console.log("addMessageToChat: Updated chats array", updatedChats.find(c => c.id === chatId));
+      return updatedChats;
+    });
 
     setCurrentChat(prev => {
       if (prev?.id === chatId) {
+        console.log("addMessageToChat: Updating currentChat", { 
+          prevMessageCount: prev.messages.length,
+          newMessageId: newMessage.id 
+        });
         return {
           ...prev,
           messages: [...prev.messages, newMessage],
@@ -994,6 +1003,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
         if (messageError) {
           console.error("Erro ao salvar mensagem:", messageError);
           return;
+        } else {
+          console.log("Mensagem salva com sucesso no banco de dados:", newMessage.id);
         }
         
         // Atualizar a data de atualização do chat
@@ -1004,11 +1015,15 @@ export function DataProvider({ children }: { children: ReactNode }) {
         
         if (chatError) {
           console.error("Erro ao atualizar data do chat:", chatError);
+        } else {
+          console.log("Data do chat atualizada com sucesso:", chatId);
         }
       } catch (error) {
         console.error("Erro ao salvar mensagem e atualizar chat:", error);
       }
     })();
+    
+    return newMessage;
   }, [currentUser]);
   
   const deleteChat = useCallback(async (id: string) => {
@@ -1155,7 +1170,7 @@ Use estas informações como base para dar mais relevância e especificidade à 
     // --- 3. Prepare API Request Body --- 
     const GROQ_API_ENDPOINT = "https://api.groq.com/openai/v1/chat/completions";
     const DEFAULT_TEMPERATURE = 0.7;
-    const GROQ_MODEL = "llama3-8b-8192"; 
+    const GROQ_MODEL = "meta-llama/llama-4-maverick-17b-128e-instruct"; // Llama4 Maverick para geração superior de copys
 
     const requestBody = {
       model: GROQ_MODEL,
@@ -1166,6 +1181,7 @@ Use estas informações como base para dar mais relevância e especificidade à 
       ],
       temperature: agent.temperature ?? DEFAULT_TEMPERATURE, 
     };
+    console.log(`Usando modelo avançado: ${GROQ_MODEL} para geração de copy`);
     console.log("Sending messages to Groq:", JSON.stringify(requestBody.messages, null, 2)); 
 
     // --- 4. Make API Call --- 

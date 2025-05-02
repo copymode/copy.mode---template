@@ -49,6 +49,7 @@ export function AppShell({ children }: AppShellProps) {
   };
 
   const handleNewChat = () => {
+    sessionStorage.setItem('fromNavigation', 'true');
     setCurrentChat(null);
     if (location.pathname !== "/home") {
       window.location.href = "/home";
@@ -133,6 +134,13 @@ export function AppShell({ children }: AppShellProps) {
                           className={`flex items-center p-3 rounded-lg text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors duration-150 ${
                             isActive(path) ? "bg-sidebar-accent font-medium" : ""
                           } ${sidebarCollapsed ? 'justify-center' : ''}`}
+                          onClick={() => {
+                            sessionStorage.setItem('fromNavigation', 'true');
+                            
+                            if (path === "/" || path === "/home") {
+                              setCurrentChat(null);
+                            }
+                          }}
                         >
                           <Icon size={20} className={`${sidebarCollapsed ? '' : 'mr-3'}`} />
                           <span className={`whitespace-nowrap overflow-hidden text-ellipsis ${sidebarCollapsed ? 'hidden' : 'block'}`}>{label}</span>

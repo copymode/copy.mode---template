@@ -124,7 +124,7 @@
 
 @keyframes slideIn {
   from {
-    transform: translateY(20px);
+    transform: translateY(15px);
     opacity: 0;
   }
   to {
@@ -134,9 +134,9 @@
 }
 
 .animate-fadeIn {
-  animation: fadeIn 0.4s ease-in-out;
+  animation: fadeIn 0.3s ease-in-out;
 }
 
 .animate-slideIn {
-  animation: slideIn 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+  animation: slideIn 0.4s ease-out;
 }
