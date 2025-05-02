@@ -3,7 +3,7 @@ import { useAuth } from "@/context/AuthContext";
 import { useTheme } from "@/context/ThemeContext";
 import { useData } from "@/context/DataContext";
 import { Link, useLocation } from "react-router-dom";
-import { Menu, X, Home, Users, Settings, ChevronRight, Moon, Sun, LogOut, ChevronsLeft, ChevronsRight, MessageSquare, Trash2, Pencil, Plus, Bot } from "lucide-react";
+import { Menu, X, Home, Users, Settings, ChevronRight, Moon, Sun, LogOut, ChevronsLeft, ChevronsRight, Trash2, Pencil, Plus, Bot } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -86,6 +86,19 @@ export function AppShell({ children }: AppShellProps) {
      }
      return `${trimmedContent.substring(0, maxLength)}...`;
   }
+  
+  // Formatação da data no formato "DD - MM"
+  const formatCreationDate = (date: Date) => {
+    try {
+      const chatDate = new Date(date);
+      const day = chatDate.getDate().toString().padStart(2, "0");
+      const month = (chatDate.getMonth() + 1).toString().padStart(2, "0");
+      return `${day} - ${month}`;
+    } catch (error) {
+      console.error("Erro ao formatar data:", error);
+      return "Data indisponível";
+    }
+  };
 
   // Helper to get initials
   const getInitials = (name: string | undefined): string => {
@@ -194,10 +207,9 @@ export function AppShell({ children }: AppShellProps) {
                                             ${sidebarCollapsed ? 'justify-center' : ''}`}
                                onClick={() => setCurrentChat(chat)}
                              >
-                               <MessageSquare size={18} className={`${sidebarCollapsed ? '' : 'mr-3'} flex-shrink-0`} />
-                               <div className={`flex flex-col overflow-hidden ${sidebarCollapsed ? 'hidden' : 'block'}`}>
+                               <div className={`flex flex-col overflow-hidden ${sidebarCollapsed ? 'w-full text-center' : 'block'}`}>
                                  <span className="text-sm whitespace-nowrap overflow-hidden text-ellipsis font-medium">
-                                   {chat.title}
+                                   {formatCreationDate(chat.createdAt)}
                                  </span>
                                  {subtitle && (
                                    <span className="text-xs text-muted-foreground whitespace-nowrap overflow-hidden text-ellipsis">
@@ -242,7 +254,7 @@ export function AppShell({ children }: AppShellProps) {
                            </div>
                          </TooltipTrigger>
                          <TooltipContent side="right" className="bg-popover text-popover-foreground">
-                           <p className="font-medium">{chat.title}</p>
+                           <p className="font-medium">{formatCreationDate(chat.createdAt)}</p>
                            {subtitle && <p className="text-xs text-muted-foreground">{subtitle}</p>}
                          </TooltipContent>
                        </Tooltip>

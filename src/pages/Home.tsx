@@ -368,81 +368,83 @@ export default function Home() {
       ) : !isInitialState ? (
         <>
           <div className="flex-shrink-0 p-3 border-b bg-card">
-            <div className="flex flex-wrap items-center gap-4 max-w-4xl mx-auto">
-              <Select value={selectedExpert} disabled>
-                <SelectTriggerWithAvatar 
-                  className="w-full sm:w-[180px]"
-                  avatarSrc={selectedExpert ? experts.find(e => e.id === selectedExpert)?.avatar : null}
-                  selectedName={selectedExpert ? experts.find(e => e.id === selectedExpert)?.name : null}
-                >
-                  <SelectValue placeholder="Selecione o Expert" />
-                </SelectTriggerWithAvatar>
-                <SelectContent>
-                  {experts?.map((expert) => (
-                    <SelectItemWithAvatar 
-                      key={expert.id} 
-                      value={expert.id} 
-                      avatarSrc={expert.avatar || null}
-                      name={expert.name}
-                    >
-                      {expert.name}
-                    </SelectItemWithAvatar>
-                  ))}
-                  {selectedExpert && !experts.find(e => e.id === selectedExpert) && (
-                     <SelectItem value={selectedExpert} disabled>Expert ID: {selectedExpert.substring(0,6)}</SelectItem>
-                  )}
-                </SelectContent>
-              </Select>
+            <div className="flex flex-wrap items-center justify-between gap-4 max-w-4xl mx-auto">
+              <div className="flex flex-wrap items-center gap-4">
+                <Select value={selectedExpert} disabled>
+                  <SelectTriggerWithAvatar 
+                    className="w-full sm:w-[180px]"
+                    avatarSrc={selectedExpert ? experts.find(e => e.id === selectedExpert)?.avatar : null}
+                    selectedName={selectedExpert ? experts.find(e => e.id === selectedExpert)?.name : null}
+                  >
+                    <SelectValue placeholder="Selecione o Expert" />
+                  </SelectTriggerWithAvatar>
+                  <SelectContent>
+                    {experts?.map((expert) => (
+                      <SelectItemWithAvatar 
+                        key={expert.id} 
+                        value={expert.id} 
+                        avatarSrc={expert.avatar || null}
+                        name={expert.name}
+                      >
+                        {expert.name}
+                      </SelectItemWithAvatar>
+                    ))}
+                    {selectedExpert && !experts.find(e => e.id === selectedExpert) && (
+                      <SelectItem value={selectedExpert} disabled>Expert ID: {selectedExpert.substring(0,6)}</SelectItem>
+                    )}
+                  </SelectContent>
+                </Select>
 
-              <Select value={selectedAgent} disabled>
-                <SelectTriggerWithAvatar 
-                  className="w-full sm:w-[180px]"
-                  avatarSrc={selectedAgent ? agents.find(a => a.id === selectedAgent)?.avatar : null}
-                  selectedName={selectedAgent ? agents.find(a => a.id === selectedAgent)?.name : null}
-                >
-                  <SelectValue placeholder="Selecione o Agente" />
-                </SelectTriggerWithAvatar>
-                <SelectContent>
-                  {agents?.map((agent) => (
-                    <SelectItemWithAvatar 
-                      key={agent.id} 
-                      value={agent.id} 
-                      avatarSrc={agent.avatar || null}
-                      name={agent.name}
-                    >
-                      {agent.name}
-                    </SelectItemWithAvatar>
-                  ))}
-                   {selectedAgent && !agents.find(a => a.id === selectedAgent) && (
-                     <SelectItem value={selectedAgent} disabled>Agente ID: {selectedAgent.substring(0,6)}</SelectItem>
-                  )}
-                </SelectContent>
-              </Select>
+                <Select value={selectedAgent} disabled>
+                  <SelectTriggerWithAvatar 
+                    className="w-full sm:w-[180px]"
+                    avatarSrc={selectedAgent ? agents.find(a => a.id === selectedAgent)?.avatar : null}
+                    selectedName={selectedAgent ? agents.find(a => a.id === selectedAgent)?.name : null}
+                  >
+                    <SelectValue placeholder="Selecione o Agente" />
+                  </SelectTriggerWithAvatar>
+                  <SelectContent>
+                    {agents?.map((agent) => (
+                      <SelectItemWithAvatar 
+                        key={agent.id} 
+                        value={agent.id} 
+                        avatarSrc={agent.avatar || null}
+                        name={agent.name}
+                      >
+                        {agent.name}
+                      </SelectItemWithAvatar>
+                    ))}
+                    {selectedAgent && !agents.find(a => a.id === selectedAgent) && (
+                      <SelectItem value={selectedAgent} disabled>Agente ID: {selectedAgent.substring(0,6)}</SelectItem>
+                    )}
+                  </SelectContent>
+                </Select>
 
-              <Select value={selectedContentType} disabled>
-                <SelectTriggerWithAvatar 
-                  className="w-full sm:w-[180px]"
-                  avatarSrc={selectedContentType ? contentTypes.find(ct => ct.name === selectedContentType)?.avatar : null}
-                  selectedName={selectedContentType || null}
-                >
-                  <SelectValue placeholder="Selecione o Tipo de Conteúdo" />
-                </SelectTriggerWithAvatar>
-                <SelectContent>
-                  {contentTypes.map((contentType) => (
-                    <SelectItemWithAvatar 
-                      key={contentType.id} 
-                      value={contentType.name} 
-                      avatarSrc={contentType.avatar || null}
-                      name={contentType.name}
-                    >
-                      {contentType.name}
-                    </SelectItemWithAvatar>
-                  ))}
-                  {selectedContentType && !contentTypes.find(ct => ct.name === selectedContentType) && (
-                     <SelectItem value={selectedContentType} disabled>{selectedContentType}</SelectItem>
-                  )}
-                </SelectContent>
-              </Select>
+                <Select value={selectedContentType} disabled>
+                  <SelectTriggerWithAvatar 
+                    className="w-full sm:w-[180px]"
+                    avatarSrc={selectedContentType ? contentTypes.find(ct => ct.name === selectedContentType)?.avatar : null}
+                    selectedName={selectedContentType || null}
+                  >
+                    <SelectValue placeholder="Selecione o Tipo de Conteúdo" />
+                  </SelectTriggerWithAvatar>
+                  <SelectContent>
+                    {contentTypes.map((contentType) => (
+                      <SelectItemWithAvatar 
+                        key={contentType.id} 
+                        value={contentType.name} 
+                        avatarSrc={contentType.avatar || null}
+                        name={contentType.name}
+                      >
+                        {contentType.name}
+                      </SelectItemWithAvatar>
+                    ))}
+                    {selectedContentType && !contentTypes.find(ct => ct.name === selectedContentType) && (
+                      <SelectItem value={selectedContentType} disabled>{selectedContentType}</SelectItem>
+                    )}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
           </div>
 

@@ -3,7 +3,7 @@ import { useData } from "@/context/DataContext";
 import { Chat } from "@/types";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { X, Plus, MessageSquare, Trash2 } from "lucide-react";
+import { X, Plus, Trash2 } from "lucide-react";
 
 interface ChatSidebarProps {
   isOpen: boolean;
@@ -28,22 +28,12 @@ export function ChatSidebar({ isOpen, onToggle, onNewChat }: ChatSidebarProps) {
     const chatDate = new Date(date);
     const day = chatDate.getDate().toString().padStart(2, "0");
     const month = (chatDate.getMonth() + 1).toString().padStart(2, "0");
-    return `${day}-${month}`;
+    return `${day} - ${month}`;
   };
   
-  // Obtém o conteúdo da primeira mensagem do usuário
-  const getFirstUserMessage = (chat: Chat) => {
-    if (!chat.messages || chat.messages.length === 0) {
-      return "Nova conversa";
-    }
-    
-    // Procura pela primeira mensagem do usuário
-    const userMessage = chat.messages.find(msg => msg.role === "user");
-    if (userMessage) {
-      return userMessage.content.substring(0, 40) + (userMessage.content.length > 40 ? "..." : "");
-    }
-    
-    return "Nova conversa";
+  // Esta função agora sempre vai retornar a data, não o conteúdo da mensagem
+  const getChatTitle = (chat: Chat) => {
+    return formatCreationDate(chat.createdAt);
   };
 
   // Handler para excluir chat
@@ -89,7 +79,6 @@ export function ChatSidebar({ isOpen, onToggle, onNewChat }: ChatSidebarProps) {
           <div className="px-3 py-2">
             {sortedChats.length === 0 ? (
               <div className="p-4 text-center text-muted-foreground">
-                <MessageSquare className="mx-auto h-8 w-8 mb-2 opacity-50" />
                 <p>Nenhuma conversa encontrada</p>
                 <p className="text-sm">Clique em "Nova" para começar</p>
               </div>
@@ -110,13 +99,10 @@ export function ChatSidebar({ isOpen, onToggle, onNewChat }: ChatSidebarProps) {
                     <div className="flex items-center w-full">
                       <div className="flex flex-col flex-1 min-w-0">
                         <div className="flex items-center justify-between w-full">
-                          <span className="font-medium truncate">
-                            {getFirstUserMessage(chat)}
+                          <span className="font-medium">
+                            {getChatTitle(chat)}
                           </span>
                           <div className="flex items-center ml-2 flex-shrink-0">
-                            <span className="text-xs text-muted-foreground mr-2">
-                              {formatCreationDate(chat.createdAt)}
-                            </span>
                             <Button
                               variant="ghost"
                               size="icon"
