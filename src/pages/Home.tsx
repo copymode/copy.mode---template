@@ -52,6 +52,7 @@ export default function Home() {
 
   const messages = currentChat?.messages || [];
   const isInitialState = !currentChat;
+  const [isTyping, setIsTyping] = useState(false);
 
   // Only update state from currentChat when it exists
   useEffect(() => {
@@ -61,6 +62,7 @@ export default function Home() {
       setSelectedContentType(currentChat.contentType);
       setPromptInput("");
       setIsGenerating(false);
+      setIsTyping(false);
     }
   }, [currentChat]);
 
@@ -109,6 +111,9 @@ export default function Home() {
       console.log(`handleSendMessage: Adding user message '${currentInput}' to chat ${finalChatId}`);
       addMessageToChat(finalChatId, currentInput, 'user');
         
+      // --- Mostrar indicador de digitação ---
+      setIsTyping(true);
+      
       // --- Fase 2: Chamar Geração --- 
       console.log(`handleSendMessage: Calling generateCopy for chat ${finalChatId}`);
       const generationRequest: CopyRequest = {
@@ -118,6 +123,13 @@ export default function Home() {
           additionalInfo: currentInput, 
       };
       const responseContent = await generateCopy(generationRequest);
+      
+      // --- Aguardar um pouco antes de mostrar a resposta ---
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      // --- Esconder o indicador de digitação ---
+      setIsTyping(false);
+      
       console.log(`handleSendMessage: Received response for chat ${finalChatId}`);
       addMessageToChat(finalChatId, responseContent, 'assistant');
 
@@ -125,6 +137,7 @@ export default function Home() {
         const errorMessage = error instanceof Error ? error.message : "Erro desconhecido durante a geração.";
         console.error("Error during generateCopy or message add:", error);
         toast({ title: "Erro na Geração", description: errorMessage, variant: "destructive" });
+        setIsTyping(false);
         if (finalChatId) {
             addMessageToChat(finalChatId, `⚠️ Erro ao gerar resposta: ${errorMessage}`, 'assistant');
         }
@@ -164,12 +177,21 @@ export default function Home() {
         "user"
       );
       
+      // Mostrar indicador de digitação
+      setIsTyping(true);
+      
       const response = await generateCopy({
         expertId,
         agentId,
         contentType,
         additionalInfo: info,
       });
+      
+      // Aguardar um pouco antes de mostrar a resposta
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      // Esconder o indicador de digitação
+      setIsTyping(false);
       
       addMessageToChat(chat.id, response, "assistant");
       
@@ -178,6 +200,7 @@ export default function Home() {
         description: "Sua copy foi criada e está pronta para uso.",
       });
     } catch (error) {
+      setIsTyping(false);
       toast({
         title: "Erro",
         description: error instanceof Error ? error.message : "Erro ao gerar copy",
@@ -301,100 +324,13 @@ export default function Home() {
             </div>
           </div>
 
-          <ScrollArea className="flex-1" ref={scrollAreaRef}>
-            <div className="max-w-3xl mx-auto space-y-4 p-4 pb-24">
-              {messages.map((message) => (
-                <div key={message.id} className={`flex gap-3 ${message.role === 'user' ? 'justify-end' : ''}`}>
-                  {message.role === 'assistant' && (
-                    <div className="flex-shrink-0 w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center border self-end">
-                      <Bot size={18} className="text-primary"/>
-                    </div>
-                  )}
-                  <Card className={`max-w-[85%] p-3 shadow-sm ${message.role === 'user' ? 'bg-primary text-primary-foreground' : 'bg-card'}`}>
-                     <CardContent className="p-0 text-sm whitespace-pre-wrap">
-                       {message.content}
-                     </CardContent>
-                      {message.role === 'assistant' && !message.content.startsWith("⚠️") && (
-                        <div className="flex items-center justify-end gap-1 mt-2">
-                          <Button 
-                            variant="ghost" 
-                            size="icon" 
-                            className="h-6 w-6 text-muted-foreground hover:text-foreground"
-                            onClick={() => {
-                              navigator.clipboard.writeText(message.content);
-                              toast({ title: "Copiado!", description: "Texto copiado para a área de transferência." });
-                            }}
-                            aria-label="Copiar texto"
-                           >
-                            <Copy size={14} />
-                          </Button>
-                          <Button 
-                            variant="ghost" 
-                            size="icon" 
-                            className="h-6 w-6 text-destructive/70 hover:text-destructive hover:bg-destructive/10"
-                            onClick={() => {
-                              if (currentChat?.id) {
-                                deleteMessageFromChat(currentChat.id, message.id);
-                                toast({ title: "Mensagem Excluída", variant: "destructive" });
-                              } else {
-                                 toast({ title: "Erro", description: "Não foi possível identificar o chat para excluir a mensagem.", variant: "destructive" });
-                              }
-                            }}
-                            aria-label="Excluir mensagem"
-                          >
-                            <Trash2 size={14} />
-                          </Button>
-                        </div>
-                      )}
-                  </Card>
-                   {message.role === 'user' && (
-                     <div className="flex-shrink-0 w-8 h-8 rounded-full bg-secondary/50 flex items-center justify-center border self-end">
-                       <User size={18} className="text-secondary-foreground"/>
-                     </div>
-                   )}
-                </div>
-              ))}
-              {isGenerating && (
-                <div className="flex gap-3">
-                  <div className="flex-shrink-0 w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center border self-end">
-                    <Bot size={18} className="text-primary animate-pulse"/>
-                  </div>
-                  <Card className="max-w-[85%] p-3 bg-card shadow-sm">
-                    <CardContent className="p-0 text-sm">
-                      <span className="italic text-muted-foreground">Gerando copy...</span>
-                    </CardContent>
-                  </Card>
-                </div>
-              )}
-            </div>
-          </ScrollArea>
-
-          <div className="flex-shrink-0 p-4 border-t bg-background">
-            <div className="relative max-w-3xl mx-auto">
-              <Textarea 
-                placeholder="Digite sua mensagem..."
-                value={promptInput}
-                onChange={(e) => setPromptInput(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' && !e.shiftKey) {
-                    e.preventDefault();
-                    handleSendMessage();
-                  }
-                }}
-                rows={1}
-                className="w-full min-h-[40px] pr-16 resize-none max-h-40 overflow-y-auto bg-card shadow-sm"
+          <div className="flex flex-1 overflow-hidden">
+            <div className="flex-1 flex flex-col max-w-4xl w-full mx-auto">
+              <ChatArea messages={messages} isTyping={isTyping} />
+              <ChatInput 
+                onSendMessage={handleSendMessage} 
                 disabled={isGenerating}
               />
-              <Button 
-                type="submit" 
-                size="icon" 
-                className="absolute right-2 bottom-2 h-8 w-8" 
-                onClick={handleSendMessage}
-                disabled={isGenerating || !promptInput.trim()}
-                aria-label="Enviar mensagem"
-              >
-                <SendHorizonal size={18} />
-              </Button>
             </div>
           </div>
           
