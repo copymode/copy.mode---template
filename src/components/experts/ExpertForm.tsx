@@ -16,6 +16,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Expert } from "@/types";
 import { useEffect, useState, useRef } from "react";
 import { UserCircle, UploadCloud, X } from "lucide-react";
+import { ExpertAvatarUploader } from "./ExpertAvatarUploader";
 
 // Define Zod schema based on technical specs
 const expertFormSchema = z.object({
@@ -32,12 +33,12 @@ type ExpertFormValues = z.infer<typeof expertFormSchema>;
 interface ExpertFormProps {
   initialData?: Expert;
   isEditing: boolean;
-  onSave: (data: ExpertFormValues | (ExpertFormValues & { id: string })) => void;
+  onSave: (data: ExpertFormValues | (ExpertFormValues & { id: string } & { avatar?: string })) => void;
   onCancel: () => void;
 }
 
 export function ExpertForm({ initialData, isEditing, onSave, onCancel }: ExpertFormProps) {
-  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(initialData?.avatar || null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const form = useForm<ExpertFormValues>({
@@ -60,11 +61,8 @@ export function ExpertForm({ initialData, isEditing, onSave, onCancel }: ExpertF
   });
 
   useEffect(() => {
-    setImagePreview(null);
-    if (fileInputRef.current) {
-      fileInputRef.current.value = "";
-    }
     if (initialData) {
+      setAvatarUrl(initialData.avatar || null);
       form.reset({
           name: initialData.name || "",
           niche: initialData.niche || "",
@@ -78,85 +76,41 @@ export function ExpertForm({ initialData, isEditing, onSave, onCancel }: ExpertF
            name: "", niche: "", targetAudience: "", 
            deliverables: "", benefits: "", objections: ""
        });
+       setAvatarUrl(null);
     }
   }, [initialData, form.reset]);
 
-  const handleImageChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setImagePreview(reader.result as string);
-      };
-      reader.readAsDataURL(file);
-    } else {
-      setImagePreview(null);
-    }
-  };
-
-  const handleRemoveImage = () => {
-     setImagePreview(null);
-     if (fileInputRef.current) {
-       fileInputRef.current.value = "";
-     }
+  const handleAvatarUpdated = (url: string) => {
+    console.log("DEBUG: Avatar URL atualizada:", url);
+    setAvatarUrl(url);
   };
 
   function onSubmit(data: ExpertFormValues) {
+    console.log("DEBUG: Enviando formulário com avatar:", avatarUrl);
     if (isEditing && initialData) {
-      onSave({ ...data, id: initialData.id });
+      console.log("DEBUG: Modo edição, enviando data com ID e avatar:", { ...data, id: initialData.id, avatar: avatarUrl || undefined });
+      onSave({ ...data, id: initialData.id, avatar: avatarUrl || undefined });
     } else {
-      onSave(data);
+      console.log("DEBUG: Modo criação, enviando data com avatar:", { ...data, avatar: avatarUrl || undefined });
+      onSave({ ...data, avatar: avatarUrl || undefined });
     }
   }
 
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-        <FormItem>
-          <FormLabel>Foto do Expert (Pré-visualização)</FormLabel>
-          <FormControl>
-             <div className="flex items-center gap-4">
-                <div className="relative h-20 w-20 rounded-full bg-muted flex items-center justify-center overflow-hidden border">
-                  {imagePreview ? (
-                    <img src={imagePreview} alt="Preview" className="h-full w-full object-cover" />
-                  ) : (
-                    <UserCircle size={40} className="text-muted-foreground" />
-                  )}
-                   {imagePreview && (
-                      <Button 
-                        type="button"
-                        variant="destructive"
-                        size="icon"
-                        className="absolute top-0 right-0 h-6 w-6 rounded-full opacity-80 hover:opacity-100" 
-                        onClick={handleRemoveImage}
-                        aria-label="Remover imagem"
-                      >
-                         <X size={14} />
-                      </Button>
-                   )}
-                </div>
-                <Button 
-                  type="button" 
-                  variant="outline" 
-                  onClick={() => fileInputRef.current?.click()}
-                >
-                  <UploadCloud size={16} className="mr-2" />
-                  {imagePreview ? "Alterar Foto" : "Selecionar Foto"}
-                </Button>
-                <input 
-                  type="file" 
-                  ref={fileInputRef} 
-                  onChange={handleImageChange} 
-                  accept="image/png, image/jpeg, image/webp"
-                  className="hidden"
-                />
-             </div>
-          </FormControl>
-          <FormDescription>
-            A foto selecionada é apenas para pré-visualização e não será salva permanentemente nesta versão.
-          </FormDescription>
-          <FormMessage />
-        </FormItem>
+        <div className="flex flex-col items-center gap-4 mb-4">
+          <ExpertAvatarUploader
+            expertId={initialData?.id}
+            expertName={form.getValues("name") || (isEditing ? "Expert" : "Novo Expert")}
+            avatarUrl={avatarUrl}
+            onAvatarUpdated={handleAvatarUpdated}
+            size="lg"
+          />
+          <p className="text-sm text-muted-foreground text-center">
+            Foto do expert (opcional)
+          </p>
+        </div>
 
         <FormField
           control={form.control}

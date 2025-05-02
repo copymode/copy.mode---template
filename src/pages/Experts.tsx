@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useData } from "@/context/DataContext";
 import { ExpertForm } from "@/components/experts/ExpertForm";
@@ -15,6 +14,7 @@ export default function Experts() {
   const [showForm, setShowForm] = useState(false);
   const [editingExpert, setEditingExpert] = useState<Expert | null>(null);
   const [expertToDelete, setExpertToDelete] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
   
   const handleCreate = () => {
     setEditingExpert(null);
@@ -30,47 +30,69 @@ export default function Experts() {
     setExpertToDelete(expertId);
   };
   
-  const confirmDelete = () => {
+  const confirmDelete = async () => {
     if (expertToDelete) {
-      deleteExpert(expertToDelete);
-      setExpertToDelete(null);
-      toast({
-        title: "Expert excluído",
-        description: "O expert foi excluído com sucesso.",
-      });
+      setIsLoading(true);
+      try {
+        await deleteExpert(expertToDelete);
+        setExpertToDelete(null);
+        toast({
+          title: "Expert excluído",
+          description: "O expert foi excluído com sucesso.",
+        });
+      } catch (error) {
+        console.error("Erro ao excluir expert:", error);
+        toast({
+          title: "Erro ao excluir",
+          description: error instanceof Error ? error.message : "Ocorreu um erro ao excluir o expert.",
+          variant: "destructive",
+        });
+      } finally {
+        setIsLoading(false);
+      }
     }
   };
-
-  const handleSave = (expertData: Omit<Expert, 'id'> | Expert) => {
+  
+  const handleSave = async (data: Expert | Omit<Expert, "id" | "createdAt" | "updatedAt" | "userId">) => {
+    setIsLoading(true);
     try {
-      if ('id' in expertData && expertData.id) {
-        updateExpert(expertData.id, expertData);
-        toast({ title: "Expert atualizado com sucesso!" });
+      if ('id' in data) {
+        // Atualizando expert existente
+        await updateExpert(data.id, data);
+        toast({
+          title: "Expert atualizado",
+          description: "O expert foi atualizado com sucesso.",
+        });
       } else {
-        addExpert(expertData as Omit<Expert, 'id'>);
-        toast({ title: "Expert criado com sucesso!" });
+        // Criando novo expert
+        await addExpert(data);
+        toast({
+          title: "Expert criado",
+          description: "O expert foi criado com sucesso.",
+        });
       }
       setShowForm(false);
-      setEditingExpert(null);
     } catch (error) {
-      toast({ title: "Erro ao salvar Expert", description: error instanceof Error ? error.message : String(error), variant: "destructive" });
+      console.error("Erro ao salvar expert:", error);
+      toast({
+        title: "Erro ao salvar",
+        description: error instanceof Error ? error.message : "Ocorreu um erro ao salvar o expert.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
     }
   };
-
+  
   return (
-    <div className="container mx-auto max-w-5xl">
-      <div className="flex justify-between items-center mb-6">
-        <div>
-          <h1 className="text-2xl font-bold">Meus Experts</h1>
-          <p className="text-muted-foreground">
-            Crie e gerencie perfis de especialistas para suas copies
-          </p>
-        </div>
+    <div className="container py-6 space-y-8">
+      <div className="flex justify-between items-center">
+        <h1 className="text-2xl font-bold">Meus Experts</h1>
         
         {!showForm && (
           <Button onClick={handleCreate}>
-            <PlusCircle className="mr-2 h-4 w-4" />
-            Criar Novo Expert
+            <Plus className="mr-2 h-4 w-4" />
+            Criar Expert
           </Button>
         )}
       </div>
@@ -114,19 +136,18 @@ export default function Experts() {
       )}
       
       {/* Delete confirmation */}
-      <AlertDialog open={!!expertToDelete} onOpenChange={(open) => !open && setExpertToDelete(null)}>
+      <AlertDialog open={!!expertToDelete} onOpenChange={(isOpen) => !isOpen && setExpertToDelete(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Tem certeza?</AlertDialogTitle>
+            <AlertDialogTitle>Confirmar exclusão</AlertDialogTitle>
             <AlertDialogDescription>
-              Esta ação não pode ser desfeita. Isso excluirá permanentemente o expert
-              selecionado e todas as suas informações.
+              Tem certeza que deseja excluir este expert? Esta ação não pode ser desfeita.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmDelete} className="bg-destructive text-destructive-foreground">
-              Excluir
+            <AlertDialogCancel disabled={isLoading}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDelete} disabled={isLoading}>
+              {isLoading ? "Excluindo..." : "Excluir"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

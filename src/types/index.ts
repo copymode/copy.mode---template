@@ -33,6 +33,7 @@ export interface Expert {
   deliverables: string;
   benefits: string;
   objections: string;
+  avatar?: string;
   createdAt: Date;
   updatedAt: Date;
   userId: string;

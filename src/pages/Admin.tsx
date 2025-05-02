@@ -1,19 +1,21 @@
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { useData } from "@/context/DataContext";
 import { AgentForm } from "@/components/agents/AgentForm";
 import { AgentCard } from "@/components/agents/AgentCard";
 import { Agent } from "@/types";
 import { Button } from "@/components/ui/button";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-import { Plus } from "lucide-react";
+import { Plus, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 export default function Admin() {
-  const { agents } = useData();
+  const { agents, getAgentById, deleteAgent } = useData();
   const { toast } = useToast();
   const [showForm, setShowForm] = useState(false);
   const [editingAgent, setEditingAgent] = useState<Agent | null>(null);
   const [agentToDelete, setAgentToDelete] = useState<string | null>(null);
+  const [isLoadingEdit, setIsLoadingEdit] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   
   const handleCreateClick = () => {
     setEditingAgent(null);
@@ -25,10 +27,27 @@ export default function Admin() {
     setEditingAgent(null);
   };
   
-  const handleEditClick = (agent: Agent) => {
-    setEditingAgent(agent);
-    setShowForm(true);
-  };
+  const handleEditClick = useCallback(async (agentId: string) => {
+    setIsLoadingEdit(true);
+    setEditingAgent(null);
+    setShowForm(false);
+    
+    try {
+      const agentToEdit = await getAgentById(agentId);
+      if (agentToEdit) {
+        setEditingAgent(agentToEdit);
+        setShowForm(true);
+      } else {
+        console.error(`Agent with ID ${agentId} not found via getAgentById.`);
+        toast({ title: "Erro", description: "Agente não encontrado.", variant: "destructive"});
+      }
+    } catch (error) {
+        console.error(`Error in handleEditClick calling getAgentById for ${agentId}:`, error);
+        toast({ title: "Erro ao Carregar", description: "Não foi possível carregar os dados do agente.", variant: "destructive"});
+    } finally {
+        setIsLoadingEdit(false);
+    }
+  }, [getAgentById, toast]);
   
   const handleDeleteClick = (id: string) => {
     setAgentToDelete(id);
@@ -37,6 +56,8 @@ export default function Admin() {
   const confirmDelete = async () => {
     if (agentToDelete) {
       try {
+        setIsDeleting(true);
+        await deleteAgent(agentToDelete);
         setAgentToDelete(null);
         toast({
           title: "Agente excluído",
@@ -49,6 +70,8 @@ export default function Admin() {
           description: "Não foi possível excluir o agente.",
           variant: "destructive",
         });
+      } finally {
+        setIsDeleting(false);
       }
     }
   };
@@ -71,9 +94,16 @@ export default function Admin() {
         )}
       </div>
       
+      {isLoadingEdit && (
+         <div className="fixed inset-0 bg-background/80 flex items-center justify-center z-50">
+             <Loader2 className="h-8 w-8 animate-spin text-primary" />
+         </div>
+      )}
+
       {showForm ? (
         <div className="mb-8">
           <AgentForm 
+            key={editingAgent ? editingAgent.id : 'new'}
             onCancel={handleFormCancel} 
             agentToEdit={editingAgent} 
           />
@@ -96,7 +126,7 @@ export default function Admin() {
               <AgentCard 
                 key={agent.id}
                 agent={agent}
-                onEdit={() => handleEditClick(agent)}
+                onEdit={() => handleEditClick(agent.id)}
                 onDelete={() => handleDeleteClick(agent.id)}
               />
             ))
@@ -114,9 +144,14 @@ export default function Admin() {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmDelete} className="bg-destructive text-destructive-foreground">
-              Excluir
+            <AlertDialogCancel disabled={isDeleting}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDelete} disabled={isDeleting} className="bg-destructive text-destructive-foreground">
+              {isDeleting ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Excluindo...
+                </>
+              ) : "Excluir"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

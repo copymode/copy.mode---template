@@ -16,6 +16,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { SendHorizonal, Copy, Trash2, Pencil, Bot, User, Sparkles, ShieldAlert } from "lucide-react";
 import { Expert, Agent, Message, CopyRequest, Chat } from "@/types";
 import { v4 as uuidv4 } from "uuid";
+import { SelectItemWithAvatar, SelectTriggerWithAvatar } from "@/components/ui/select-with-avatar";
 
 export default function Home() {
   const { 
@@ -223,12 +224,23 @@ export default function Home() {
           <div className="flex-shrink-0 p-3 border-b bg-card">
             <div className="flex flex-wrap items-center gap-4 max-w-4xl mx-auto">
               <Select value={selectedExpert} disabled>
-                <SelectTrigger className="w-full sm:w-[180px]">
+                <SelectTriggerWithAvatar 
+                  className="w-full sm:w-[180px]"
+                  avatarSrc={selectedExpert ? experts.find(e => e.id === selectedExpert)?.avatar : null}
+                  selectedName={selectedExpert ? experts.find(e => e.id === selectedExpert)?.name : null}
+                >
                   <SelectValue placeholder="Selecione o Expert" />
-                </SelectTrigger>
+                </SelectTriggerWithAvatar>
                 <SelectContent>
                   {experts?.map((expert) => (
-                    <SelectItem key={expert.id} value={expert.id}>{expert.name}</SelectItem>
+                    <SelectItemWithAvatar 
+                      key={expert.id} 
+                      value={expert.id} 
+                      avatarSrc={expert.avatar || null}
+                      name={expert.name}
+                    >
+                      {expert.name}
+                    </SelectItemWithAvatar>
                   ))}
                   {selectedExpert && !experts.find(e => e.id === selectedExpert) && (
                      <SelectItem value={selectedExpert} disabled>Expert ID: {selectedExpert.substring(0,6)}</SelectItem>
@@ -237,12 +249,23 @@ export default function Home() {
               </Select>
 
               <Select value={selectedAgent} disabled>
-                <SelectTrigger className="w-full sm:w-[180px]">
+                <SelectTriggerWithAvatar 
+                  className="w-full sm:w-[180px]"
+                  avatarSrc={selectedAgent ? agents.find(a => a.id === selectedAgent)?.avatar : null}
+                  selectedName={selectedAgent ? agents.find(a => a.id === selectedAgent)?.name : null}
+                >
                   <SelectValue placeholder="Selecione o Agente" />
-                </SelectTrigger>
+                </SelectTriggerWithAvatar>
                 <SelectContent>
                   {agents?.map((agent) => (
-                    <SelectItem key={agent.id} value={agent.id}>{agent.name}</SelectItem>
+                    <SelectItemWithAvatar 
+                      key={agent.id} 
+                      value={agent.id} 
+                      avatarSrc={agent.avatar || null}
+                      name={agent.name}
+                    >
+                      {agent.name}
+                    </SelectItemWithAvatar>
                   ))}
                    {selectedAgent && !agents.find(a => a.id === selectedAgent) && (
                      <SelectItem value={selectedAgent} disabled>Agente ID: {selectedAgent.substring(0,6)}</SelectItem>
@@ -400,23 +423,43 @@ export default function Home() {
             <CardContent className="space-y-6">
                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                    <Select value={selectedExpert} onValueChange={setSelectedExpert}>
-                     <SelectTrigger>
+                     <SelectTriggerWithAvatar
+                       avatarSrc={selectedExpert ? experts.find(e => e.id === selectedExpert)?.avatar : null}
+                       selectedName={selectedExpert ? experts.find(e => e.id === selectedExpert)?.name : null}
+                     >
                        <SelectValue placeholder="Selecione o Expert" />
-                     </SelectTrigger>
+                     </SelectTriggerWithAvatar>
                      <SelectContent>
                        {experts?.map((expert) => (
-                         <SelectItem key={expert.id} value={expert.id}>{expert.name}</SelectItem>
+                         <SelectItemWithAvatar 
+                           key={expert.id} 
+                           value={expert.id} 
+                           avatarSrc={expert.avatar || null}
+                           name={expert.name}
+                         >
+                           {expert.name}
+                         </SelectItemWithAvatar>
                        ))}
                      </SelectContent>
                    </Select>
 
                    <Select value={selectedAgent} onValueChange={setSelectedAgent}>
-                     <SelectTrigger>
+                     <SelectTriggerWithAvatar
+                       avatarSrc={selectedAgent ? agents.find(a => a.id === selectedAgent)?.avatar : null}
+                       selectedName={selectedAgent ? agents.find(a => a.id === selectedAgent)?.name : null}
+                     >
                        <SelectValue placeholder="Selecione o Agente *" />
-                     </SelectTrigger>
+                     </SelectTriggerWithAvatar>
                      <SelectContent>
                        {agents?.map((agent) => (
-                         <SelectItem key={agent.id} value={agent.id}>{agent.name}</SelectItem>
+                         <SelectItemWithAvatar 
+                           key={agent.id} 
+                           value={agent.id} 
+                           avatarSrc={agent.avatar || null}
+                           name={agent.name}
+                         >
+                           {agent.name}
+                         </SelectItemWithAvatar>
                        ))}
                      </SelectContent>
                    </Select>

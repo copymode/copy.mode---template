@@ -22,6 +22,7 @@ const mockUsers: User[] = [
 
 interface AuthContextType {
   currentUser: User | null;
+  session: Session | null;
   login: (email: string, password: string) => Promise<User | null>;
   logout: () => Promise<void>;
   updateUserApiKey: (apiKey: string) => Promise<void>;
@@ -211,7 +212,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ currentUser, login, logout, updateUserApiKey, isLoading }}>
+    <AuthContext.Provider value={{ currentUser, session, login, logout, updateUserApiKey, isLoading }}>
       {children}
     </AuthContext.Provider>
   );

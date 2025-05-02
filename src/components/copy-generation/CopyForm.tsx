@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useData } from "@/context/DataContext";
 import { Agent, Expert } from "@/types";
@@ -8,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { SelectItemWithAvatar, SelectTriggerWithAvatar } from "@/components/ui/select-with-avatar";
 
 interface CopyFormProps {
   onSubmit: (expertId: string | undefined, agentId: string, contentType: string, info: string) => void;
@@ -71,15 +71,25 @@ export function CopyForm({ onSubmit }: CopyFormProps) {
               value={formData.expertId} 
               onValueChange={(value) => handleSelectChange("expertId", value)}
             >
-              <SelectTrigger>
+              <SelectTriggerWithAvatar
+                avatarSrc={formData.expertId && formData.expertId !== "none" ? 
+                  experts.find(e => e.id === formData.expertId)?.avatar : null}
+                selectedName={formData.expertId && formData.expertId !== "none" ? 
+                  experts.find(e => e.id === formData.expertId)?.name : null}
+              >
                 <SelectValue placeholder="Selecione um Expert (opcional)" />
-              </SelectTrigger>
+              </SelectTriggerWithAvatar>
               <SelectContent>
                 <SelectItem value="none">Nenhum Expert</SelectItem>
                 {experts.map((expert: Expert) => (
-                  <SelectItem key={expert.id} value={expert.id}>
+                  <SelectItemWithAvatar 
+                    key={expert.id} 
+                    value={expert.id}
+                    avatarSrc={expert.avatar || null}
+                    name={expert.name}
+                  >
                     {expert.name} - {expert.niche}
-                  </SelectItem>
+                  </SelectItemWithAvatar>
                 ))}
               </SelectContent>
             </Select>
@@ -92,14 +102,24 @@ export function CopyForm({ onSubmit }: CopyFormProps) {
               onValueChange={(value) => handleSelectChange("agentId", value)}
               required
             >
-              <SelectTrigger>
+              <SelectTriggerWithAvatar
+                avatarSrc={formData.agentId ? 
+                  agents.find(a => a.id === formData.agentId)?.avatar : null}
+                selectedName={formData.agentId ? 
+                  agents.find(a => a.id === formData.agentId)?.name : null}
+              >
                 <SelectValue placeholder="Selecione um Agente" />
-              </SelectTrigger>
+              </SelectTriggerWithAvatar>
               <SelectContent>
                 {agents.map((agent: Agent) => (
-                  <SelectItem key={agent.id} value={agent.id}>
+                  <SelectItemWithAvatar 
+                    key={agent.id} 
+                    value={agent.id}
+                    avatarSrc={agent.avatar || null}
+                    name={agent.name}
+                  >
                     {agent.name}
-                  </SelectItem>
+                  </SelectItemWithAvatar>
                 ))}
               </SelectContent>
             </Select>

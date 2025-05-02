@@ -1,5 +1,6 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useData } from "@/context/DataContext";
+import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,9 +9,16 @@ import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Agent, KnowledgeFile } from "@/types";
-import { Upload, X, FileText, Loader2 } from "lucide-react";
+import { Upload, X, FileText, Loader2, Trash2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { v4 as uuidv4 } from 'uuid';
+import { AgentAvatarUploader } from "./AgentAvatarUploader";
+
+// Importação e configuração do PDF.js
+// @ts-ignore - Ignorar erro de tipagem do módulo pdf.js
+import * as pdfjsLib from 'pdfjs-dist/build/pdf';
+// @ts-ignore
+pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
 
 const DEFAULT_TEMPERATURE = 0.7;
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
@@ -28,44 +36,43 @@ interface AgentFormProps {
 }
 
 export function AgentForm({ onCancel, agentToEdit }: AgentFormProps) {
-  const { createAgent, updateAgent } = useData();
+  const { createAgent, updateAgent, updateAgentFiles } = useData();
+  const { session } = useAuth();
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isFileLoading, setIsFileLoading] = useState(false);
+  const [isDeletingFile, setIsDeletingFile] = useState<string | null>(null);
   
   const isEditMode = !!agentToEdit;
 
-  const [formData, setFormData] = useState({
-    name: "",
-    description: "",
-    prompt: "",
-    temperature: DEFAULT_TEMPERATURE,
-    knowledgeFiles: [] as KnowledgeFile[],
-  });
-
-  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
-
-  useEffect(() => {
-    if (isEditMode && agentToEdit) {
-      setFormData({
+  // --- Initialize formData directly using props (driven by key) ---
+  const [formData, setFormData] = useState(() => {
+    console.log("Initializing AgentForm state", agentToEdit?.knowledgeFiles);
+    if (agentToEdit) {
+      return {
         name: agentToEdit.name,
         description: agentToEdit.description || "",
         prompt: agentToEdit.prompt || "",
         temperature: agentToEdit.temperature ?? DEFAULT_TEMPERATURE,
         knowledgeFiles: agentToEdit.knowledgeFiles || [],
-      });
-      setSelectedFiles([]);
+        avatar: agentToEdit.avatar || "",
+      };
     } else {
-      setFormData({
+      return {
         name: "",
         description: "",
         prompt: "",
         temperature: DEFAULT_TEMPERATURE,
         knowledgeFiles: [],
-      });
-      setSelectedFiles([]);
+        avatar: "",
+      };
     }
-  }, [agentToEdit, isEditMode]);
+  });
+  // --------------------------------------------------------------
+
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+
+  const agentId = agentToEdit?.id;
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
@@ -76,6 +83,15 @@ export function AgentForm({ onCancel, agentToEdit }: AgentFormProps) {
 
   const handleTemperatureChange = (value: number[]) => {
     setFormData((prev) => ({ ...prev, temperature: value[0] }));
+  };
+
+  const handleAvatarUpdated = (url: string) => {
+    console.log("DEBUG AGENT: Avatar URL atualizada:", url);
+    setFormData(prev => ({ ...prev, avatar: url }));
+    // Verificar se a URL foi realmente atualizada no estado
+    setTimeout(() => {
+      console.log("DEBUG AGENT: Estado após atualização:", formData.avatar);
+    }, 100);
   };
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -108,35 +124,6 @@ export function AgentForm({ onCancel, agentToEdit }: AgentFormProps) {
 
   const removeSelectedFile = (index: number) => {
     setSelectedFiles(prev => prev.filter((_, i) => i !== index));
-  };
-
-  const removeExistingFile = async (filePathToRemove: string) => {
-    setIsFileLoading(true);
-    try {
-      const { error } = await supabase.storage
-        .from(BUCKET_NAME)
-        .remove([filePathToRemove]);
-
-      if (error) {
-        throw error;
-      }
-
-      setFormData(prev => ({
-        ...prev,
-        knowledgeFiles: prev.knowledgeFiles.filter(file => file.path !== filePathToRemove)
-      }));
-      toast({ title: "Sucesso", description: "Arquivo removido do armazenamento." });
-
-    } catch (error: any) {
-      console.error("Erro ao remover arquivo do storage:", error);
-      toast({
-        title: "Erro ao Remover Arquivo",
-        description: `Não foi possível remover o arquivo: ${error.message}`,
-        variant: "destructive",
-      });
-    } finally {
-      setIsFileLoading(false);
-    }
   };
 
   const uploadFiles = async (agentId: string): Promise<KnowledgeFile[]> => {
@@ -188,77 +175,258 @@ export function AgentForm({ onCancel, agentToEdit }: AgentFormProps) {
     return successfulUploads;
   };
 
+  const extractTextFromFile = async (file: File): Promise<string | null> => {
+    const fileType = file.type;
+    const fileName = file.name;
+    
+    try {
+      if (fileType === 'text/plain' || fileType === 'text/markdown') {
+        return new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = (event) => {
+            if (event.target?.result) {
+              resolve(event.target.result as string);
+            } else {
+              reject(new Error('Failed to read text file'));
+            }
+          };
+          reader.onerror = (error) => {
+            console.error(`Error reading text file ${fileName}:`, error);
+            reject(error);
+          };
+          reader.readAsText(file);
+        });
+      } else if (fileType === 'application/pdf') {
+        try {
+          const arrayBuffer = await file.arrayBuffer();
+          const typedArray = new Uint8Array(arrayBuffer);
+          const pdf = await pdfjsLib.getDocument({ data: typedArray }).promise;
+          
+          // Otimizando a extração de PDF processando múltiplas páginas em paralelo
+          const pagePromises = [];
+          for (let i = 1; i <= pdf.numPages; i++) {
+            pagePromises.push(pdf.getPage(i));
+          }
+          
+          const pages = await Promise.all(pagePromises);
+          const textPromises = pages.map(page => page.getTextContent());
+          const textContents = await Promise.all(textPromises);
+          
+          // Concatenando o texto de todas as páginas
+          const fullText = textContents
+            .map(content => 
+              content.items
+                .map((item: any) => item.str)
+                .join(' ')
+            )
+            .join('\n\n');
+            
+          return fullText.trim();
+        } catch (error) {
+          console.error(`Error parsing PDF ${fileName}:`, error);
+          throw new Error(`Failed to parse PDF: ${error.message}`);
+        }
+      } else {
+        console.warn(`Unsupported file type for text extraction: ${fileName} (${fileType})`);
+        return null; // Retorna null para tipos não suportados
+      }
+    } catch (error) {
+      console.error(`Error extracting text from ${fileName}:`, error);
+      return null;
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (isFileLoading) return;
+    if (isSubmitting || isFileLoading) return; 
     setIsSubmitting(true);
     
-    let finalKnowledgeFiles: KnowledgeFile[] = isEditMode ? [...formData.knowledgeFiles] : [];
-    let agentId = agentToEdit?.id;
+    let currentAgentId = agentToEdit?.id;
 
     try {
       if (!formData.name || !formData.prompt) {
-        toast({
-          title: "Erro de Validação",
-          description: "Nome e Prompt do Agente são obrigatórios.",
-          variant: "destructive",
-        });
+        toast({ title: "Erro de Validação", description: "Nome e Prompt são obrigatórios.", variant: "destructive" });
         setIsSubmitting(false);
         return;
       }
       
-      const agentCoreData = {
+      // 1. Salvar/Atualizar dados básicos do agente
+      const agentCoreSubmitData = {
         name: formData.name,
         description: formData.description,
         prompt: formData.prompt,
         temperature: formData.temperature,
-        avatar: agentToEdit?.avatar || "/placeholder.svg",
+        avatar: formData.avatar || "/placeholder.svg",
       };
 
-      if (isEditMode && agentId) {
-        const uploadedFiles = await uploadFiles(agentId);
-        finalKnowledgeFiles = [...formData.knowledgeFiles, ...uploadedFiles];
-        
-        await updateAgent(agentId, {
-          ...agentCoreData,
-          knowledgeFiles: finalKnowledgeFiles,
-        });
-        toast({ title: "Sucesso", description: "Agente atualizado com sucesso!" });
+      let agentDataForProcessing: Agent;
 
+      if (isEditMode && currentAgentId) {
+        await updateAgent(currentAgentId, agentCoreSubmitData); 
+        agentDataForProcessing = { ...agentToEdit, ...agentCoreSubmitData }; 
+        toast({ title: "Dados Salvos", description: "Dados do agente atualizados." });
       } else {
-        const newAgent = await createAgent(agentCoreData); 
-        agentId = newAgent.id;
+        const newAgent = await createAgent(agentCoreSubmitData); 
+        currentAgentId = newAgent.id;
+        if (!currentAgentId) throw new Error("Falha ao obter ID do novo agente.");
+        agentDataForProcessing = newAgent;
+        toast({ title: "Agente Criado", description: "Agente criado com sucesso." });
+      }
 
-        if (!agentId) {
-          throw new Error("Não foi possível obter o ID do agente recém-criado.");
-        }
-
-        const uploadedFiles = await uploadFiles(agentId);
-        finalKnowledgeFiles = uploadedFiles;
-
-        if (finalKnowledgeFiles.length > 0) {
-          await updateAgent(agentId, { 
-            knowledgeFiles: finalKnowledgeFiles 
-          });
+      // 2. Fazer upload dos novos arquivos selecionados para o Storage
+      if (selectedFiles.length > 0 && currentAgentId) {
+        setIsFileLoading(true);
+        
+        // Lista de arquivos para atualização
+        const uploadedFiles = [...formData.knowledgeFiles];
+        
+        // Upload dos arquivos para o Storage
+        const uploadPromises = selectedFiles.map(async file => {
+          try {
+            const fileExt = file.name.split('.').pop();
+            const uniqueFileName = `${uuidv4()}.${fileExt}`;
+            const filePath = `${currentAgentId}/${uniqueFileName}`;
+            
+            const { data, error } = await supabase.storage
+              .from(BUCKET_NAME)
+              .upload(filePath, file);
+            
+            if (error) {
+              console.error(`Erro ao fazer upload de ${file.name}:`, error);
+              toast({
+                title: `Erro ao fazer upload de ${file.name}`,
+                description: error.message,
+                variant: "destructive"
+              });
+              return null;
+            }
+            
+            // Adicionar arquivo à lista de arquivos carregados
+            const newFile = { name: file.name, path: data.path };
+            uploadedFiles.push(newFile);
+            
+            // Atualizar o estado local imediatamente
+            setFormData(prev => ({
+              ...prev,
+              knowledgeFiles: [...prev.knowledgeFiles, newFile]
+            }));
+            
+            toast({
+              title: `Arquivo carregado: ${file.name}`,
+              description: "O arquivo foi carregado com sucesso."
+            });
+            
+            return newFile;
+          } catch (error) {
+            console.error(`Erro ao fazer upload de ${file.name}:`, error);
+            return null;
+          }
+        });
+        
+        const results = await Promise.all(uploadPromises);
+        const successfulUploads = results.filter(Boolean) as KnowledgeFile[];
+        
+        // Atualizar a lista de arquivos no banco de dados
+        if (successfulUploads.length > 0) {
+          try {
+            await updateAgentFiles(currentAgentId, uploadedFiles);
+            
+            // Enviar arquivos para processamento em segundo plano
+            setIsFileLoading(false);
+            
+            // Iniciar processamento de texto em segundo plano
+            for (const file of selectedFiles) {
+              const textContent = await extractTextFromFile(file);
+              if (textContent) {
+                supabase.functions.invoke(
+                  'process-extracted-text',
+                  {
+                    body: { 
+                      agentId: currentAgentId, 
+                      textContent: textContent, 
+                      fileName: file.name 
+                    },
+                  }
+                ).then(({ data, error }) => {
+                  if (error) {
+                    console.error(`Erro ao processar arquivo ${file.name}:`, error);
+                  } else {
+                    console.log(`Arquivo ${file.name} processado com sucesso:`, data);
+                  }
+                });
+              }
+            }
+            
+            // Limpar a lista de arquivos selecionados
+            setSelectedFiles([]);
+            
+          } catch (error) {
+            console.error("Erro ao atualizar arquivos do agente:", error);
+            toast({
+              title: "Erro ao salvar arquivos",
+              description: "Os arquivos foram carregados, mas houve um erro ao salvar a lista no banco de dados.",
+              variant: "destructive"
+            });
+          }
         }
         
-        toast({ title: "Sucesso", description: "Agente criado com sucesso!" });
+        setIsFileLoading(false);
       }
-      
-      onCancel();
+
+      onCancel(); // Fechar o formulário após salvar
 
     } catch (error: any) {
-      console.error("Erro ao salvar agente:", error);
+      console.error("Erro geral ao salvar/processar agente:", error);
       toast({
-        title: "Erro ao Salvar",
-        description: `Não foi possível ${isEditMode ? 'atualizar' : 'criar'} o agente. ${error.message || ''}`,
+        title: "Erro Geral",
+        description: `Não foi possível ${isEditMode ? 'atualizar' : 'criar'} o agente ou processar arquivos. ${error.message || ''}`,
         variant: "destructive",
       });
     } finally {
       setIsSubmitting(false);
-      setIsFileLoading(false);
+      setIsFileLoading(false); 
     }
   };
+
+  // Função para remover um arquivo do agente
+  const removeFileFromAgent = async (fileName: string) => {
+    if (!agentToEdit?.id) return;
+    
+    try {
+      setIsDeletingFile(fileName);
+      
+      // 1. Fazer uma cópia dos knowledgeFiles atuais, excluindo o arquivo a ser removido
+      const updatedFiles = formData.knowledgeFiles.filter(file => file.name !== fileName);
+      
+      // 2. Atualizar o agente com a nova lista de arquivos usando a função específica
+      await updateAgentFiles(agentToEdit.id, updatedFiles);
+      
+      // 3. Atualizar o estado local
+      setFormData(prev => ({
+        ...prev,
+        knowledgeFiles: updatedFiles
+      }));
+      
+      toast({
+        title: "Arquivo removido",
+        description: `O arquivo "${fileName}" foi removido com sucesso.`
+      });
+      
+    } catch (error) {
+      console.error(`Erro ao remover arquivo ${fileName}:`, error);
+      toast({
+        title: "Erro ao remover arquivo",
+        description: error instanceof Error ? error.message : "Erro desconhecido",
+        variant: "destructive"
+      });
+    } finally {
+      setIsDeletingFile(null);
+    }
+  };
+
+  // --- LOG NA RENDERIZAÇÃO --- 
+  console.log("[AgentForm RENDER FINAL] formData.knowledgeFiles:", formData.knowledgeFiles);
+  // -------------------------
 
   return (
     <Card className="w-full max-w-lg mx-auto">
@@ -267,6 +435,19 @@ export function AgentForm({ onCancel, agentToEdit }: AgentFormProps) {
           <CardTitle>{isEditMode ? "Editar Agente de IA" : "Novo Agente de IA"}</CardTitle>
         </CardHeader>
         <CardContent className="space-y-6">
+          <div className="flex flex-col items-center gap-4 mb-4">
+            <AgentAvatarUploader
+              agentId={agentId}
+              agentName={formData.name || (isEditMode ? "Agente" : "Novo Agente")}
+              avatarUrl={formData.avatar || null}
+              onAvatarUpdated={handleAvatarUpdated}
+              size="lg"
+            />
+            <p className="text-sm text-muted-foreground text-center">
+              Foto do agente (opcional)
+            </p>
+          </div>
+        
           <div className="space-y-2">
             <Label htmlFor="name">Nome *</Label>
             <Input
@@ -345,22 +526,28 @@ export function AgentForm({ onCancel, agentToEdit }: AgentFormProps) {
                 <p className="text-sm font-medium">Arquivos Carregados:</p>
                 <ul className="space-y-1">
                   {formData.knowledgeFiles.map((file) => (
-                    <li key={file.path} className="flex items-center justify-between text-sm bg-muted p-2 rounded">
+                    <li key={file.path || file.name} className="flex items-center justify-between text-sm bg-muted p-2 rounded">
                       <span className="flex items-center gap-2 truncate">
                         <FileText size={16} /> 
-                        <span title={file.name} className="truncate">{file.name}</span>
+                        <span title={file.name} className="truncate">{file.name || 'Nome Indisponível'}</span>
                       </span>
-                      <Button 
-                        type="button" 
-                        variant="ghost" 
-                        size="icon" 
-                        className="h-6 w-6 text-destructive hover:text-destructive"
-                        onClick={() => removeExistingFile(file.path)}
-                        disabled={isFileLoading || isSubmitting}
-                      >
-                        <X size={14} />
-                        <span className="sr-only">Remover {file.name}</span>
-                      </Button>
+                      {isEditMode && (
+                        <Button 
+                          type="button" 
+                          variant="ghost" 
+                          size="icon" 
+                          className="h-6 w-6 text-destructive hover:text-destructive"
+                          onClick={() => removeFileFromAgent(file.name)}
+                          disabled={isFileLoading || isSubmitting || isDeletingFile === file.name}
+                        >
+                          {isDeletingFile === file.name ? (
+                            <Loader2 size={14} className="animate-spin" />
+                          ) : (
+                            <Trash2 size={14} />
+                          )}
+                          <span className="sr-only">Remover arquivo {file.name}</span>
+                        </Button>
+                      )}
                     </li>
                   ))}
                 </ul>

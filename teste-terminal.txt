@@ -1,0 +1,3 @@
+Este arquivo foi criado via terminal.
+É um teste para o processamento TXT.
+Linha final.

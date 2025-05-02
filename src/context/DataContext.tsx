@@ -26,21 +26,30 @@ interface DbAgent {
   knowledges_files?: KnowledgeFile[]; // Corrected: Use knowledges_files
 }
 
-// Adapter function to convert DB data to frontend type
-function adaptAgentFromDb(dbAgent: DbAgent): Agent {
-  return {
-    id: dbAgent.id,
-    name: dbAgent.name,
-    avatar: dbAgent.avatar,
-    prompt: dbAgent.prompt,
-    description: dbAgent.description || '', // Handle potential null from DB
-    temperature: dbAgent.temperature, // Already optional
-    createdAt: new Date(dbAgent.created_at),
-    updatedAt: new Date(dbAgent.updated_at),
-    createdBy: dbAgent.created_by,
-    // Corrected: Use knowledges_files from DB
-    knowledgeFiles: dbAgent.knowledges_files || [], 
-  };
+// Interface para o objeto usado para atualizar o agente no banco de dados
+interface AgentUpdateData {
+  name?: string;
+  description?: string;
+  prompt?: string;
+  temperature?: number;
+  avatar?: string;
+  knowledges_files?: KnowledgeFile[];
+  updated_at?: string;
+}
+
+// Define interface para mapear o expert do banco para nosso tipo
+interface DbExpert {
+  id: string;
+  name: string;
+  niche: string;
+  target_audience: string;
+  deliverables: string;
+  benefits: string;
+  objections: string;
+  avatar?: string;
+  created_at: string;
+  updated_at: string;
+  user_id: string;
 }
 
 interface DataContextType {
@@ -49,12 +58,14 @@ interface DataContextType {
   createAgent: (agentData: Omit<Agent, "id" | "createdAt" | "updatedAt" | "createdBy" | "knowledgeFiles">) => Promise<Agent>; 
   updateAgent: (id: string, agentData: Partial<Omit<Agent, "id" | "createdAt" | "updatedAt" | "createdBy">>) => Promise<void>; 
   deleteAgent: (id: string) => Promise<void>; 
+  getAgentById: (agentId: string) => Promise<Agent | null>; 
+  updateAgentFiles: (agentId: string, files: KnowledgeFile[]) => Promise<void>;
   
-  // Experts (Keep mocks for now or update similarly if needed)
+  // Experts (métodos atualizados para Promises)
   experts: Expert[];
-  addExpert: (expert: Omit<Expert, "id" | "createdAt" | "updatedAt" | "userId">) => void;
-  updateExpert: (id: string, expert: Partial<Omit<Expert, "id" | "createdAt" | "updatedAt" | "userId">>) => void;
-  deleteExpert: (id: string) => void;
+  addExpert: (expert: Omit<Expert, "id" | "createdAt" | "updatedAt" | "userId">) => Promise<Expert>;
+  updateExpert: (id: string, expert: Partial<Omit<Expert, "id" | "createdAt" | "updatedAt" | "userId">>) => Promise<Expert>;
+  deleteExpert: (id: string) => Promise<void>;
   
   // Chats (Keep mocks for now or update similarly if needed)
   chats: Chat[];
@@ -65,7 +76,7 @@ interface DataContextType {
   deleteChat: (id: string) => void;
   deleteMessageFromChat: (chatId: string, messageId: string) => void;
   
-  // Copy Generation (Keep as is for now)
+  // Copy Generation (Keep as is)
   generateCopy: (request: CopyRequest) => Promise<string>;
 
   isLoading: boolean;
@@ -85,7 +96,7 @@ const mockChats: Chat[] = [/* ... */];
 export function DataProvider({ children }: { children: ReactNode }) {
   const { currentUser } = useAuth();
   const [agents, setAgents] = useState<Agent[]>([]); 
-  const [experts, setExperts] = useState<Expert[]>(mockExperts); // Keep using mocks for now
+  const [experts, setExperts] = useState<Expert[]>([]); // Substituído: não usar mais mocks
   const [chats, setChats] = useState<Chat[]>(mockChats);       // Keep using mocks for now
   const [currentChat, setCurrentChat] = useState<Chat | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -98,20 +109,47 @@ export function DataProvider({ children }: { children: ReactNode }) {
     const fetchInitialData = async () => {
       setIsLoading(true);
       try {
-        // Fetch Agents
+        // Fetch Agents - Otimização: selecione apenas os campos necessários para a listagem
         const { data: agentsData, error: agentsError } = await supabase
           .from(AGENTS_TABLE)
-          .select('*'); // Fetch all columns
-          // .eq('created_by', currentUser.id); // Uncomment if admins should only see their own agents initially
-        
+          .select('id, name, avatar, prompt, description, temperature, created_at, updated_at, created_by')
+          .order('created_at', { ascending: false });
         if (agentsError) throw agentsError;
-        // Adapt agents data
-        setAgents(agentsData ? agentsData.map(adaptAgentFromDb) : []);
+        setAgents(agentsData ? agentsData.map((dbAgent: any) => ({
+          id: dbAgent.id,
+          name: dbAgent.name,
+          avatar: dbAgent.avatar,
+          prompt: dbAgent.prompt,
+          description: dbAgent.description || '',
+          temperature: dbAgent.temperature, 
+          createdAt: new Date(dbAgent.created_at),
+          updatedAt: new Date(dbAgent.updated_at),
+          createdBy: dbAgent.created_by,
+          knowledgeFiles: [], // Não carregue os arquivos na listagem inicial (serão carregados sob demanda)
+        })) : []);
 
-        // TODO: Fetch Experts from DB (similar pattern)
-        // const { data: expertsData, error: expertsError } = await supabase.from(EXPERTS_TABLE)...;
-        // setExperts(expertsData ? expertsData.map(adaptExpertFromDb) : []);
-        setExperts(mockExperts); // Keep using mock for now
+        // Buscar Experts do DB
+        const { data: expertsData, error: expertsError } = await supabase
+          .from(EXPERTS_TABLE)
+          .select('*')
+          .eq('user_id', currentUser.id)
+          .order('created_at', { ascending: false });
+          
+        if (expertsError) throw expertsError;
+        
+        setExperts(expertsData ? expertsData.map((dbExpert: DbExpert) => ({
+          id: dbExpert.id,
+          name: dbExpert.name,
+          niche: dbExpert.niche,
+          targetAudience: dbExpert.target_audience,
+          deliverables: dbExpert.deliverables,
+          benefits: dbExpert.benefits,
+          objections: dbExpert.objections,
+          avatar: dbExpert.avatar,
+          createdAt: new Date(dbExpert.created_at),
+          updatedAt: new Date(dbExpert.updated_at),
+          userId: dbExpert.user_id
+        })) : []);
 
         // TODO: Fetch Chats from DB (similar pattern)
         // const { data: chatsData, error: chatsError } = await supabase.from(CHATS_TABLE)...;
@@ -124,7 +162,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
         console.error("Error loading initial data from Supabase:", error);
         // Handle error appropriately (e.g., show toast, fallback to empty)
         setAgents([]);
-        setExperts(mockExperts); // Fallback to mocks on error for now
+        setExperts([]); // Deixar vazio em caso de erro
         setChats(mockChats);
       } finally {
         setIsLoading(false);
@@ -141,7 +179,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
       if (!currentUser) {
           setInitialLoadComplete(false);
           setAgents([]); // Clear data on logout
-          setExperts(mockExperts);
+          setExperts([]);
           setChats(mockChats);
       }
   }, [currentUser]);
@@ -169,18 +207,26 @@ export function DataProvider({ children }: { children: ReactNode }) {
     const { data, error } = await supabase
       .from(AGENTS_TABLE)
       .insert(dataToInsert)
-      .select()
+      .select('*') 
       .single();
 
-    if (error) {
+    if (error || !data) {
       console.error("Error creating agent:", error);
-      throw new Error(`Falha ao criar agente: ${error.message}`);
+      throw new Error(`Falha ao criar agente: ${error?.message || 'Nenhum dado retornado'}`);
     }
-    if (!data) {
-      throw new Error("Falha ao criar agente: Nenhum dado retornado.");
-    }
-
-    const newAgent = adaptAgentFromDb(data as DbAgent);
+    const dbData: any = data; // Usa any para evitar erro de tipo
+    const newAgent: Agent = {
+        id: dbData.id,
+        name: dbData.name,
+        avatar: dbData.avatar,
+        prompt: dbData.prompt,
+        description: dbData.description || '',
+        temperature: dbData.temperature,
+        createdAt: new Date(dbData.created_at),
+        updatedAt: new Date(dbData.updated_at),
+        createdBy: dbData.created_by,
+        knowledgeFiles: [],
+    };
     setAgents(prevAgents => [...prevAgents, newAgent]);
     return newAgent; 
 
@@ -194,7 +240,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
        throw new Error("Apenas administradores podem atualizar agentes.");
     }
 
-    const dataToUpdate: { [key: string]: any } = { 
+    const dataToUpdate: AgentUpdateData = { 
         // Spread core fields (name, description, prompt, temperature, avatar)
         ...(agentData.name && { name: agentData.name }),
         ...(agentData.description !== undefined && { description: agentData.description }),
@@ -210,7 +256,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
       .from(AGENTS_TABLE)
       .update(dataToUpdate) 
       .eq('id', id)
-      .select()
+      .select('*') // Garante que retorna todas as colunas
       .single();
 
     if (error) {
@@ -221,7 +267,23 @@ export function DataProvider({ children }: { children: ReactNode }) {
       throw new Error("Falha ao atualizar agente: Nenhum dado retornado.");
     }
 
-    const updatedAgent = adaptAgentFromDb(data as DbAgent);
+    const dbData = data as DbAgent; // Cast seguro
+    const updatedAgent: Agent = {
+        id: dbData.id,
+        name: dbData.name,
+        avatar: dbData.avatar,
+        prompt: dbData.prompt,
+        description: dbData.description || '',
+        temperature: dbData.temperature,
+        createdAt: new Date(dbData.created_at),
+        updatedAt: new Date(dbData.updated_at),
+        createdBy: dbData.created_by,
+        // Usa knowledgeS_files com fallback seguro
+        knowledgeFiles: Array.isArray(dbData.knowledges_files) ? dbData.knowledges_files.filter(
+             (file): file is KnowledgeFile => 
+               file && typeof file.name === 'string' && typeof file.path === 'string'
+           ) : [], 
+    };
     setAgents(prevAgents =>
       prevAgents.map(agent => (agent.id === id ? updatedAgent : agent))
     );
@@ -277,45 +339,395 @@ export function DataProvider({ children }: { children: ReactNode }) {
     }
   }, [currentUser]);
 
-  // Experts CRUD (Mocks - Keep as is or update later)
-  const addExpert = useCallback((expertData: Omit<Expert, "id" | "createdAt" | "updatedAt" | "userId">) => {
-    // ... mock implementation ...
-      if (!currentUser) return;
+  // --- NOVA getAgentById (Busca agente e nomes de arquivos da tabela de chunks) ---
+  const getAgentById = useCallback(async (agentId: string): Promise<Agent | null> => {
+    console.log(`[DataContext] Buscando agente: ${agentId}`);
+    try {
+      // Buscar dados completos do agente incluindo arquivos
+      const { data: agentData, error } = await supabase
+        .from(AGENTS_TABLE)
+        .select('*')
+        .eq('id', agentId)
+        .single();
+
+      if (error || !agentData) {
+        console.error(`Erro ao buscar dados do agente ${agentId}:`, error);
+        return null;
+      }
+
+      // Definir interface para o objeto retornado pelo Supabase
+      interface AgentDataFromDB {
+        id: string;
+        name: string;
+        avatar: string;
+        prompt: string;
+        description: string;
+        temperature: number;
+        created_at: string;
+        updated_at: string;
+        created_by: string;
+        knowledges_files?: KnowledgeFile[];
+      }
+
+      // Fazer cast para o tipo apropriado
+      const typedAgentData = agentData as unknown as AgentDataFromDB;
+
+      // Extrair a lista de arquivos
+      const knowledgeFiles = typedAgentData.knowledges_files 
+        ? (typedAgentData.knowledges_files as KnowledgeFile[]).filter(
+            file => file && typeof file.name === 'string' && typeof file.path === 'string'
+          )
+        : [];
+
+      // Se não há arquivos no campo knowledges_files, buscar na tabela de chunks como fallback
+      if (knowledgeFiles.length === 0) {
+        console.log(`[DataContext] Nenhum arquivo encontrado no campo knowledges_files, verificando na tabela de chunks...`);
+        
+        try {
+          const { data: chunksData, error: chunksError } = await supabase
+            .from('agent_knowledge_chunks' as any)
+            .select('file_path' as any)
+            .eq('agent_id', agentId)
+            .is('file_path', 'not.null');
+
+          if (!chunksError && chunksData && chunksData.length > 0) {
+            // Extrair nomes de arquivos únicos
+            const uniqueFileNames = [...new Set(chunksData.map(chunk => (chunk as any).file_path))];
+            
+            // Criar objetos KnowledgeFile para cada nome de arquivo
+            const filesFromChunks = uniqueFileNames.map(name => ({
+              name,
+              path: name // Caminho é o próprio nome, já que estamos reconstruindo
+            }));
+            
+            console.log(`[DataContext] Encontrados ${filesFromChunks.length} arquivos nos chunks. Atualizando o agente...`);
+            
+            // Atualizar o agente com os arquivos encontrados
+            const updateData: AgentUpdateData = { knowledges_files: filesFromChunks };
+            await supabase
+              .from(AGENTS_TABLE)
+              .update(updateData)
+              .eq('id', agentId);
+              
+            // Usar os arquivos encontrados
+            knowledgeFiles.push(...filesFromChunks);
+          }
+        } catch (chunksError) {
+          console.error(`[DataContext] Erro ao buscar dados de chunks:`, chunksError);
+          // Continuar mesmo com erro
+        }
+      }
+
+      // Construir o objeto de resposta
+      const agent: Agent = {
+        id: typedAgentData.id,
+        name: typedAgentData.name,
+        avatar: typedAgentData.avatar,
+        prompt: typedAgentData.prompt,
+        description: typedAgentData.description || '',
+        temperature: typedAgentData.temperature,
+        createdAt: new Date(typedAgentData.created_at),
+        updatedAt: new Date(typedAgentData.updated_at),
+        createdBy: typedAgentData.created_by,
+        knowledgeFiles: knowledgeFiles
+      };
+
+      console.log(`[DataContext] Agente carregado com ${knowledgeFiles.length} arquivos:`, 
+        knowledgeFiles.map(f => f.name).join(', '));
+      
+      // Atualizar o cache local para garantir consistência
+      setAgents(prevAgents =>
+        prevAgents.map(a => a.id === agentId ? agent : a)
+      );
+
+      return agent;
+    } catch (error) {
+      console.error(`[DataContext] Erro ao buscar agente ${agentId}:`, error);
+      return null;
+    }
+  }, []);
+
+  // --- Método para atualizar apenas os arquivos de um agente ---
+  const updateAgentFiles = useCallback(async (
+    agentId: string,
+    files: KnowledgeFile[]
+  ) => {
+    if (!currentUser || currentUser.role !== "admin") {
+      throw new Error("Apenas administradores podem atualizar agentes.");
+    }
+
+    try {
+      // 1. Primeiro, obter a lista atual de arquivos do agente
+      const { data: agentData, error: fetchError } = await supabase
+        .from(AGENTS_TABLE)
+        .select('*')
+        .eq('id', agentId)
+        .single();
+      
+      if (fetchError) {
+        console.error(`[DataContext] Erro ao buscar arquivos atuais do agente ${agentId}:`, fetchError);
+      }
+
+      // 2. Comparar arquivos anteriores com a nova lista para encontrar os arquivos removidos
+      const previousFiles = ((agentData as any)?.knowledges_files || []) as KnowledgeFile[];
+      const currentFileNames = files.map(f => f.name);
+      const removedFiles = previousFiles.filter(
+        prevFile => !currentFileNames.includes(prevFile.name)
+      );
+
+      // 3. Se houver arquivos removidos, excluir seus chunks da tabela agent_knowledge_chunks
+      if (removedFiles.length > 0) {
+        console.log(`[DataContext] Excluindo chunks dos arquivos removidos: ${removedFiles.map(f => f.name).join(', ')}`);
+        
+        for (const file of removedFiles) {
+          // Usar o cliente supabase diretamente para evitar erros de tipagem
+          const { error: deleteChunksError } = await supabase
+            .from('agent_knowledge_chunks' as any)
+            .delete()
+            .eq('agent_id', agentId)
+            .eq('file_path', file.name);
+            
+          if (deleteChunksError) {
+            console.error(`[DataContext] Erro ao excluir chunks do arquivo ${file.name}:`, deleteChunksError);
+            // Continuamos mesmo se a exclusão falhar
+          }
+        }
+      }
+
+      // 4. Atualizar a lista de arquivos do agente
+      const updateData: AgentUpdateData = { knowledges_files: files };
+      const { error } = await supabase
+        .from(AGENTS_TABLE)
+        .update(updateData)
+        .eq('id', agentId);
+
+      if (error) {
+        console.error("Erro ao atualizar arquivos do agente:", error);
+        throw new Error(`Falha ao atualizar arquivos: ${error.message}`);
+      }
+      
+      // 5. Atualizar o estado local de agents
+      setAgents(prevAgents =>
+        prevAgents.map(agent => 
+          agent.id === agentId 
+            ? { ...agent, knowledgeFiles: files } 
+            : agent
+        )
+      );
+      
+      console.log(`[DataContext] Arquivos do agente ${agentId} atualizados com sucesso`);
+    } catch (error) {
+      console.error(`[DataContext] Erro ao atualizar arquivos do agente ${agentId}:`, error);
+      throw error;
+    }
+  }, [currentUser]);
+
+  // --- Manter refetchAgentData (OPCIONAL - pode ser removido se não usado em outro lugar) ---
+  // Se mantido, deve usar getAgentById para atualizar o estado global 'agents'
+  const refetchAgentData = useCallback(async (agentId: string) => {
+     console.log(`[DataContext] Refetching global state for agent: ${agentId}`);
+     try {
+         const freshAgentData = await getAgentById(agentId); 
+         if (freshAgentData) {
+             setAgents(prevAgents => 
+                 prevAgents.map(agent => 
+                     agent.id === agentId ? freshAgentData : agent
+                 )
+             );
+             console.log(`[DataContext] Global agent state updated for ${agentId}`);
+         } 
+     } catch(error) {
+          console.error(`[DataContext] Error during refetchAgentData for ${agentId}:`, error);
+     }
+  }, [getAgentById]); // Depende de getAgentById
+
+  // Experts CRUD (Implementação real usando Supabase)
+  const addExpert = useCallback(async (expertData: Omit<Expert, "id" | "createdAt" | "updatedAt" | "userId">) => {
+    if (!currentUser) {
+      throw new Error("Usuário não autenticado.");
+    }
     
+    try {
+      const dataToInsert = {
+        name: expertData.name,
+        niche: expertData.niche,
+        target_audience: expertData.targetAudience,
+        deliverables: expertData.deliverables,
+        benefits: expertData.benefits,
+        objections: expertData.objections,
+        avatar: expertData.avatar,
+        user_id: currentUser.id
+      };
+      
+      const { data, error } = await supabase
+        .from(EXPERTS_TABLE)
+        .insert(dataToInsert)
+        .select('*')
+        .single();
+        
+      if (error) {
+        console.error("Erro ao criar expert:", error);
+        throw new Error(`Falha ao criar expert: ${error.message}`);
+      }
+      
+      if (!data) {
+        throw new Error("Falha ao criar expert: Nenhum dado retornado.");
+      }
+      
+      const dbExpert = data as DbExpert;
     const newExpert: Expert = {
-      ...expertData,
-      id: `expert-${uuidv4()}`,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-      userId: currentUser.id
+        id: dbExpert.id,
+        name: dbExpert.name,
+        niche: dbExpert.niche,
+        targetAudience: dbExpert.target_audience,
+        deliverables: dbExpert.deliverables,
+        benefits: dbExpert.benefits,
+        objections: dbExpert.objections,
+        avatar: dbExpert.avatar,
+        createdAt: new Date(dbExpert.created_at),
+        updatedAt: new Date(dbExpert.updated_at),
+        userId: dbExpert.user_id
     };
     
     setExperts(prevExperts => [...prevExperts, newExpert]);
+      return newExpert;
+      
+    } catch (error) {
+      console.error("Erro ao adicionar expert:", error);
+      throw error;
+    }
   }, [currentUser]);
   
-  const updateExpert = useCallback((id: string, expertData: Partial<Omit<Expert, "id" | "createdAt" | "updatedAt" | "userId">>) => {
-   // ... mock implementation ...
-    if (!currentUser) return;
+  const updateExpert = useCallback(async (id: string, expertData: Partial<Omit<Expert, "id" | "createdAt" | "updatedAt" | "userId">>) => {
+    if (!currentUser) {
+      throw new Error("Usuário não autenticado.");
+    }
+    
+    try {
+      const dataToUpdate: Record<string, any> = {};
+      
+      if (expertData.name !== undefined) dataToUpdate.name = expertData.name;
+      if (expertData.niche !== undefined) dataToUpdate.niche = expertData.niche;
+      if (expertData.targetAudience !== undefined) dataToUpdate.target_audience = expertData.targetAudience;
+      if (expertData.deliverables !== undefined) dataToUpdate.deliverables = expertData.deliverables;
+      if (expertData.benefits !== undefined) dataToUpdate.benefits = expertData.benefits;
+      if (expertData.objections !== undefined) dataToUpdate.objections = expertData.objections;
+      if (expertData.avatar !== undefined) dataToUpdate.avatar = expertData.avatar;
+      
+      // Adicionar timestamp de atualização
+      dataToUpdate.updated_at = new Date().toISOString();
+      
+      const { data, error } = await supabase
+        .from(EXPERTS_TABLE)
+        .update(dataToUpdate)
+        .eq('id', id)
+        .eq('user_id', currentUser.id) // Garantir que o usuário seja proprietário do expert
+        .select('*')
+        .single();
+        
+      if (error) {
+        console.error("Erro ao atualizar expert:", error);
+        throw new Error(`Falha ao atualizar expert: ${error.message}`);
+      }
+      
+      if (!data) {
+        throw new Error("Falha ao atualizar expert: Nenhum dado retornado.");
+      }
+      
+      const dbExpert = data as DbExpert;
+      const updatedExpert: Expert = {
+        id: dbExpert.id,
+        name: dbExpert.name,
+        niche: dbExpert.niche,
+        targetAudience: dbExpert.target_audience,
+        deliverables: dbExpert.deliverables,
+        benefits: dbExpert.benefits,
+        objections: dbExpert.objections,
+        avatar: dbExpert.avatar,
+        createdAt: new Date(dbExpert.created_at),
+        updatedAt: new Date(dbExpert.updated_at),
+        userId: dbExpert.user_id
+      };
     
     setExperts(prevExperts =>
-      prevExperts.map(expert =>
-        expert.id === id && expert.userId === currentUser.id
-          ? { 
-              ...expert, 
-              ...expertData,
-              updatedAt: new Date() 
-            }
-          : expert
-      )
-    );
+        prevExperts.map(expert => (expert.id === id ? updatedExpert : expert))
+      );
+      
+      return updatedExpert;
+      
+    } catch (error) {
+      console.error("Erro ao atualizar expert:", error);
+      throw error;
+    }
   }, [currentUser]);
   
-  const deleteExpert = useCallback((id: string) => {
-    // ... mock implementation ...
-     if (!currentUser) return;
-    setExperts(prevExperts => 
-      prevExperts.filter(expert => !(expert.id === id && expert.userId === currentUser.id))
-    );
+  const deleteExpert = useCallback(async (id: string) => {
+    if (!currentUser) {
+      throw new Error("Usuário não autenticado.");
+    }
+    
+    try {
+      // Primeiro, verificar se há avatar para excluir
+      let avatarUrl: string | null = null;
+      try {
+        const result = await supabase
+          .from(EXPERTS_TABLE)
+          .select('avatar')
+          .eq('id', id)
+          .eq('user_id', currentUser.id)
+          .single();
+          
+        if (result.data && !result.error) {
+          avatarUrl = (result.data as any).avatar;
+        }
+      } catch (err) {
+        console.error("Erro ao buscar avatar:", err);
+      }
+        
+      // Se houver avatar, tentar excluí-lo do storage
+      if (avatarUrl) {
+        try {
+          // Extrair o caminho do arquivo da URL completa
+          // O formato esperado é algo como: https://xxx.supabase.co/storage/v1/object/public/expert-avatars/[ID]/[TIMESTAMP]-[FILENAME]
+          // Precisamos apenas da parte após 'expert-avatars/'
+          const urlParts = avatarUrl.split('expert-avatars/');
+          if (urlParts.length > 1) {
+            const avatarPath = urlParts[1]; // Pega apenas a parte do caminho após 'expert-avatars/'
+            console.log("Tentando excluir avatar do caminho:", avatarPath);
+            
+            await supabase.storage
+              .from('expert-avatars')
+              .remove([avatarPath]);
+              
+            console.log("Avatar excluído com sucesso do storage");
+          } else {
+            console.warn("Formato de URL de avatar inesperado:", avatarUrl);
+          }
+        } catch (avatarError) {
+          console.error("Erro ao excluir avatar do expert:", avatarError);
+          // Continua mesmo se falhar ao excluir o avatar
+        }
+      }
+      
+      // Excluir o expert do banco de dados
+      const { error } = await supabase
+        .from(EXPERTS_TABLE)
+        .delete()
+        .eq('id', id)
+        .eq('user_id', currentUser.id);
+        
+      if (error) {
+        console.error("Erro ao excluir expert:", error);
+        throw new Error(`Falha ao excluir expert: ${error.message}`);
+      }
+      
+      // Atualizar o estado local
+      setExperts(prevExperts => prevExperts.filter(expert => expert.id !== id));
+      
+    } catch (error) {
+      console.error("Erro ao excluir expert:", error);
+      throw error;
+    }
   }, [currentUser]);
 
   // Chats CRUD (Mocks - Keep as is or update later)
@@ -528,6 +940,9 @@ Use estas informações como base para dar mais relevância e especificidade à 
     createAgent,
     updateAgent,
     deleteAgent,
+    getAgentById,
+    updateAgentFiles,
+    refetchAgentData,
     experts,
     addExpert,
     updateExpert,
@@ -544,6 +959,9 @@ Use estas informações como base para dar mais relevância e especificidade à 
     isLoading, 
     agents, experts, chats, currentChat, 
     createAgent, updateAgent, deleteAgent,
+    getAgentById,
+    updateAgentFiles,
+    refetchAgentData,
     addExpert, updateExpert, deleteExpert,
     stableSetCurrentChat, createChat, addMessageToChat, deleteChat, deleteMessageFromChat,
     generateCopy
