@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect, ReactNode, useMemo, useCallback } from "react";
-import { Agent, Expert, Chat, Message, CopyRequest, User, KnowledgeFile } from "@/types";
+import { Agent, Expert, Chat, Message, CopyRequest, User, KnowledgeFile, ContentType } from "@/types";
 import { useAuth } from "./AuthContext";
 import { v4 as uuidv4 } from "uuid";
 // Import Supabase client
@@ -9,7 +9,9 @@ import { supabase } from "@/integrations/supabase/client";
 const AGENTS_TABLE = 'agents';
 const EXPERTS_TABLE = 'experts'; // Assuming experts table name
 const CHATS_TABLE = 'chats';     // Assuming chats table name
+const CONTENT_TYPES_TABLE = 'content_types'; // Table for content types
 const KNOWLEDGE_BUCKET = 'agent.files';
+const CONTENT_TYPE_BUCKET = 'content.type.avatars'; // Bucket for content type avatars
 
 // Define the shape of the Agent data returned from Supabase
 // (assuming snake_case for column names like created_by, knowledge_files)
@@ -52,6 +54,17 @@ interface DbExpert {
   user_id: string;
 }
 
+// Interface para ContentType no banco de dados
+interface DbContentType {
+  id: string;
+  name: string;
+  avatar?: string;
+  description?: string;
+  created_at: string;
+  updated_at: string;
+  user_id: string;
+}
+
 interface DataContextType {
   agents: Agent[];
   // Modify createAgent to return the created Agent or its ID
@@ -79,6 +92,13 @@ interface DataContextType {
   // Copy Generation (Keep as is)
   generateCopy: (request: CopyRequest) => Promise<string>;
 
+  // ContentTypes
+  contentTypes: ContentType[];
+  createContentType: (contentTypeData: Omit<ContentType, "id" | "createdAt" | "updatedAt" | "userId">) => Promise<ContentType>;
+  updateContentType: (id: string, contentTypeData: Partial<Omit<ContentType, "id" | "createdAt" | "updatedAt" | "userId">>) => Promise<ContentType>;
+  deleteContentType: (id: string) => Promise<void>;
+  getContentTypeById: (id: string) => Promise<ContentType | null>;
+
   isLoading: boolean;
 }
 
@@ -92,6 +112,45 @@ const mockAgents: Agent[] = [ ... ];
 const mockExperts: Expert[] = [/* ... */];
 const mockChats: Chat[] = [/* ... */];
 
+// Mocks para ContentTypes
+const mockContentTypes: ContentType[] = [
+  {
+    id: '1',
+    name: 'Post Feed',
+    description: 'Conteúdo para o feed principal',
+    avatar: null,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+    userId: 'system'
+  },
+  {
+    id: '2',
+    name: 'Story',
+    description: 'Conteúdo para stories',
+    avatar: null,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+    userId: 'system'
+  },
+  {
+    id: '3',
+    name: 'Reels',
+    description: 'Conteúdo para reels/vídeos curtos',
+    avatar: null,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+    userId: 'system'
+  },
+  {
+    id: '4',
+    name: 'Anúncio',
+    description: 'Conteúdo para anúncios pagos',
+    avatar: null,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+    userId: 'system'
+  }
+];
 
 export function DataProvider({ children }: { children: ReactNode }) {
   const { currentUser } = useAuth();
@@ -99,6 +158,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const [experts, setExperts] = useState<Expert[]>([]); // Substituído: não usar mais mocks
   const [chats, setChats] = useState<Chat[]>(mockChats);       // Keep using mocks for now
   const [currentChat, setCurrentChat] = useState<Chat | null>(null);
+  const [contentTypes, setContentTypes] = useState<ContentType[]>(mockContentTypes); // Usar mocks temporariamente
   const [isLoading, setIsLoading] = useState(true);
   const [initialLoadComplete, setInitialLoadComplete] = useState(false);
 
@@ -151,6 +211,27 @@ export function DataProvider({ children }: { children: ReactNode }) {
           userId: dbExpert.user_id
         })) : []);
 
+        // Temporariamente desabilitar busca de ContentTypes
+        /*
+        // Buscar ContentTypes do DB
+        const { data: contentTypesData, error: contentTypesError } = await supabase
+          .from(CONTENT_TYPES_TABLE)
+          .select('*')
+          .order('created_at', { ascending: false });
+          
+        if (contentTypesError) throw contentTypesError;
+        
+        setContentTypes(contentTypesData ? contentTypesData.map((dbContentType: DbContentType) => ({
+          id: dbContentType.id,
+          name: dbContentType.name,
+          avatar: dbContentType.avatar,
+          description: dbContentType.description,
+          createdAt: new Date(dbContentType.created_at),
+          updatedAt: new Date(dbContentType.updated_at),
+          userId: dbContentType.user_id
+        })) : []);
+        */
+        
         // TODO: Fetch Chats from DB (similar pattern)
         // const { data: chatsData, error: chatsError } = await supabase.from(CHATS_TABLE)...;
         // setChats(chatsData ? chatsData.map(adaptChatFromDb) : []);
@@ -181,6 +262,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
           setAgents([]); // Clear data on logout
           setExperts([]);
           setChats(mockChats);
+          setContentTypes([]); // Limpar content types ao fazer logout
       }
   }, [currentUser]);
 
@@ -933,9 +1015,78 @@ Use estas informações como base para dar mais relevância e especificidade à 
     }
   }, [currentUser, agents, experts, currentChat]);
 
-  // --- Memoize the context value --- 
+  // --- ContentTypes CRUD --- (MOCK temporário)
+
+  const createContentType = useCallback(async (
+    contentTypeData: Omit<ContentType, "id" | "createdAt" | "updatedAt" | "userId">
+  ): Promise<ContentType> => {
+    if (!currentUser || currentUser.role !== "admin") {
+      throw new Error("Apenas administradores podem criar tipos de conteúdo.");
+    }
+    
+    // Criar mock temporário
+    const newContentType: ContentType = {
+      id: uuidv4(),
+      name: contentTypeData.name,
+      description: contentTypeData.description || "",
+      avatar: contentTypeData.avatar || null,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      userId: currentUser.id
+    };
+    
+    // Update local state
+    setContentTypes(prev => [newContentType, ...prev]);
+    
+    return newContentType;
+  }, [currentUser]);
+  
+  const updateContentType = useCallback(async (
+    id: string, 
+    contentTypeData: Partial<Omit<ContentType, "id" | "createdAt" | "updatedAt" | "userId">>
+  ): Promise<ContentType> => {
+    if (!currentUser || currentUser.role !== "admin") {
+      throw new Error("Apenas administradores podem atualizar tipos de conteúdo.");
+    }
+    
+    // Find the content type to update
+    const contentTypeIndex = contentTypes.findIndex(ct => ct.id === id);
+    if (contentTypeIndex === -1) {
+      throw new Error("Tipo de conteúdo não encontrado.");
+    }
+    
+    // Create updated content type
+    const updatedContentType: ContentType = {
+      ...contentTypes[contentTypeIndex],
+      ...contentTypeData,
+      updatedAt: new Date()
+    };
+    
+    // Update local state
+    const newContentTypes = [...contentTypes];
+    newContentTypes[contentTypeIndex] = updatedContentType;
+    setContentTypes(newContentTypes);
+    
+    return updatedContentType;
+  }, [currentUser, contentTypes]);
+  
+  const deleteContentType = useCallback(async (id: string): Promise<void> => {
+    if (!currentUser || currentUser.role !== "admin") {
+      throw new Error("Apenas administradores podem excluir tipos de conteúdo.");
+    }
+    
+    // Update local state
+    setContentTypes(prev => prev.filter(ct => ct.id !== id));
+  }, [currentUser]);
+  
+  const getContentTypeById = useCallback(async (id: string): Promise<ContentType | null> => {
+    const contentType = contentTypes.find(ct => ct.id === id);
+    return contentType || null;
+  }, [contentTypes]);
+
+  // Value object for context
   const value = useMemo(() => ({
-    isLoading, 
+    isLoading,
     agents,
     createAgent,
     updateAgent,
@@ -949,22 +1100,41 @@ Use estas informações como base para dar mais relevância e especificidade à 
     deleteExpert,
     chats,
     currentChat,
-    setCurrentChat: stableSetCurrentChat,
+    setCurrentChat,
     createChat,
     addMessageToChat,
     deleteChat,
     deleteMessageFromChat,
-    generateCopy
+    generateCopy,
+    contentTypes,
+    createContentType,
+    updateContentType,
+    deleteContentType,
+    getContentTypeById
   }), [
     isLoading, 
-    agents, experts, chats, currentChat, 
-    createAgent, updateAgent, deleteAgent,
+    agents, 
+    createAgent, 
+    updateAgent, 
+    deleteAgent, 
     getAgentById,
     updateAgentFiles,
     refetchAgentData,
-    addExpert, updateExpert, deleteExpert,
-    stableSetCurrentChat, createChat, addMessageToChat, deleteChat, deleteMessageFromChat,
-    generateCopy
+    experts, 
+    addExpert, 
+    updateExpert, 
+    deleteExpert,
+    chats, 
+    currentChat, 
+    createChat, 
+    addMessageToChat, 
+    deleteChat,
+    deleteMessageFromChat,
+    contentTypes,
+    createContentType,
+    updateContentType,
+    deleteContentType,
+    getContentTypeById
   ]);
 
   return <DataContext.Provider value={value}>{children}</DataContext.Provider>;

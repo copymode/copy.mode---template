@@ -66,6 +66,16 @@ export interface CopyRequest {
   additionalInfo: string;
 }
 
+export interface ContentType {
+  id: string;
+  name: string;
+  avatar?: string;
+  description?: string;
+  createdAt: Date;
+  updatedAt: Date;
+  userId: string;
+}
+
 // This helps TypeScript recognize the available RPC functions in Supabase
 declare global {
   namespace SupabaseRPC {

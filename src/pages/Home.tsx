@@ -17,11 +17,13 @@ import { SendHorizonal, Copy, Trash2, Pencil, Bot, User, Sparkles, ShieldAlert }
 import { Expert, Agent, Message, CopyRequest, Chat } from "@/types";
 import { v4 as uuidv4 } from "uuid";
 import { SelectItemWithAvatar, SelectTriggerWithAvatar } from "@/components/ui/select-with-avatar";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 
 export default function Home() {
   const { 
     experts,
     agents,
+    contentTypes,
     currentChat, 
     setCurrentChat,
     createChat, 
@@ -48,7 +50,6 @@ export default function Home() {
   
   const [chatToDelete, setChatToDelete] = useState<string | null>(null);
 
-  const contentTypes = ["Post Feed", "Story", "Reels", "Anúncio"];
   const messages = currentChat?.messages || [];
   const isInitialState = !currentChat;
 
@@ -273,8 +274,24 @@ export default function Home() {
                 </SelectContent>
               </Select>
 
-              <div className="w-full sm:w-[180px] text-sm text-muted-foreground px-3 py-2 border rounded-md bg-muted truncate">
-                 {selectedContentType || "Tipo não definido"}
+              <div className="w-full sm:w-[180px] text-sm text-muted-foreground px-3 py-2 border rounded-md bg-muted truncate flex items-center">
+                 {selectedContentType ? (
+                   <>
+                     {contentTypes.find(ct => ct.name === selectedContentType)?.avatar && (
+                       <Avatar className="h-6 w-6 mr-2 flex-shrink-0">
+                         <AvatarImage 
+                           src={contentTypes.find(ct => ct.name === selectedContentType)?.avatar || ''} 
+                           alt={selectedContentType} 
+                           className="object-cover"
+                         />
+                         <AvatarFallback>{selectedContentType[0]}</AvatarFallback>
+                       </Avatar>
+                     )}
+                     <span className="truncate">{selectedContentType}</span>
+                   </>
+                 ) : (
+                   "Tipo não definido"
+                 )}
                </div>
             </div>
           </div>
@@ -465,12 +482,26 @@ export default function Home() {
                    </Select>
 
                    <Select value={selectedContentType} onValueChange={setSelectedContentType}>
-                     <SelectTrigger>
+                     <SelectTriggerWithAvatar
+                       avatarSrc={selectedContentType 
+                         ? contentTypes.find(ct => ct.name === selectedContentType)?.avatar || null 
+                         : null}
+                       selectedName={selectedContentType 
+                         ? contentTypes.find(ct => ct.name === selectedContentType)?.name || null 
+                         : null}
+                     >
                        <SelectValue placeholder="Tipo de Conteúdo *" />
-                     </SelectTrigger>
+                     </SelectTriggerWithAvatar>
                      <SelectContent>
-                       {contentTypes.map((type) => (
-                         <SelectItem key={type} value={type}>{type}</SelectItem>
+                       {contentTypes.map((contentType) => (
+                         <SelectItemWithAvatar
+                           key={contentType.id} 
+                           value={contentType.name}
+                           avatarSrc={contentType.avatar || null}
+                           name={contentType.name}
+                         >
+                           {contentType.name}
+                         </SelectItemWithAvatar>
                        ))}
                      </SelectContent>
                    </Select>
