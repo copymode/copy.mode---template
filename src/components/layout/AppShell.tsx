@@ -65,6 +65,9 @@ export function AppShell({ children }: AppShellProps) {
   }, [searchTerm, chatHistory]);
 
   const isActive = (path: string) => {
+    if (path === "/") {
+      return location.pathname === "/" || location.pathname === "/home";
+    }
     return location.pathname === path;
   };
 
