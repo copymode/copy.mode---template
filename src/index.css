@@ -557,7 +557,7 @@ body::-webkit-scrollbar {
   .chat-container .flex-1.overflow-y-auto {
     flex: 1 1 auto;
     overflow-y: auto;
-    padding-bottom: 110px !important;
+    padding-bottom: 130px !important; /* Aumentado em 20px para mais espaço */
     -webkit-overflow-scrolling: touch;
   }
   
