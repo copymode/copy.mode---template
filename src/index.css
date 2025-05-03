@@ -139,39 +139,6 @@
     -webkit-overflow-scrolling: touch;
     overscroll-behavior: none;
   }
-
-  /* Aplicando padding-bottom maior para todo conteúdo principal em mobile */
-  main.flex-1.overflow-auto,
-  .flex-1.overflow-y-auto,
-  [role="main"],
-  .overflow-auto,
-  .overflow-y-auto {
-    padding-bottom: 150px !important;
-    -webkit-overflow-scrolling: touch;
-  }
-
-  /* Ajuste específico para container de chat */
-  .chat-container .flex-1.overflow-y-auto {
-    padding-bottom: 160px !important;
-  }
-
-  /* Força todos os elementos fixed no bottom a respeitar o safe-area-inset-bottom */
-  .fixed[style*="bottom"],
-  .fixed.bottom-0,
-  div[style*="position: fixed"][style*="bottom"],
-  .flex-shrink-0.fixed {
-    padding-bottom: env(safe-area-inset-bottom, 10px) !important;
-  }
-
-  /* Ajusta a altura da janela em dispositivos iOS */
-  html, body, #root {
-    height: -webkit-fill-available;
-  }
-
-  /* Garante que conteúdos principais ocupem toda a altura disponível */
-  .min-h-screen, .h-screen {
-    min-height: -webkit-fill-available;
-  }
 }
 
 @layer components {
@@ -576,22 +543,36 @@ body::-webkit-scrollbar {
 
 /* Ajustes específicos para dispositivos móveis */
 @media (max-width: 768px) {
+  /* Fixar o header na parte superior da tela */
+  header.bg-background.border-b.sticky {
+    position: fixed !important;
+    top: 0;
+    left: 0;
+    right: 0;
+    width: 100%;
+    z-index: 50;
+  }
+
+  /* Ajustar a área de rolagem para compensar o header fixo */
+  .chat-container {
+    padding-top: 60px !important; /* Espaço para o header fixo */
+  }
+
+  /* Áreas de rolagem principais com paddings ajustados para todos os layouts */
+  main.flex-1.overflow-auto,
+  .flex-1.overflow-y-auto,
+  .chat-container .flex-1.overflow-y-auto {
+    padding-bottom: 130px !important; /* Aumentado em 20px para mais espaço */
+    -webkit-overflow-scrolling: touch;
+  }
+
   /* Ajustes para o container principal */
   .chat-container {
     min-height: 100vh;
     display: flex;
     flex-direction: column;
-    padding-top: 60px;  /* Altura aproximada do header */
     margin-top: 0 !important;
     margin-bottom: 0 !important;
-  }
-
-  /* Área de chat rolável */
-  .chat-container .flex-1.overflow-y-auto {
-    flex: 1 1 auto;
-    overflow-y: auto;
-    padding-bottom: 130px !important; /* Aumentado em 20px para mais espaço */
-    -webkit-overflow-scrolling: touch;
   }
   
   /* Input fixo no rodapé */
