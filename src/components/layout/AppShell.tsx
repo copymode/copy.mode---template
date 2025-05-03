@@ -60,6 +60,7 @@ export function AppShell({ children }: AppShellProps) {
   const closeSidebarIfMobile = () => {
     if (!isDesktop) {
       setSidebarOpen(false);
+      setTimeout(() => setSidebarOpen(false), 50);
     }
   };
 
@@ -324,7 +325,9 @@ export function AppShell({ children }: AppShellProps) {
                                className={`flex items-center w-full p-3 rounded-lg text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors duration-150 text-left 
                                           ${currentChat?.id === chat.id ? 'bg-sidebar-accent font-medium' : ''} 
                                           justify-center`}
-                               onClick={() => {
+                               onClick={(e) => {
+                                 e.preventDefault();
+                                 e.stopPropagation();
                                  closeSidebarIfMobile();
                                  sessionStorage.removeItem('fromNavigation');
                                  setCurrentChat(chat);
@@ -350,7 +353,9 @@ export function AppShell({ children }: AppShellProps) {
                            <button
                              className={`flex items-center w-full p-3 rounded-lg text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors duration-150 text-left 
                                         ${currentChat?.id === chat.id ? 'bg-sidebar-accent font-medium' : ''}`}
-                             onClick={() => {
+                             onClick={(e) => {
+                               e.preventDefault();
+                               e.stopPropagation();
                                closeSidebarIfMobile();
                                sessionStorage.removeItem('fromNavigation');
                                setCurrentChat(chat);
