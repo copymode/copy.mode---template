@@ -325,12 +325,12 @@ export function AppShell({ children }: AppShellProps) {
                                           ${currentChat?.id === chat.id ? 'bg-sidebar-accent font-medium' : ''} 
                                           justify-center`}
                                onClick={() => {
+                                 closeSidebarIfMobile();
                                  sessionStorage.removeItem('fromNavigation');
                                  setCurrentChat(chat);
                                  if (location.pathname !== "/" && location.pathname !== "/home") {
                                    navigate("/home");
                                  }
-                                 closeSidebarIfMobile();
                                }}
                              >
                                <div className="flex flex-col overflow-hidden w-full text-center">
@@ -351,12 +351,12 @@ export function AppShell({ children }: AppShellProps) {
                              className={`flex items-center w-full p-3 rounded-lg text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors duration-150 text-left 
                                         ${currentChat?.id === chat.id ? 'bg-sidebar-accent font-medium' : ''}`}
                              onClick={() => {
+                               closeSidebarIfMobile();
                                sessionStorage.removeItem('fromNavigation');
                                setCurrentChat(chat);
                                if (location.pathname !== "/" && location.pathname !== "/home") {
                                  navigate("/home");
                                }
-                               closeSidebarIfMobile();
                              }}
                            >
                              <div className="flex flex-col overflow-hidden block">
