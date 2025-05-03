@@ -197,13 +197,11 @@
   background-color: hsl(var(--scrollbar-thumb) / 0.8);
 }
 
-/* Prevenção de barras de rolagem e padding indesejados */
-html, body {
+/* Prevenção de barras de rolagem horizontais */
+html, body, #root {
   overflow-x: hidden !important;
   padding-right: 0 !important;
   margin-right: 0 !important;
-  width: 100%;
-  overscroll-behavior: none;
 }
 
 /* Ocultar barras de rolagem em todas as plataformas */
@@ -242,15 +240,51 @@ div.flex-1.overflow-y-auto::-webkit-scrollbar {
   }
 }
 
-/* Corrigir posicionamento do input fixo */
-.chat-container .flex-shrink-0.fixed {
-  width: 100% !important;
-  left: 0 !important;
-  right: 0 !important;
-  bottom: 0 !important;
-  box-sizing: border-box;
-  transform: translateZ(0);
-  will-change: transform;
+/* Solução para input fixo com adaptação ao sidebar */
+@media (max-width: 767px) {
+  /* Mobile: input fixo na parte inferior, largura total */
+  .chat-container .flex-shrink-0.fixed {
+    position: fixed !important;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 50;
+    background-color: hsl(var(--background));
+    box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.05);
+  }
+  
+  /* Garante espaço para o input fixo */
+  .chat-container .flex-1.overflow-y-auto {
+    padding-bottom: 80px !important;
+  }
+}
+
+@media (min-width: 768px) {
+  /* Desktop: input fixo que se ajusta ao sidebar */
+  .chat-container .flex-shrink-0.fixed {
+    position: fixed !important;
+    bottom: 0;
+    right: 0;
+    z-index: 50;
+    background-color: hsl(var(--background));
+    box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.05);
+    /* Cálculo dinâmico: left depende da classe do body que indica o estado do sidebar */
+  }
+  
+  /* Quando o sidebar está aberto (padrão) */
+  body .chat-container .flex-shrink-0.fixed {
+    left: 240px; /* Largura do sidebar expandido */
+  }
+  
+  /* Quando o sidebar está colapsado */
+  body.sidebar-collapsed .chat-container .flex-shrink-0.fixed {
+    left: 64px; /* Largura do sidebar colapsado */
+  }
+  
+  /* Garante espaço para o input fixo */
+  .chat-container .flex-1.overflow-y-auto {
+    padding-bottom: 80px !important;
+  }
 }
 
 /* Customização específica para o ScrollArea do Radix UI */
@@ -495,12 +529,27 @@ body::-webkit-scrollbar {
   display: none;
 }
 
+/* Garantir que o input fixo se adapte ao sidebar */
 .chat-container .flex-shrink-0.fixed {
-  width: 100vw !important;
+  position: fixed !important;
+  bottom: 0 !important;
   left: 0 !important;
   right: 0 !important;
-  bottom: 0 !important;
+  width: auto !important;
   padding-right: 0 !important;
   margin-right: 0 !important;
-  position: fixed !important;
+  box-sizing: border-box;
+  transition: all 0.3s ease;
+  z-index: 20;
 }
+
+/* Ajuste quando o sidebar está aberto */
+@media (min-width: 768px) {
+  .sidebar-open .chat-container .flex-shrink-0.fixed {
+    left: 240px !important; /* Largura do sidebar quando aberto */
+  }
+  .sidebar-collapsed .chat-container .flex-shrink-0.fixed {
+    left: 64px !important; /* Largura do sidebar quando recolhido */
+  }
+}
+

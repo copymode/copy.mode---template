@@ -57,6 +57,31 @@ export function AppShell({ children }: AppShellProps) {
     };
   }, []);
 
+  // Efeito para atualizar classe do body com base no estado do sidebar
+  useEffect(() => {
+    if (isDesktop) {
+      if (sidebarCollapsed) {
+        document.body.classList.add('sidebar-collapsed');
+        document.body.classList.remove('sidebar-open');
+      } else {
+        document.body.classList.add('sidebar-open');
+        document.body.classList.remove('sidebar-collapsed');
+      }
+    } else {
+      document.body.classList.remove('sidebar-collapsed', 'sidebar-open');
+      if (sidebarOpen) {
+        document.body.classList.add('sidebar-mobile-open');
+      } else {
+        document.body.classList.remove('sidebar-mobile-open');
+      }
+    }
+
+    // Cleanup
+    return () => {
+      document.body.classList.remove('sidebar-collapsed', 'sidebar-open', 'sidebar-mobile-open');
+    };
+  }, [sidebarCollapsed, sidebarOpen, isDesktop]);
+
   const closeSidebarIfMobile = () => {
     if (!isDesktop) {
       setSidebarOpen(false);
