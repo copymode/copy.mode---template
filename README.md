@@ -2,10 +2,12 @@
 
 ## Versões do Projeto
 
-**Versão Atual**: v1.19.0
+**Versão Atual**: v1.22.0
 
 ### Histórico de Versões
-- **v1.19.0**: Correção de scroll indesejado para garantir que elementos do rodapé fiquem fixos na tela
+- **v1.22.0**: Correção do comportamento dos tooltips no sidebar: agora aparecem apenas com hover quando o sidebar está recolhido
+- **v1.21.0**: Melhorias de UI: tooltips como boxes adaptados ao tema, com ajuste perfeito de posicionamento ao sidebar
+- **v1.20.0**: Versão estável com melhorias de UI: remoção de linhas horizontais desnecessárias, tooltip com portal e correção da barra de rolagem horizontal
 - **v1.18.0**: Correções de navegação: destaque da aba Home e acesso direto às conversas pelo sidebar em qualquer página
 - **v1.17.0**: Adição de campo de pesquisa no sidebar para busca de conversas por palavras e datas
 - **v1.16.0**: Posicionamento do campo de entrada fixo no rodapé enquanto a área de chat rola

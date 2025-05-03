@@ -365,9 +365,9 @@ export default function Home() {
       ) : !isInitialState ? (
         <>
           {/* Cabeçalho fixo */}
-          <div className="flex-shrink-0 p-3 border-b bg-card sticky top-0 z-10">
-            <div className="flex flex-wrap items-center justify-between gap-4 max-w-4xl mx-auto">
-              <div className="flex flex-wrap items-center gap-4">
+          <div className="flex-shrink-0 p-3 bg-card sticky top-0 z-10">
+            <div className="flex flex-wrap items-center justify-center gap-4 max-w-4xl mx-auto">
+              <div className="flex flex-wrap items-center justify-center gap-4">
                 <Select value={selectedExpert} disabled>
                   <SelectTriggerWithAvatar 
                     className="w-full sm:w-[180px]"
@@ -463,7 +463,7 @@ export default function Home() {
             </div>
 
             {/* Input fixo no rodapé */}
-            <div className="flex-shrink-0 p-4 border-t bg-background z-10 shadow-sm">
+            <div className="flex-shrink-0 p-4 bg-background z-10 shadow-sm">
               <div className="max-w-3xl mx-auto">
                 <ChatInput 
                   onSendMessage={handleSendMessage} 
@@ -518,7 +518,7 @@ export default function Home() {
                <CardTitle className="text-2xl">Crie sua próxima Copy!</CardTitle>
             </CardHeader>
             <CardContent className="space-y-6">
-               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 place-items-center">
                    <Select value={selectedExpert} onValueChange={setSelectedExpert}>
                      <SelectTriggerWithAvatar
                        avatarSrc={selectedExpert ? experts.find(e => e.id === selectedExpert)?.avatar : null}

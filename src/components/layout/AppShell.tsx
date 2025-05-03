@@ -1,4 +1,4 @@
-import { useState, ReactNode, useEffect } from "react";
+import { useState, ReactNode, useEffect, useRef } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { useTheme } from "@/context/ThemeContext";
 import { useData } from "@/context/DataContext";
@@ -38,8 +38,43 @@ export function AppShell({ children }: AppShellProps) {
   const [tooltipsOpen, setTooltipsOpen] = useState<{[key: string]: boolean}>({});
   const location = useLocation();
   const navigate = useNavigate();
+  const sidebarRef = useRef<HTMLDivElement>(null);
+  const [isDesktop, setIsDesktop] = useState(window.innerWidth >= 768);
 
   const chatHistory = chats;
+
+  useEffect(() => {
+    const handleResize = () => {
+      setIsDesktop(window.innerWidth >= 768);
+    };
+
+    handleResize();
+    
+    window.addEventListener('resize', handleResize);
+    
+    return () => {
+      window.removeEventListener('resize', handleResize);
+    };
+  }, []);
+
+  const closeSidebarIfMobile = () => {
+    if (!isDesktop) {
+      setSidebarOpen(false);
+    }
+  };
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (sidebarRef.current && !sidebarRef.current.contains(event.target as Node) && !isDesktop && sidebarOpen) {
+        setSidebarOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [sidebarOpen, isDesktop]);
 
   useEffect(() => {
     if (!searchTerm.trim()) {
@@ -89,9 +124,7 @@ export function AppShell({ children }: AppShellProps) {
     if (location.pathname !== "/home" && location.pathname !== "/") {
       navigate("/home");
     }
-    if (sidebarOpen) {
-      setSidebarOpen(false);
-    }
+    closeSidebarIfMobile();
   };
 
   const handleDeleteChat = (chatId: string, e: React.MouseEvent) => {
@@ -142,14 +175,15 @@ export function AppShell({ children }: AppShellProps) {
   return (
     <div className="grid md:grid-cols-[auto_1fr] min-h-screen bg-background h-screen">
       <aside 
-        className={`bg-sidebar fixed inset-y-0 left-0 z-30 transform transition-all duration-300 ease-in-out border-r border-sidebar-border
+        ref={sidebarRef}
+        className={`bg-sidebar fixed inset-y-0 left-0 z-30 transform transition-all duration-300 ease-in-out border-r border-sidebar-border overflow-hidden 
                     md:relative md:translate-x-0 md:h-full ${sidebarOpen ? "translate-x-0" : "-translate-x-full"} 
                     ${sidebarCollapsed ? "md:w-20" : "md:w-64"}`}
       >
         <div className="flex flex-col h-full">
           <div className={`flex items-center justify-between p-4 flex-shrink-0 ${sidebarCollapsed ? 'md:justify-center' : 'md:justify-between'}`}>
             <button onClick={toggleSidebar} className="p-1 rounded-md text-sidebar-foreground hover:bg-sidebar-accent md:hidden">
-              <X size={24} />
+              <ChevronsLeft size={24} />
             </button>
             <h2 className={`text-xl font-bold text-sidebar-foreground ${sidebarCollapsed ? 'md:hidden' : 'md:block'}`}>Copy Mode</h2>
              <Button 
@@ -169,39 +203,58 @@ export function AppShell({ children }: AppShellProps) {
                     { path: "/experts", icon: Users, label: "Experts" },
                     ...(currentUser?.role === "admin" ? [{ path: "/admin", icon: Bot, label: "Admin" }] : []),
                     { path: "/settings", icon: Settings, label: "Configurações" },
-                 ].map(({ path, icon: Icon, label }) => (
-                   <li key={path}>
-                     <Tooltip 
-                       delayDuration={0} 
-                       open={sidebarCollapsed ? tooltipsOpen[`nav-${path}`] : false}
-                       onOpenChange={(open) => setTooltipsOpen({...tooltipsOpen, [`nav-${path}`]: open})}
-                     >
-                      <TooltipTrigger asChild>
-                        <Link 
-                          to={path} 
-                          className={`flex items-center p-3 rounded-lg text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors duration-150 ${
-                            isActive(path) ? "bg-sidebar-accent font-medium" : ""
-                          } ${sidebarCollapsed ? 'justify-center' : ''}`}
-                          onClick={() => {
-                            sessionStorage.removeItem('fromNavigation');
-                            
-                            if (path === "/" || path === "/home") {
-                              setCurrentChat(null);
-                            }
-                          }}
-                        >
-                          <Icon size={20} className={`${sidebarCollapsed ? '' : 'mr-3'}`} />
-                          <span className={`whitespace-nowrap overflow-hidden text-ellipsis ${sidebarCollapsed ? 'hidden' : 'block'}`}>{label}</span>
-                        </Link>
-                      </TooltipTrigger>
-                      {sidebarCollapsed && (
-                        <TooltipContent side="right" className="bg-popover text-popover-foreground z-[999]">
-                          {label}
-                        </TooltipContent>
-                      )}
-                    </Tooltip>
-                   </li>
-                 ))}
+                 ].map(({ path, icon: Icon, label }) => {
+                   const key = `nav-${path}`;
+                   return (
+                     <li key={key}>
+                       {sidebarCollapsed ? (
+                         <Tooltip>
+                           <TooltipTrigger asChild>
+                             <Link 
+                               to={path} 
+                               className={`flex items-center p-3 rounded-lg text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors duration-150 ${
+                                 isActive(path) ? "bg-sidebar-accent font-medium" : ""
+                               } justify-center`}
+                               onClick={() => {
+                                 sessionStorage.removeItem('fromNavigation');
+                                 
+                                 if (path === "/" || path === "/home") {
+                                   setCurrentChat(null);
+                                 }
+                                 
+                                 closeSidebarIfMobile();
+                               }}
+                             >
+                               <Icon size={20} />
+                             </Link>
+                           </TooltipTrigger>
+                           <TooltipContent side="right" className="bg-popover text-popover-foreground">
+                             {label}
+                           </TooltipContent>
+                         </Tooltip>
+                       ) : (
+                         <Link 
+                           to={path} 
+                           className={`flex items-center p-3 rounded-lg text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors duration-150 ${
+                             isActive(path) ? "bg-sidebar-accent font-medium" : ""
+                           }`}
+                           onClick={() => {
+                             sessionStorage.removeItem('fromNavigation');
+                             
+                             if (path === "/" || path === "/home") {
+                               setCurrentChat(null);
+                             }
+                             
+                             closeSidebarIfMobile();
+                           }}
+                         >
+                           <Icon size={20} className="mr-3" />
+                           <span className="whitespace-nowrap overflow-hidden text-ellipsis">{label}</span>
+                         </Link>
+                       )}
+                     </li>
+                   );
+                 })}
                </ul>
              </nav>
              <hr className={`mx-2 my-4 border-sidebar-border ${sidebarCollapsed ? 'hidden' : 'block'}`} />
@@ -230,27 +283,31 @@ export function AppShell({ children }: AppShellProps) {
              </div>
              
              <div className="mb-2 px-1">
-               <Tooltip 
-                 delayDuration={0}
-                 open={sidebarCollapsed ? tooltipsOpen['new-chat'] : false}
-                 onOpenChange={(open) => setTooltipsOpen({...tooltipsOpen, 'new-chat': open})}
-               >
-                 <TooltipTrigger asChild>
-                   <Button 
-                      variant="outline" 
-                      className={`w-full ${sidebarCollapsed ? 'justify-center px-0' : 'justify-start'}`}
-                      onClick={handleNewChat} 
-                    >
-                      <Plus size={18} className={`${sidebarCollapsed ? '' : 'mr-2'}`} />
-                      <span className={`${sidebarCollapsed ? 'hidden' : 'block'}`}>Nova Conversa</span>
-                    </Button>
+               {sidebarCollapsed ? (
+                 <Tooltip>
+                   <TooltipTrigger asChild>
+                     <Button 
+                        variant="outline" 
+                        className="w-full justify-center px-0"
+                        onClick={handleNewChat} 
+                      >
+                        <Plus size={18} />
+                      </Button>
                    </TooltipTrigger>
-                   {sidebarCollapsed && (
-                      <TooltipContent side="right" className="bg-popover text-popover-foreground z-[999]">
-                        Nova Conversa
-                      </TooltipContent>
-                    )}
-               </Tooltip>
+                   <TooltipContent side="right" className="bg-popover text-popover-foreground">
+                     Nova Conversa
+                   </TooltipContent>
+                 </Tooltip>
+               ) : (
+                 <Button 
+                    variant="outline" 
+                    className="w-full justify-start"
+                    onClick={handleNewChat} 
+                  >
+                    <Plus size={18} className="mr-2" />
+                    <span>Nova Conversa</span>
+                  </Button>
+               )}
              </div>
 
              <h3 className={`px-1 py-1 text-xs font-semibold text-muted-foreground tracking-wider uppercase ${sidebarCollapsed ? 'hidden' : 'block'}`}>Histórico</h3>
@@ -260,76 +317,92 @@ export function AppShell({ children }: AppShellProps) {
                    const subtitle = generateChatSubtitle(chat.messages[0]?.content);
                    return (
                      <li key={chat.id}>
-                        <Tooltip 
-                          delayDuration={sidebarCollapsed ? 0 : 500}
-                          open={tooltipsOpen[`chat-${chat.id}`]}
-                          onOpenChange={(open) => setTooltipsOpen({...tooltipsOpen, [`chat-${chat.id}`]: open})}
-                        >
-                         <TooltipTrigger asChild>
-                           <div className="relative group">
+                       {sidebarCollapsed ? (
+                         <Tooltip>
+                           <TooltipTrigger asChild>
                              <button
                                className={`flex items-center w-full p-3 rounded-lg text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors duration-150 text-left 
-                                            ${currentChat?.id === chat.id ? 'bg-sidebar-accent font-medium' : ''} 
-                                            ${sidebarCollapsed ? 'justify-center' : ''}`}
+                                          ${currentChat?.id === chat.id ? 'bg-sidebar-accent font-medium' : ''} 
+                                          justify-center`}
                                onClick={() => {
                                  sessionStorage.removeItem('fromNavigation');
                                  setCurrentChat(chat);
                                  if (location.pathname !== "/" && location.pathname !== "/home") {
                                    navigate("/home");
                                  }
+                                 closeSidebarIfMobile();
                                }}
                              >
-                               <div className={`flex flex-col overflow-hidden ${sidebarCollapsed ? 'w-full text-center' : 'block'}`}>
+                               <div className="flex flex-col overflow-hidden w-full text-center">
                                  <span className="text-sm whitespace-nowrap overflow-hidden text-ellipsis font-medium">
                                    {formatCreationDate(chat.createdAt)}
                                  </span>
-                                 {subtitle && (
-                                   <span className="text-xs text-muted-foreground whitespace-nowrap overflow-hidden text-ellipsis">
-                                     {subtitle}
-                                   </span>
-                                 )}
                                </div>
                              </button>
-                             {!sidebarCollapsed && (
-                               <div className="absolute right-2 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                 <AlertDialog>
-                                   <AlertDialogTrigger asChild>
-                                     <Button 
-                                       variant="ghost" 
-                                       size="icon" 
-                                       className="h-6 w-6 text-muted-foreground hover:text-destructive"
-                                       onClick={(e) => handleDeleteChat(chat.id, e)}
-                                     >
-                                       <Trash2 size={14} />
-                                     </Button>
-                                   </AlertDialogTrigger>
-                                   <AlertDialogContent>
-                                     <AlertDialogHeader>
-                                       <AlertDialogTitle>Excluir conversa</AlertDialogTitle>
-                                       <AlertDialogDescription>
-                                         Tem certeza que deseja excluir esta conversa? Esta ação não pode ser desfeita.
-                                       </AlertDialogDescription>
-                                     </AlertDialogHeader>
-                                     <AlertDialogFooter>
-                                       <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                                       <AlertDialogAction 
-                                         onClick={confirmDeleteChat}
-                                         className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                                       >
-                                         Excluir
-                                       </AlertDialogAction>
-                                     </AlertDialogFooter>
-                                   </AlertDialogContent>
-                                 </AlertDialog>
-                               </div>
-                             )}
+                           </TooltipTrigger>
+                           <TooltipContent side="right" className="bg-popover text-popover-foreground">
+                             <p className="font-medium">{formatCreationDate(chat.createdAt)}</p>
+                             {subtitle && <p className="text-xs text-muted-foreground">{subtitle}</p>}
+                           </TooltipContent>
+                         </Tooltip>
+                       ) : (
+                         <div className="relative group">
+                           <button
+                             className={`flex items-center w-full p-3 rounded-lg text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors duration-150 text-left 
+                                        ${currentChat?.id === chat.id ? 'bg-sidebar-accent font-medium' : ''}`}
+                             onClick={() => {
+                               sessionStorage.removeItem('fromNavigation');
+                               setCurrentChat(chat);
+                               if (location.pathname !== "/" && location.pathname !== "/home") {
+                                 navigate("/home");
+                               }
+                               closeSidebarIfMobile();
+                             }}
+                           >
+                             <div className="flex flex-col overflow-hidden block">
+                               <span className="text-sm whitespace-nowrap overflow-hidden text-ellipsis font-medium">
+                                 {formatCreationDate(chat.createdAt)}
+                               </span>
+                               {subtitle && (
+                                 <span className="text-xs text-muted-foreground whitespace-nowrap overflow-hidden text-ellipsis">
+                                   {subtitle}
+                                 </span>
+                               )}
+                             </div>
+                           </button>
+                           <div className="absolute right-2 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity">
+                             <AlertDialog>
+                               <AlertDialogTrigger asChild>
+                                 <Button 
+                                   variant="ghost" 
+                                   size="icon" 
+                                   className="h-6 w-6 text-muted-foreground hover:text-destructive"
+                                   onClick={(e) => handleDeleteChat(chat.id, e)}
+                                 >
+                                   <Trash2 size={14} />
+                                 </Button>
+                               </AlertDialogTrigger>
+                               <AlertDialogContent>
+                                 <AlertDialogHeader>
+                                   <AlertDialogTitle>Excluir conversa</AlertDialogTitle>
+                                   <AlertDialogDescription>
+                                     Tem certeza que deseja excluir esta conversa? Esta ação não pode ser desfeita.
+                                   </AlertDialogDescription>
+                                 </AlertDialogHeader>
+                                 <AlertDialogFooter>
+                                   <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                   <AlertDialogAction 
+                                     onClick={confirmDeleteChat}
+                                     className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                   >
+                                     Excluir
+                                   </AlertDialogAction>
+                                 </AlertDialogFooter>
+                               </AlertDialogContent>
+                             </AlertDialog>
                            </div>
-                         </TooltipTrigger>
-                         <TooltipContent side="right" className="bg-popover text-popover-foreground z-[999]">
-                           <p className="font-medium">{formatCreationDate(chat.createdAt)}</p>
-                           {subtitle && <p className="text-xs text-muted-foreground">{subtitle}</p>}
-                         </TooltipContent>
-                       </Tooltip>
+                         </div>
+                       )}
                      </li>
                    );
                })}
@@ -359,54 +432,78 @@ export function AppShell({ children }: AppShellProps) {
              </div>
 
              <div className={`p-4 ${sidebarCollapsed ? 'space-y-2 flex flex-col items-center' : 'flex items-center justify-between'}`}>
-                  <Tooltip 
-                    delayDuration={0}
-                    open={sidebarCollapsed ? tooltipsOpen['theme-toggle'] : false}
-                    onOpenChange={(open) => setTooltipsOpen({...tooltipsOpen, 'theme-toggle': open})}
-                  >
-                    <TooltipTrigger asChild>
-                       <Button 
-                        variant="outline" 
-                        size="icon"
-                        onClick={toggleTheme}
-                        className={`rounded-full ${sidebarCollapsed ? '' : ''}`}
-                      >
-                        {theme === "light" ? <Moon size={18} /> : <Sun size={18} />}
-                      </Button>
-                    </TooltipTrigger>
-                      {sidebarCollapsed && (
-                        <TooltipContent side="right" className="bg-popover text-popover-foreground z-[999]">
-                           {theme === "light" ? "Modo Escuro" : "Modo Claro"}
-                        </TooltipContent>
-                      )}
-                  </Tooltip>
+                  {sidebarCollapsed ? (
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                         <Button 
+                          variant="outline" 
+                          size="icon"
+                          onClick={toggleTheme}
+                          className="rounded-full"
+                        >
+                          {theme === "light" ? <Moon size={18} /> : <Sun size={18} />}
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent side="right" className="bg-popover text-popover-foreground">
+                         {theme === "light" ? "Modo Escuro" : "Modo Claro"}
+                      </TooltipContent>
+                    </Tooltip>
+                  ) : (
+                    <Button 
+                      variant="outline" 
+                      size="icon"
+                      onClick={toggleTheme}
+                      className="rounded-full"
+                    >
+                      {theme === "light" ? <Moon size={18} /> : <Sun size={18} />}
+                    </Button>
+                  )}
     
-                  <Tooltip 
-                    delayDuration={0}
-                    open={sidebarCollapsed ? tooltipsOpen['logout'] : false}
-                    onOpenChange={(open) => setTooltipsOpen({...tooltipsOpen, 'logout': open})}
-                  >
-                    <TooltipTrigger asChild>
-                       <Button 
-                        variant="outline" 
-                        size={sidebarCollapsed ? 'icon' : 'sm'}
-                        onClick={logout}
-                        className={`text-sidebar-foreground ${sidebarCollapsed ? 'rounded-full' : ''}`}
-                      >
-                        <LogOut size={16} className={`${sidebarCollapsed ? '' : 'mr-2'}`} />
-                        <span className={`${sidebarCollapsed ? 'hidden' : 'block'}`}>{sidebarCollapsed ? '' : 'Sair'}</span>
-                      </Button>
-                    </TooltipTrigger>
-                      {sidebarCollapsed && (
-                        <TooltipContent side="right" className="bg-popover text-popover-foreground z-[999]">
-                           Sair
-                        </TooltipContent>
-                      )}
-                  </Tooltip>
+                  {sidebarCollapsed ? (
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                         <Button 
+                          variant="outline" 
+                          size="icon"
+                          onClick={() => {
+                            logout();
+                            closeSidebarIfMobile();
+                          }}
+                          className="text-sidebar-foreground rounded-full"
+                        >
+                          <LogOut size={16} />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent side="right" className="bg-popover text-popover-foreground">
+                         Sair
+                      </TooltipContent>
+                    </Tooltip>
+                  ) : (
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => {
+                        logout();
+                        closeSidebarIfMobile();
+                      }}
+                      className="text-sidebar-foreground"
+                    >
+                      <LogOut size={16} className="mr-2" />
+                      <span>Sair</span>
+                    </Button>
+                  )}
              </div>
            </div>
         </div>
       </aside>
+      
+      {sidebarOpen && !isDesktop && (
+        <div 
+          className="fixed inset-0 bg-black/20 z-20 md:hidden" 
+          onClick={() => setSidebarOpen(false)}
+          aria-hidden="true"
+        />
+      )}
       
       <div className="flex flex-col overflow-hidden"> 
         <header className="bg-background border-b py-3 px-4 sticky top-0 z-10 flex-shrink-0">
