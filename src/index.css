@@ -298,3 +298,15 @@ aside *,
   overflow-x: hidden !important;
   max-width: 100%;
 }
+
+/* Mostrar botões de exclusão sempre visíveis em dispositivos móveis */
+@media (max-width: 768px) {
+  .group:hover .opacity-0.group-hover\:opacity-100 {
+    opacity: 1;
+  }
+  
+  .relative.group .absolute.right-2.top-1\/2.-translate-y-1\/2.opacity-0.group-hover\:opacity-100 {
+    opacity: 1;
+    display: flex;
+  }
+}

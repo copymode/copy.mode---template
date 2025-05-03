@@ -375,16 +375,16 @@ export function AppShell({ children }: AppShellProps) {
                                )}
                              </div>
                            </button>
-                           <div className="absolute right-2 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity">
+                           <div className="absolute right-2 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity md:hover:bg-transparent">
                              <AlertDialog>
                                <AlertDialogTrigger asChild>
                                  <Button 
                                    variant="ghost" 
                                    size="icon" 
-                                   className="h-6 w-6 text-muted-foreground hover:text-destructive"
+                                   className="h-8 w-8 text-muted-foreground hover:text-destructive"
                                    onClick={(e) => handleDeleteChat(chat.id, e)}
                                  >
-                                   <Trash2 size={14} />
+                                   <Trash2 size={16} />
                                  </Button>
                                </AlertDialogTrigger>
                                <AlertDialogContent>
