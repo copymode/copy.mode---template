@@ -456,3 +456,51 @@ aside *,
   white-space: nowrap;
   max-width: 120px;
 }
+
+/* Correção para evitar barras de rolagem indesejadas em desktop */
+html, body {
+  overflow-x: hidden;
+  scrollbar-width: none;
+  margin-right: 0 !important; 
+  padding-right: 0 !important;
+}
+
+html::-webkit-scrollbar,
+body::-webkit-scrollbar {
+  display: none;
+  width: 0;
+}
+
+/* Garantir que o input fixo não seja afetado pela barra de rolagem */
+.chat-container .flex-shrink-0.fixed {
+  width: 100%;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding-right: 0 !important;
+  box-sizing: border-box;
+}
+
+/* Solução definitiva para input fixo e barras de rolagem */
+body {
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding-right: 0 !important;
+  margin-right: 0 !important;
+  overscroll-behavior: none;
+}
+
+body::-webkit-scrollbar {
+  width: 0 !important;
+  display: none;
+}
+
+.chat-container .flex-shrink-0.fixed {
+  width: 100vw !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  padding-right: 0 !important;
+  margin-right: 0 !important;
+  position: fixed !important;
+}

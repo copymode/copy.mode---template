@@ -426,10 +426,10 @@ export default function Home() {
       ) : !isInitialState ? (
         <>
           {/* Layout flexível com área de chat rolável e input fixo */}
-          <div className="flex flex-col h-[calc(100vh-20px)] overflow-hidden chat-container">
+          <div className="flex flex-col h-screen overflow-hidden chat-container">
             {/* Área de chat rolável */}
             <div 
-              className="flex-1 overflow-y-auto pb-[78px] px-4 md:pb-4" 
+              className="flex-1 overflow-y-auto pb-24 px-4 md:pb-20" 
               ref={scrollAreaRef}
             >
               <div className="max-w-3xl mx-auto space-y-4 pt-4">
