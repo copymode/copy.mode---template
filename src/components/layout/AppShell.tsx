@@ -249,7 +249,7 @@ export function AppShell({ children }: AppShellProps) {
                    const subtitle = generateChatSubtitle(chat.messages[0]?.content);
                    return (
                      <li key={chat.id}>
-                        <Tooltip delayDuration={sidebarCollapsed ? 0 : 500}>
+                        <Tooltip delayDuration={0}>
                          <TooltipTrigger asChild>
                            <div className="relative group">
                              <button
@@ -310,10 +310,12 @@ export function AppShell({ children }: AppShellProps) {
                              )}
                            </div>
                          </TooltipTrigger>
-                         <TooltipContent side="right" className="bg-popover text-popover-foreground">
-                           <p className="font-medium">{formatCreationDate(chat.createdAt)}</p>
-                           {subtitle && <p className="text-xs text-muted-foreground">{subtitle}</p>}
-                         </TooltipContent>
+                         {sidebarCollapsed && (
+                           <TooltipContent side="right" className="bg-popover text-popover-foreground">
+                             <p className="font-medium">{formatCreationDate(chat.createdAt)}</p>
+                             {subtitle && <p className="text-xs text-muted-foreground">{subtitle}</p>}
+                           </TooltipContent>
+                         )}
                        </Tooltip>
                      </li>
                    );
