@@ -2,9 +2,10 @@
 
 ## Versões do Projeto
 
-**Versão Atual**: v1.21.0
+**Versão Atual**: v1.22.0
 
 ### Histórico de Versões
+- **v1.22.0**: Correção do comportamento dos tooltips no sidebar: agora aparecem apenas com hover quando o sidebar está recolhido
 - **v1.21.0**: Melhorias de UI: tooltips como boxes adaptados ao tema, com ajuste perfeito de posicionamento ao sidebar
 - **v1.20.0**: Versão estável com melhorias de UI: remoção de linhas horizontais desnecessárias, tooltip com portal e correção da barra de rolagem horizontal
 - **v1.18.0**: Correções de navegação: destaque da aba Home e acesso direto às conversas pelo sidebar em qualquer página

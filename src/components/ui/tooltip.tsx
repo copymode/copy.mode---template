@@ -18,7 +18,10 @@ const TooltipPortal = ({ children }: { children: React.ReactNode }) => {
 
 const TooltipProvider = TooltipPrimitive.Provider
 
-const Tooltip = TooltipPrimitive.Root
+// Modificando o componente Tooltip para garantir que os tooltips não fiquem persistentes
+const Tooltip = (props: React.ComponentPropsWithoutRef<typeof TooltipPrimitive.Root>) => (
+  <TooltipPrimitive.Root defaultOpen={false} {...props} />
+)
 
 const TooltipTrigger = TooltipPrimitive.Trigger
 
