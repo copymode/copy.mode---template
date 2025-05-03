@@ -4,6 +4,32 @@ import { Button } from "@/components/ui/button";
 import { Copy } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { TypingIndicator } from "@/components/chat/TypingIndicator";
+import ReactMarkdown from "react-markdown";
+import { Light as SyntaxHighlighter } from "react-syntax-highlighter";
+import { docco, dark } from "react-syntax-highlighter/dist/esm/styles/hljs";
+import { useTheme } from "@/context/ThemeContext";
+
+// Importando linguagens para syntax highlighter
+import js from 'react-syntax-highlighter/dist/esm/languages/hljs/javascript';
+import ts from 'react-syntax-highlighter/dist/esm/languages/hljs/typescript';
+import css from 'react-syntax-highlighter/dist/esm/languages/hljs/css';
+import html from 'react-syntax-highlighter/dist/esm/languages/hljs/xml';
+import json from 'react-syntax-highlighter/dist/esm/languages/hljs/json';
+import bash from 'react-syntax-highlighter/dist/esm/languages/hljs/bash';
+import sql from 'react-syntax-highlighter/dist/esm/languages/hljs/sql';
+
+// Registrando linguagens
+SyntaxHighlighter.registerLanguage('javascript', js);
+SyntaxHighlighter.registerLanguage('js', js);
+SyntaxHighlighter.registerLanguage('typescript', ts);
+SyntaxHighlighter.registerLanguage('ts', ts);
+SyntaxHighlighter.registerLanguage('css', css);
+SyntaxHighlighter.registerLanguage('html', html);
+SyntaxHighlighter.registerLanguage('xml', html);
+SyntaxHighlighter.registerLanguage('json', json);
+SyntaxHighlighter.registerLanguage('bash', bash);
+SyntaxHighlighter.registerLanguage('shell', bash);
+SyntaxHighlighter.registerLanguage('sql', sql);
 
 interface ChatAreaProps {
   messages: Message[];
@@ -14,6 +40,7 @@ interface ChatAreaProps {
 export function ChatArea({ messages, isTyping = false, typingContent = "" }: ChatAreaProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
+  const { theme } = useTheme();
   
   // Logs para depuração
   useEffect(() => {
@@ -61,16 +88,9 @@ export function ChatArea({ messages, isTyping = false, typingContent = "" }: Cha
       description: "O texto foi copiado para a área de transferência",
     });
   };
-  
-  // Format message content (handle line breaks)
-  const formatContent = (content: string) => {
-    return content.split("\n").map((line, i) => (
-      <span key={i}>
-        {line}
-        {i !== content.split("\n").length - 1 && <br />}
-      </span>
-    ));
-  };
+
+  // Estilo do syntax highlighter baseado no tema atual
+  const codeStyle = theme === 'dark' ? dark : docco;
 
   return (
     <div className="w-full h-full">
@@ -110,7 +130,34 @@ export function ChatArea({ messages, isTyping = false, typingContent = "" }: Cha
                     <Copy className="h-4 w-4" />
                   </Button>
                 )}
-                <div className="text-sm">{formatContent(message.content)}</div>
+                <div className="text-sm markdown-content">
+                  <ReactMarkdown 
+                    components={{
+                      code({className, children, ...props}) {
+                        const match = /language-(\w+)/.exec(className || '');
+                        const lang = match && match[1] ? match[1] : '';
+                        
+                        return match ? (
+                          <div className="code-block-wrapper">
+                            <SyntaxHighlighter
+                              language={lang}
+                              style={codeStyle}
+                              customStyle={{borderRadius: '6px'}}
+                            >
+                              {String(children).replace(/\n$/, '')}
+                            </SyntaxHighlighter>
+                          </div>
+                        ) : (
+                          <code className={className} {...props}>
+                            {children}
+                          </code>
+                        );
+                      }
+                    }}
+                  >
+                    {message.content}
+                  </ReactMarkdown>
+                </div>
               </div>
             </div>
           ))}

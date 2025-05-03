@@ -681,3 +681,126 @@ body::-webkit-scrollbar {
   }
 }
 
+/* Estilos para o conteúdo Markdown */
+.markdown-content {
+  font-size: 1rem;
+  line-height: 1.6;
+}
+
+.markdown-content h1,
+.markdown-content h2,
+.markdown-content h3,
+.markdown-content h4,
+.markdown-content h5,
+.markdown-content h6 {
+  margin-top: 1.5em;
+  margin-bottom: 0.75em;
+  font-weight: 600;
+  line-height: 1.25;
+}
+
+.markdown-content h1 {
+  font-size: 1.75em;
+}
+
+.markdown-content h2 {
+  font-size: 1.5em;
+}
+
+.markdown-content h3 {
+  font-size: 1.25em;
+}
+
+.markdown-content p {
+  margin-bottom: 1em;
+}
+
+.markdown-content ul,
+.markdown-content ol {
+  margin-top: 0.5em;
+  margin-bottom: 1em;
+  padding-left: 1.5em;
+}
+
+.markdown-content li {
+  margin-bottom: 0.25em;
+}
+
+.markdown-content a {
+  color: hsl(var(--primary));
+  text-decoration: underline;
+}
+
+.markdown-content code {
+  font-family: monospace;
+  padding: 0.2em 0.4em;
+  margin: 0;
+  font-size: 0.85em;
+  border-radius: 3px;
+  background-color: rgba(0, 0, 0, 0.08);
+}
+
+.markdown-content pre {
+  margin-top: 1em;
+  margin-bottom: 1em;
+  border-radius: 6px;
+  overflow: auto;
+}
+
+.markdown-content blockquote {
+  margin: 1em 0;
+  padding-left: 1em;
+  border-left: 3px solid hsl(var(--primary));
+  color: hsl(var(--muted-foreground));
+}
+
+.markdown-content table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 1em;
+}
+
+.markdown-content th,
+.markdown-content td {
+  padding: 0.5em;
+  border: 1px solid hsl(var(--border));
+}
+
+.markdown-content th {
+  background-color: rgba(0, 0, 0, 0.05);
+}
+
+/* Estilos ajustados para modo escuro */
+.dark .markdown-content code {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.dark .markdown-content th {
+  background-color: rgba(255, 255, 255, 0.05);
+}
+
+/* Estilos adicionais para blocos de código */
+.code-block-wrapper {
+  margin: 1em 0;
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.code-block-wrapper pre {
+  margin: 0 !important;
+  border-radius: 0 !important;
+}
+
+/* Ajusta espaçamento em blocos de código em dispositivos móveis */
+@media (max-width: 768px) {
+  .markdown-content pre {
+    max-width: 100%;
+    overflow-x: auto;
+  }
+  
+  .code-block-wrapper {
+    max-width: 100%;
+    overflow-x: auto;
+  }
+}
+

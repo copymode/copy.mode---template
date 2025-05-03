@@ -1,4 +1,8 @@
 import { useEffect, useState, useRef } from "react";
+import ReactMarkdown from "react-markdown";
+import { Light as SyntaxHighlighter } from "react-syntax-highlighter";
+import { docco, dark } from "react-syntax-highlighter/dist/esm/styles/hljs";
+import { useTheme } from "@/context/ThemeContext";
 
 interface TypingIndicatorProps {
   content?: string;
@@ -8,6 +12,10 @@ export function TypingIndicator({ content = "" }: TypingIndicatorProps) {
   const [visibleText, setVisibleText] = useState("");
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const lastContentRef = useRef("");
+  const { theme } = useTheme();
+  
+  // Estilo do syntax highlighter baseado no tema atual
+  const codeStyle = theme === 'dark' ? dark : docco;
   
   // Quando o componente recebe novo conteúdo, iniciar a animação
   useEffect(() => {
@@ -54,20 +62,35 @@ export function TypingIndicator({ content = "" }: TypingIndicatorProps) {
     return <div className="p-4">...</div>;
   }
   
-  // Formatar texto com quebras de linha
-  const formattedText = visibleText
-    .split('\n')
-    .map((line, i, arr) => (
-      <span key={i}>
-        {line}
-        {i < arr.length - 1 && <br />}
-      </span>
-    ));
-  
   return (
     <div className="py-3 px-4">
-      <div className="text-sm whitespace-pre-wrap">
-        {formattedText}
+      <div className="text-sm whitespace-pre-wrap markdown-content">
+        <ReactMarkdown 
+          components={{
+            code({className, children, ...props}) {
+              const match = /language-(\w+)/.exec(className || '');
+              const lang = match && match[1] ? match[1] : '';
+              
+              return match ? (
+                <div className="code-block-wrapper">
+                  <SyntaxHighlighter
+                    language={lang}
+                    style={codeStyle}
+                    customStyle={{borderRadius: '6px'}}
+                  >
+                    {String(children).replace(/\n$/, '')}
+                  </SyntaxHighlighter>
+                </div>
+              ) : (
+                <code className={className} {...props}>
+                  {children}
+                </code>
+              );
+            }
+          }}
+        >
+          {visibleText}
+        </ReactMarkdown>
         <span className="inline-block ml-0.5 w-2 h-4 bg-current opacity-70 animate-pulse"></span>
       </div>
     </div>
