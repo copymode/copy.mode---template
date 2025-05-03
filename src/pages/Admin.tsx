@@ -155,29 +155,25 @@ export default function Admin() {
   return (
     <div className="container mx-auto max-w-6xl py-8">
       <Tabs defaultValue="agents" value={activeTab} onValueChange={setActiveTab}>
-        <div className="flex flex-col mb-6 gap-4">
-          <div className="w-full">
-            <TabsList>
-              <TabsTrigger value="agents">Agentes</TabsTrigger>
-              <TabsTrigger value="contentTypes">Tipos de Conteúdo</TabsTrigger>
-            </TabsList>
-          </div>
+        <div className="flex justify-between items-center mb-6">
+          <TabsList>
+            <TabsTrigger value="agents">Agentes</TabsTrigger>
+            <TabsTrigger value="contentTypes">Tipos de Conteúdo</TabsTrigger>
+          </TabsList>
           
-          <div className="w-full flex justify-end">
-            {activeTab === "agents" && !showAgentForm && (
-              <Button onClick={handleCreateAgentClick}>
-                <Plus size={16} className="mr-2" />
-                Novo Agente
-              </Button>
-            )}
-            
-            {activeTab === "contentTypes" && !showContentTypeForm && (
-              <Button onClick={handleCreateContentTypeClick}>
-                <Plus size={16} className="mr-2" />
-                Novo Tipo de Conteúdo
-              </Button>
-            )}
-          </div>
+          {activeTab === "agents" && !showAgentForm && (
+            <Button onClick={handleCreateAgentClick}>
+              <Plus size={16} className="mr-2" />
+              Novo Agente
+            </Button>
+          )}
+          
+          {activeTab === "contentTypes" && !showContentTypeForm && (
+            <Button onClick={handleCreateContentTypeClick}>
+              <Plus size={16} className="mr-2" />
+              Novo Tipo de Conteúdo
+            </Button>
+          )}
         </div>
         
         {isLoadingAgentEdit && (
