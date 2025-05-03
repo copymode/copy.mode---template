@@ -430,7 +430,7 @@ export default function Home() {
           <div className="flex flex-col h-screen overflow-hidden chat-container">
             {/* Área de chat rolável */}
             <div 
-              className="flex-1 overflow-y-auto px-4" 
+              className="flex-1 overflow-y-auto px-4 pt-4 pb-20 mobile-chat-area" 
               ref={scrollAreaRef}
             >
               <div className="max-w-3xl mx-auto space-y-4">

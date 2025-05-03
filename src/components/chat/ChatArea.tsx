@@ -28,8 +28,25 @@ export function ChatArea({ messages, isTyping = false, typingContent = "" }: Cha
   // Scroll para o fim quando mensagens ou estado de digitação mudam
   useEffect(() => {
     if (scrollRef.current) {
-      // Scroll imediato
-      scrollRef.current.scrollIntoView({ behavior: "auto" });
+      // Verifica se estamos em um dispositivo móvel
+      const isMobile = window.innerWidth <= 768;
+      
+      // Scroll com comportamento específico para mobile
+      scrollRef.current.scrollIntoView({ 
+        behavior: isMobile ? "smooth" : "auto",
+        block: "end",
+        inline: "nearest"
+      });
+      
+      // Verifica se é necessário adicionar um pequeno atraso extra para iOS
+      if (isMobile && /iPhone|iPad|iPod/.test(navigator.userAgent)) {
+        setTimeout(() => {
+          scrollRef.current?.scrollIntoView({ 
+            behavior: "smooth",
+            block: "end"
+          });
+        }, 100);
+      }
     }
   }, [messages, isTyping, typingContent]);
   

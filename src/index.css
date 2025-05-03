@@ -649,3 +649,35 @@ body::-webkit-scrollbar {
   }
 }
 
+/* Ajustes para área de chat no mobile */
+@media (max-width: 768px) {
+  /* Configuração específica para a área de chat móvel */
+  .mobile-chat-area {
+    padding-top: 10px !important;
+    padding-bottom: calc(70px + 10px) !important; /* Altura do input (60px) + 10px de margem */
+    min-height: calc(100vh - 130px);
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-y: contain;
+  }
+  
+  /* Ajusta a posição do container de input para dispositivos móveis */
+  .chat-container .flex-shrink-0.fixed {
+    padding-bottom: env(safe-area-inset-bottom, 10px);
+    z-index: 40;
+    background-color: hsl(var(--background));
+    box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1);
+  }
+
+  /* Corrige o comportamento de rolagem para iOS */
+  .mobile-chat-area {
+    -webkit-overflow-scrolling: touch;
+    scroll-behavior: smooth;
+  }
+  
+  /* Garantir que o div de referência de scroll esteja visível */
+  .mobile-chat-area > div > div:last-child {
+    scroll-margin-bottom: 80px;
+    margin-bottom: 10px;
+  }
+}
+
