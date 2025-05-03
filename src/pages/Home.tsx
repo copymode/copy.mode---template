@@ -427,10 +427,13 @@ export default function Home() {
         <>
           {/* Layout flexível com área de chat rolável e input fixo */}
           <div className="flex flex-col h-screen overflow-hidden chat-container">
-            {/* Versão mobile com layout fixo */}
-            <div className="md:hidden flex flex-col h-screen bg-background">
-              {/* Cabeçalho fixo para mobile */}
-              <div className="flex-shrink-0 z-20 bg-background p-4 border-b">
+            {/* Área de chat rolável */}
+            <div 
+              className="flex-1 overflow-y-auto px-4" 
+              ref={scrollAreaRef}
+            >
+              <div className="max-w-3xl mx-auto space-y-4">
+                {/* Cabeçalho informativo com avatares e nomes */}
                 <ChatConversationHeader 
                   expertId={selectedExpert}
                   agentId={selectedAgent}
@@ -439,64 +442,22 @@ export default function Home() {
                   agents={agents}
                   contentTypes={contentTypes}
                 />
-              </div>
-              
-              {/* Área de mensagens com scroll */}
-              <div className="flex-1 overflow-y-auto px-4" ref={scrollAreaRef}>
-                <div className="max-w-3xl mx-auto pb-24">
-                  <ChatArea 
-                    messages={messages} 
-                    isTyping={isGenerating}
-                    typingContent={typingContent}
-                  />
-                </div>
-              </div>
-              
-              {/* Input fixo no rodapé */}
-              <div className="flex-shrink-0 p-4 bg-background border-t shadow-md">
-                <div className="max-w-3xl mx-auto">
-                  <ChatInput 
-                    onSendMessage={handleSendMessage} 
-                    disabled={isGenerating}
-                  />
-                </div>
+                
+                <ChatArea 
+                  messages={messages} 
+                  isTyping={isGenerating}
+                  typingContent={typingContent}
+                />
               </div>
             </div>
-            
-            {/* Versão desktop com layout atual */}
-            <div className="hidden md:flex md:flex-col md:h-screen md:overflow-hidden">
-              {/* Área de chat rolável */}
-              <div 
-                className="flex-1 overflow-y-auto px-4" 
-                ref={scrollAreaRef}
-              >
-                <div className="max-w-3xl mx-auto space-y-4">
-                  {/* Cabeçalho informativo com avatares e nomes */}
-                  <ChatConversationHeader 
-                    expertId={selectedExpert}
-                    agentId={selectedAgent}
-                    contentType={selectedContentType}
-                    experts={experts}
-                    agents={agents}
-                    contentTypes={contentTypes}
-                  />
-                  
-                  <ChatArea 
-                    messages={messages} 
-                    isTyping={isGenerating}
-                    typingContent={typingContent}
-                  />
-                </div>
-              </div>
 
-              {/* Input fixo no rodapé */}
-              <div className="flex-shrink-0 p-4 bg-background z-20 fixed bottom-0 left-0 w-full right-0 md:static md:bottom-auto shadow-md">
-                <div className="max-w-3xl mx-auto">
-                  <ChatInput 
-                    onSendMessage={handleSendMessage} 
-                    disabled={isGenerating}
-                  />
-                </div>
+            {/* Input fixo no rodapé */}
+            <div className="flex-shrink-0 p-4 bg-background z-20 fixed bottom-0 left-0 w-full right-0 md:static md:bottom-auto shadow-md">
+              <div className="max-w-3xl mx-auto">
+                <ChatInput 
+                  onSendMessage={handleSendMessage} 
+                  disabled={isGenerating}
+                />
               </div>
             </div>
           </div>
