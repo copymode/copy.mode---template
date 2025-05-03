@@ -193,3 +193,96 @@
 .scrollbar:hover [data-radix-scroll-area-thumb] {
   background-color: hsl(var(--scrollbar-thumb) / 0.8) !important;
 }
+
+/* Correção radical para tooltips */
+body [role="tooltip"],
+body [data-radix-tooltip-content],
+body div[data-radix-popper-content-wrapper],
+body div[role="tooltip"] {
+  position: fixed !important;
+  z-index: 99999 !important; 
+  margin-top: 0 !important;
+  pointer-events: none !important;
+}
+
+/* Estilos de box para tooltips */
+.custom-tooltip,
+[data-radix-tooltip-content] {
+  box-shadow: var(--tooltip-shadow) !important;
+  border: 1px solid var(--border) !important;
+  background-color: hsl(var(--popover)) !important;
+  color: hsl(var(--popover-foreground)) !important;
+  max-width: 300px !important;
+  line-height: 1.5 !important;
+  padding: 0.75rem 1rem !important;
+  font-size: 0.875rem !important;
+  border-radius: 0.5rem !important;
+}
+
+/* Tooltips no sidebar recolhido precisam estar mais próximos */
+[data-side="right"] {
+  margin-left: 0 !important;
+  transform: translateX(0) !important;
+  margin-right: 0 !important;
+  left: 0 !important;
+}
+
+/* Tooltip do sidebar recolhido */
+.sidebar-tooltip {
+  margin-left: -3px !important; /* Puxar o tooltip mais para a esquerda */
+  transform: translateX(0) !important;
+  box-shadow: -2px 0 10px rgba(0, 0, 0, 0.1) !important; /* Sombra à esquerda mais forte */
+}
+
+/* Tooltips específicos para o sidebar recolhido */
+@media (max-width: 768px) {
+  .custom-tooltip[style*="left: 64"],
+  .custom-tooltip[style*="left: 65"],
+  .custom-tooltip[style*="left: 66"],
+  .custom-tooltip[style*="left: 67"],
+  .custom-tooltip[style*="left: 68"] {
+    margin-left: -3px !important;
+  }
+}
+
+/* Modo claro: tooltips com fundo branco e texto escuro */
+:root .custom-tooltip,
+:root [data-radix-tooltip-content] {
+  --tooltip-shadow: 0 3px 12px rgba(0, 0, 0, 0.08);
+}
+
+/* Modo escuro: tooltips com fundo escuro e texto claro */
+.dark .custom-tooltip,
+.dark [data-radix-tooltip-content] {
+  --tooltip-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+  border-color: hsl(217 33% 35%) !important; /* Borda mais clara no modo escuro para melhor contraste */
+  background-color: hsl(var(--sidebar-background)) !important; /* Mesma cor do sidebar */
+  color: hsl(var(--sidebar-foreground)) !important; /* Mesmo texto do sidebar */
+}
+
+/* Adicionar uma camada transparente sobre tudo quando houver um tooltip */
+body::after {
+  content: '';
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  pointer-events: none;
+}
+
+body:has([role="tooltip"]) {
+  position: relative;
+}
+
+body:has([role="tooltip"])::after {
+  display: block;
+}
+
+/* Garantir que não haja barras de rolagem horizontais no sidebar */
+aside, 
+aside *, 
+.sidebar, 
+.sidebar * {
+  overflow-x: hidden !important;
+  max-width: 100%;
+}
