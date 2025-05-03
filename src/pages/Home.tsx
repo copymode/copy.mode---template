@@ -5,6 +5,7 @@ import { ChatInput } from "@/components/chat/ChatInput";
 import { ChatSidebar } from "@/components/chat/ChatSidebar";
 import { CopyForm } from "@/components/copy-generation/CopyForm";
 import { useToast } from "@/hooks/use-toast";
+import { useKeyboardVisible } from "@/hooks/use-keyboard-visible";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { useAuth } from "@/context/AuthContext";
 import { Menu } from "lucide-react";
