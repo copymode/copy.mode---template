@@ -197,16 +197,60 @@
   background-color: hsl(var(--scrollbar-thumb) / 0.8);
 }
 
+/* Prevenção de barras de rolagem e padding indesejados */
+html, body {
+  overflow-x: hidden !important;
+  padding-right: 0 !important;
+  margin-right: 0 !important;
+  width: 100%;
+  overscroll-behavior: none;
+}
+
+/* Ocultar barras de rolagem em todas as plataformas */
+.flex-1.overflow-y-auto,
+.chat-container,
+main.flex-1.overflow-auto,
+div.flex-1.overflow-y-auto {
+  -ms-overflow-style: none;  /* IE and Edge */
+  scrollbar-width: none;     /* Firefox */
+  overflow-x: hidden; /* Garantir que não haja rolagem horizontal */
+}
+  
+.flex-1.overflow-y-auto::-webkit-scrollbar,
+.chat-container::-webkit-scrollbar,
+main.flex-1.overflow-auto::-webkit-scrollbar,
+div.flex-1.overflow-y-auto::-webkit-scrollbar {
+  display: none;  /* Chrome, Safari, Opera */
+  width: 0px; /* Largura zero para garantir que não aparece */
+}
+
 /* Ocultar barra de rolagem em dispositivos móveis */
 @media (max-width: 768px) {
-  .flex-1.overflow-y-auto {
+  .flex-1.overflow-y-auto,
+  .chat-container,
+  main.flex-1.overflow-auto,
+  div.flex-1.overflow-y-auto {
     -ms-overflow-style: none;  /* IE and Edge */
     scrollbar-width: none;     /* Firefox */
   }
   
-  .flex-1.overflow-y-auto::-webkit-scrollbar {
+  .flex-1.overflow-y-auto::-webkit-scrollbar,
+  .chat-container::-webkit-scrollbar,
+  main.flex-1.overflow-auto::-webkit-scrollbar,
+  div.flex-1.overflow-y-auto::-webkit-scrollbar {
     display: none;  /* Chrome, Safari, Opera */
   }
+}
+
+/* Corrigir posicionamento do input fixo */
+.chat-container .flex-shrink-0.fixed {
+  width: 100% !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  box-sizing: border-box;
+  transform: translateZ(0);
+  will-change: transform;
 }
 
 /* Customização específica para o ScrollArea do Radix UI */
@@ -342,16 +386,73 @@ aside *,
 @media (max-width: 768px) {
   /* Adiciona padding na parte inferior do chat para evitar sobreposição com o input fixo */
   .chat-container {
-    padding-bottom: 68px !important; /* Valor exato para coincidir com o input */
+    padding-bottom: 78px !important; /* Valor exato para coincidir com o input (60px de altura + 8px de padding) */
   }
   
   /* Garante que o espaço seja respeitado em todas as views */
   main.flex-1.overflow-auto {
-    padding-bottom: 72px !important;
+    padding-bottom: 78px !important;
   }
   
   /* Garante que o ScrollArea também respeite o espaço */
   .scroll-area-viewport > div {
-    padding-bottom: 72px !important;
+    padding-bottom: 78px !important;
   }
+}
+
+/* Estilos para o cabeçalho de conversa */
+.chat-conversation-header {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  padding: 0.75rem;
+  margin-bottom: 0.5rem;
+  border-bottom: 1px solid hsl(var(--border));
+  background-color: hsl(var(--background));
+  position: relative;
+  border-radius: 0.5rem;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+  flex-wrap: nowrap;
+  overflow: hidden;
+  max-width: 100%;
+}
+
+/* Versão móvel do cabeçalho de conversa */
+@media (max-width: 768px) {
+  .chat-conversation-header {
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    padding: 0.5rem;
+    margin-bottom: 1rem;
+  }
+  
+  /* Reduzir o tamanho do texto em telas pequenas */
+  .chat-conversation-header .header-item span {
+    font-size: 0.75rem;
+  }
+  
+  /* Ajustar espaçamento entre os itens */
+  .chat-conversation-header .header-item {
+    flex: 1;
+    min-width: 80px;
+    justify-content: center;
+    padding: 0.25rem 0;
+  }
+}
+
+/* Item individual do cabeçalho */
+.header-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.25rem 0.5rem;
+  border-radius: 0.25rem;
+}
+
+.header-item span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 120px;
 }

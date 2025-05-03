@@ -20,6 +20,67 @@ import { SelectItemWithAvatar, SelectTriggerWithAvatar } from "@/components/ui/s
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { useLocation } from "react-router-dom";
 
+// Interface para props do cabeçalho
+interface ChatConversationHeaderProps {
+  expertId?: string;
+  agentId?: string;
+  contentType?: string;
+  experts: Expert[];
+  agents: Agent[];
+  contentTypes: any[]; // Usando 'any' pois o tipo exato pode variar
+}
+
+// Componente de cabeçalho de conversa simplificado
+function ChatConversationHeader({ 
+  expertId, 
+  agentId, 
+  contentType, 
+  experts, 
+  agents, 
+  contentTypes 
+}: ChatConversationHeaderProps) {
+  const expert = expertId ? experts.find(e => e.id === expertId) : undefined;
+  const agent = agentId ? agents.find(a => a.id === agentId) : undefined;
+  const contentTypeObj = contentType ? contentTypes.find(ct => ct.name === contentType) : undefined;
+
+  return (
+    <div className="chat-conversation-header w-full max-w-full">
+      <div className="header-item">
+        <Avatar className="h-8 w-8">
+          {expert?.avatar ? (
+            <AvatarImage src={expert.avatar} alt={expert.name || "Expert"} />
+          ) : (
+            <AvatarFallback>{expertId ? (expert?.name?.[0] || "E").toUpperCase() : "E"}</AvatarFallback>
+          )}
+        </Avatar>
+        <span className="text-sm font-medium truncate">{expert?.name || "Expert"}</span>
+      </div>
+      
+      <div className="header-item">
+        <Avatar className="h-8 w-8">
+          {agent?.avatar ? (
+            <AvatarImage src={agent.avatar} alt={agent.name || "Agente"} />
+          ) : (
+            <AvatarFallback>{agentId ? (agent?.name?.[0] || "A").toUpperCase() : "A"}</AvatarFallback>
+          )}
+        </Avatar>
+        <span className="text-sm font-medium truncate">{agent?.name || "Agente"}</span>
+      </div>
+      
+      <div className="header-item">
+        <Avatar className="h-8 w-8">
+          {contentTypeObj?.avatar ? (
+            <AvatarImage src={contentTypeObj.avatar} alt={contentType || "Tipo"} />
+          ) : (
+            <AvatarFallback>{contentType ? contentType[0].toUpperCase() : "T"}</AvatarFallback>
+          )}
+        </Avatar>
+        <span className="text-sm font-medium truncate">{contentType || "Tipo de Conteúdo"}</span>
+      </div>
+    </div>
+  );
+}
+
 export default function Home() {
   const { 
     experts,
@@ -364,96 +425,24 @@ export default function Home() {
         </div>
       ) : !isInitialState ? (
         <>
-          {/* Cabeçalho fixo */}
-          <div className="flex-shrink-0 p-3 bg-card sticky top-0 z-10">
-            <div className="flex flex-wrap items-center justify-center gap-4 max-w-4xl mx-auto">
-              <div className="flex flex-wrap items-center justify-center gap-4">
-                <Select value={selectedExpert} disabled>
-                  <SelectTriggerWithAvatar 
-                    className="w-full sm:w-[180px]"
-                    avatarSrc={selectedExpert ? experts.find(e => e.id === selectedExpert)?.avatar : null}
-                    selectedName={selectedExpert ? experts.find(e => e.id === selectedExpert)?.name : null}
-                  >
-                    <SelectValue placeholder="Selecione o Expert" />
-                  </SelectTriggerWithAvatar>
-                  <SelectContent>
-                    {experts?.map((expert) => (
-                      <SelectItemWithAvatar 
-                        key={expert.id} 
-                        value={expert.id} 
-                        avatarSrc={expert.avatar || null}
-                        name={expert.name}
-                      >
-                        {expert.name}
-                      </SelectItemWithAvatar>
-                    ))}
-                    {selectedExpert && !experts.find(e => e.id === selectedExpert) && (
-                      <SelectItem value={selectedExpert} disabled>Expert ID: {selectedExpert.substring(0,6)}</SelectItem>
-                    )}
-                  </SelectContent>
-                </Select>
-
-                <Select value={selectedAgent} disabled>
-                  <SelectTriggerWithAvatar 
-                    className="w-full sm:w-[180px]"
-                    avatarSrc={selectedAgent ? agents.find(a => a.id === selectedAgent)?.avatar : null}
-                    selectedName={selectedAgent ? agents.find(a => a.id === selectedAgent)?.name : null}
-                  >
-                    <SelectValue placeholder="Selecione o Agente" />
-                  </SelectTriggerWithAvatar>
-                  <SelectContent>
-                    {agents?.map((agent) => (
-                      <SelectItemWithAvatar 
-                        key={agent.id} 
-                        value={agent.id} 
-                        avatarSrc={agent.avatar || null}
-                        name={agent.name}
-                      >
-                        {agent.name}
-                      </SelectItemWithAvatar>
-                    ))}
-                    {selectedAgent && !agents.find(a => a.id === selectedAgent) && (
-                      <SelectItem value={selectedAgent} disabled>Agente ID: {selectedAgent.substring(0,6)}</SelectItem>
-                    )}
-                  </SelectContent>
-                </Select>
-
-                <Select value={selectedContentType} disabled>
-                  <SelectTriggerWithAvatar 
-                    className="w-full sm:w-[180px]"
-                    avatarSrc={selectedContentType ? contentTypes.find(ct => ct.name === selectedContentType)?.avatar : null}
-                    selectedName={selectedContentType || null}
-                  >
-                    <SelectValue placeholder="Selecione o Tipo de Conteúdo" />
-                  </SelectTriggerWithAvatar>
-                  <SelectContent>
-                    {contentTypes.map((contentType) => (
-                      <SelectItemWithAvatar 
-                        key={contentType.id} 
-                        value={contentType.name} 
-                        avatarSrc={contentType.avatar || null}
-                        name={contentType.name}
-                      >
-                        {contentType.name}
-                      </SelectItemWithAvatar>
-                    ))}
-                    {selectedContentType && !contentTypes.find(ct => ct.name === selectedContentType) && (
-                      <SelectItem value={selectedContentType} disabled>{selectedContentType}</SelectItem>
-                    )}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-          </div>
-
           {/* Layout flexível com área de chat rolável e input fixo */}
-          <div className="flex flex-col h-[calc(100vh-140px)] overflow-hidden chat-container">
+          <div className="flex flex-col h-[calc(100vh-20px)] overflow-hidden chat-container">
             {/* Área de chat rolável */}
             <div 
-              className="flex-1 overflow-y-auto pb-20 px-4" 
+              className="flex-1 overflow-y-auto pb-[78px] px-4 md:pb-4" 
               ref={scrollAreaRef}
             >
               <div className="max-w-3xl mx-auto space-y-4 pt-4">
+                {/* Cabeçalho informativo com avatares e nomes */}
+                <ChatConversationHeader 
+                  expertId={selectedExpert}
+                  agentId={selectedAgent}
+                  contentType={selectedContentType}
+                  experts={experts}
+                  agents={agents}
+                  contentTypes={contentTypes}
+                />
+                
                 <ChatArea 
                   messages={messages} 
                   isTyping={isGenerating}
@@ -463,7 +452,7 @@ export default function Home() {
             </div>
 
             {/* Input fixo no rodapé */}
-            <div className="flex-shrink-0 p-4 bg-background z-20 fixed bottom-0 left-0 right-0 md:static md:bottom-auto shadow-md">
+            <div className="flex-shrink-0 p-4 bg-background z-20 fixed bottom-0 left-0 w-full right-0 md:static md:bottom-auto shadow-md">
               <div className="max-w-3xl mx-auto">
                 <ChatInput 
                   onSendMessage={handleSendMessage} 
