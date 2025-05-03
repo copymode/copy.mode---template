@@ -337,3 +337,21 @@ aside *,
     display: flex;
   }
 }
+
+/* Espaço adicional no fundo do chat para dispositivos móveis */
+@media (max-width: 768px) {
+  /* Adiciona padding na parte inferior do chat para evitar sobreposição com o input fixo */
+  .chat-container {
+    padding-bottom: 120px !important; /* Valor maior que a altura do input + botão */
+  }
+  
+  /* Garante que o espaço seja respeitado em todas as views */
+  main.flex-1.overflow-auto {
+    padding-bottom: 140px !important;
+  }
+  
+  /* Garante que o ScrollArea também respeite o espaço */
+  .scroll-area-viewport > div {
+    padding-bottom: 140px !important;
+  }
+}
