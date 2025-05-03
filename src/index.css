@@ -101,6 +101,8 @@
   body,
   #root {
     height: 100%; /* Ensure full viewport height */
+    touch-action: pan-x pan-y;
+    -ms-touch-action: pan-x pan-y;
   }
 
   * {
@@ -111,6 +113,31 @@
     font-feature-settings: "rlig" 1, "calt" 1;
     /* Remove potential conflicting height from default body if present */
     /* height: auto; */ 
+  }
+}
+
+@media (max-width: 768px) {
+  html {
+    touch-action: pan-x pan-y;
+    -ms-touch-action: pan-x pan-y;
+    overflow: hidden;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: none;
+  }
+  
+  body, #root {
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden;
+    overflow-y: auto;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: none;
   }
 }
 
