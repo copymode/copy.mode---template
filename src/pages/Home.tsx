@@ -450,7 +450,7 @@ export default function Home() {
           <div className="flex flex-col h-[calc(100vh-140px)] overflow-hidden chat-container">
             {/* Área de chat rolável */}
             <div 
-              className="flex-1 overflow-y-auto pb-24 px-4" 
+              className="flex-1 overflow-y-auto pb-20 px-4" 
               ref={scrollAreaRef}
             >
               <div className="max-w-3xl mx-auto space-y-4 pt-4">
