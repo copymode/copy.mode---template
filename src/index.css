@@ -170,6 +170,18 @@
   background-color: hsl(var(--scrollbar-thumb) / 0.8);
 }
 
+/* Ocultar barra de rolagem em dispositivos móveis */
+@media (max-width: 768px) {
+  .flex-1.overflow-y-auto {
+    -ms-overflow-style: none;  /* IE and Edge */
+    scrollbar-width: none;     /* Firefox */
+  }
+  
+  .flex-1.overflow-y-auto::-webkit-scrollbar {
+    display: none;  /* Chrome, Safari, Opera */
+  }
+}
+
 /* Customização específica para o ScrollArea do Radix UI */
 .scrollbar {
   display: flex;
