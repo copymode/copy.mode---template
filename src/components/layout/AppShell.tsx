@@ -1,4 +1,4 @@
-import { useState, ReactNode, useEffect } from "react";
+import { useState, ReactNode, useEffect, useRef } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { useTheme } from "@/context/ThemeContext";
 import { useData } from "@/context/DataContext";
@@ -37,8 +37,43 @@ export function AppShell({ children }: AppShellProps) {
   const [filteredChats, setFilteredChats] = useState(chats);
   const location = useLocation();
   const navigate = useNavigate();
+  const sidebarRef = useRef<HTMLDivElement>(null);
+  const [isDesktop, setIsDesktop] = useState(window.innerWidth >= 768);
 
   const chatHistory = chats;
+
+  useEffect(() => {
+    const handleResize = () => {
+      setIsDesktop(window.innerWidth >= 768);
+    };
+
+    handleResize();
+    
+    window.addEventListener('resize', handleResize);
+    
+    return () => {
+      window.removeEventListener('resize', handleResize);
+    };
+  }, []);
+
+  const closeSidebarIfMobile = () => {
+    if (!isDesktop) {
+      setSidebarOpen(false);
+    }
+  };
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (sidebarRef.current && !sidebarRef.current.contains(event.target as Node) && !isDesktop && sidebarOpen) {
+        setSidebarOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [sidebarOpen, isDesktop]);
 
   useEffect(() => {
     if (!searchTerm.trim()) {
@@ -86,9 +121,7 @@ export function AppShell({ children }: AppShellProps) {
     if (location.pathname !== "/home" && location.pathname !== "/") {
       navigate("/home");
     }
-    if (sidebarOpen) {
-      setSidebarOpen(false);
-    }
+    closeSidebarIfMobile();
   };
 
   const handleDeleteChat = (chatId: string, e: React.MouseEvent) => {
@@ -139,6 +172,7 @@ export function AppShell({ children }: AppShellProps) {
   return (
     <div className="grid md:grid-cols-[auto_1fr] min-h-screen bg-background h-screen">
       <aside 
+        ref={sidebarRef}
         className={`bg-sidebar fixed inset-y-0 left-0 z-30 transform transition-all duration-300 ease-in-out border-r border-sidebar-border overflow-hidden 
                     md:relative md:translate-x-0 md:h-full ${sidebarOpen ? "translate-x-0" : "-translate-x-full"} 
                     ${sidebarCollapsed ? "md:w-20" : "md:w-64"}`}
@@ -146,7 +180,7 @@ export function AppShell({ children }: AppShellProps) {
         <div className="flex flex-col h-full">
           <div className={`flex items-center justify-between p-4 flex-shrink-0 ${sidebarCollapsed ? 'md:justify-center' : 'md:justify-between'}`}>
             <button onClick={toggleSidebar} className="p-1 rounded-md text-sidebar-foreground hover:bg-sidebar-accent md:hidden">
-              <X size={24} />
+              <ChevronsLeft size={24} />
             </button>
             <h2 className={`text-xl font-bold text-sidebar-foreground ${sidebarCollapsed ? 'md:hidden' : 'md:block'}`}>Copy Mode</h2>
              <Button 
@@ -184,6 +218,8 @@ export function AppShell({ children }: AppShellProps) {
                                  if (path === "/" || path === "/home") {
                                    setCurrentChat(null);
                                  }
+                                 
+                                 closeSidebarIfMobile();
                                }}
                              >
                                <Icon size={20} />
@@ -205,6 +241,8 @@ export function AppShell({ children }: AppShellProps) {
                              if (path === "/" || path === "/home") {
                                setCurrentChat(null);
                              }
+                             
+                             closeSidebarIfMobile();
                            }}
                          >
                            <Icon size={20} className="mr-3" />
@@ -289,6 +327,7 @@ export function AppShell({ children }: AppShellProps) {
                                  if (location.pathname !== "/" && location.pathname !== "/home") {
                                    navigate("/home");
                                  }
+                                 closeSidebarIfMobile();
                                }}
                              >
                                <div className="flex flex-col overflow-hidden w-full text-center">
@@ -314,6 +353,7 @@ export function AppShell({ children }: AppShellProps) {
                                if (location.pathname !== "/" && location.pathname !== "/home") {
                                  navigate("/home");
                                }
+                               closeSidebarIfMobile();
                              }}
                            >
                              <div className="flex flex-col overflow-hidden block">
@@ -422,7 +462,10 @@ export function AppShell({ children }: AppShellProps) {
                          <Button 
                           variant="outline" 
                           size="icon"
-                          onClick={logout}
+                          onClick={() => {
+                            logout();
+                            closeSidebarIfMobile();
+                          }}
                           className="text-sidebar-foreground rounded-full"
                         >
                           <LogOut size={16} />
@@ -436,7 +479,10 @@ export function AppShell({ children }: AppShellProps) {
                     <Button 
                       variant="outline" 
                       size="sm"
-                      onClick={logout}
+                      onClick={() => {
+                        logout();
+                        closeSidebarIfMobile();
+                      }}
                       className="text-sidebar-foreground"
                     >
                       <LogOut size={16} className="mr-2" />
@@ -447,6 +493,14 @@ export function AppShell({ children }: AppShellProps) {
            </div>
         </div>
       </aside>
+      
+      {sidebarOpen && !isDesktop && (
+        <div 
+          className="fixed inset-0 bg-black/20 z-20 md:hidden" 
+          onClick={() => setSidebarOpen(false)}
+          aria-hidden="true"
+        />
+      )}
       
       <div className="flex flex-col overflow-hidden"> 
         <header className="bg-background border-b py-3 px-4 sticky top-0 z-10 flex-shrink-0">
