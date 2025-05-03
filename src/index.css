@@ -139,6 +139,39 @@
     -webkit-overflow-scrolling: touch;
     overscroll-behavior: none;
   }
+
+  /* Aplicando padding-bottom maior para todo conteúdo principal em mobile */
+  main.flex-1.overflow-auto,
+  .flex-1.overflow-y-auto,
+  [role="main"],
+  .overflow-auto,
+  .overflow-y-auto {
+    padding-bottom: 150px !important;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Ajuste específico para container de chat */
+  .chat-container .flex-1.overflow-y-auto {
+    padding-bottom: 160px !important;
+  }
+
+  /* Força todos os elementos fixed no bottom a respeitar o safe-area-inset-bottom */
+  .fixed[style*="bottom"],
+  .fixed.bottom-0,
+  div[style*="position: fixed"][style*="bottom"],
+  .flex-shrink-0.fixed {
+    padding-bottom: env(safe-area-inset-bottom, 10px) !important;
+  }
+
+  /* Ajusta a altura da janela em dispositivos iOS */
+  html, body, #root {
+    height: -webkit-fill-available;
+  }
+
+  /* Garante que conteúdos principais ocupem toda a altura disponível */
+  .min-h-screen, .h-screen {
+    min-height: -webkit-fill-available;
+  }
 }
 
 @layer components {
