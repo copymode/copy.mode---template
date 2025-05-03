@@ -541,7 +541,7 @@ body::-webkit-scrollbar {
   }
 }
 
-/* Ajustes específicos para dispositivos móveis */
+/* Ajustes para headers e conteúdos em dispositivos móveis */
 @media (max-width: 768px) {
   /* Fixar o header na parte superior da tela */
   header.bg-background.border-b.sticky {
@@ -551,28 +551,31 @@ body::-webkit-scrollbar {
     right: 0;
     width: 100%;
     z-index: 50;
+    height: 56px; /* Altura definida para o header */
   }
 
-  /* Ajustar a área de rolagem para compensar o header fixo */
-  .chat-container {
-    padding-top: 60px !important; /* Espaço para o header fixo */
-  }
-
-  /* Áreas de rolagem principais com paddings ajustados para todos os layouts */
-  main.flex-1.overflow-auto,
-  .flex-1.overflow-y-auto,
-  .chat-container .flex-1.overflow-y-auto {
-    padding-bottom: 130px !important; /* Aumentado em 20px para mais espaço */
+  /* Adicionar padding-top em todos os contêineres principais para compensar o header fixo */
+  main.flex-1.overflow-auto {
+    padding-top: 70px !important; /* 56px (altura do header) + 14px de espaço extra */
+    padding-bottom: 130px !important; /* Espaço para o input fixo */
     -webkit-overflow-scrolling: touch;
   }
-
-  /* Ajustes para o container principal */
+  
+  /* Ajuste específico para contêineres da página Home */
   .chat-container {
+    padding-top: 70px !important;
     min-height: 100vh;
     display: flex;
     flex-direction: column;
     margin-top: 0 !important;
     margin-bottom: 0 !important;
+  }
+  
+  /* Áreas de rolagem com paddings para conteúdo visível */
+  .flex-1.overflow-y-auto,
+  .chat-container .flex-1.overflow-y-auto {
+    padding-bottom: 130px !important; /* Espaço para o input fixo */
+    -webkit-overflow-scrolling: touch;
   }
   
   /* Input fixo no rodapé */
@@ -593,7 +596,14 @@ body::-webkit-scrollbar {
     margin-bottom: 15px;
   }
   
-  /* Height ajustado para o contêiner principal para garantir que preencha toda a tela */
+  /* Ajuste para contêineres gerais, incluindo todas as páginas */
+  .flex-1.grid.place-items-center,
+  .flex-1.p-6,
+  .flex-1.flex.flex-col {
+    padding-top: 70px !important;
+  }
+  
+  /* Height ajustado para o contêiner principal */
   .flex.flex-col.bg-background.min-h-full {
     min-height: 100vh;
     height: 100vh;
