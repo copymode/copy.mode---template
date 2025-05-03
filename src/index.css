@@ -250,12 +250,14 @@ div.flex-1.overflow-y-auto::-webkit-scrollbar {
     right: 0;
     z-index: 50;
     background-color: hsl(var(--background));
-    box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.05);
+    box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1);
+    padding-bottom: env(safe-area-inset-bottom, 0); /* Suporte para iPhones com notch */
   }
   
   /* Garante espaço para o input fixo */
   .chat-container .flex-1.overflow-y-auto {
-    padding-bottom: 80px !important;
+    padding-bottom: 90px !important;
+    padding-top: 20px !important; /* Espaço para o header fixo */
   }
 }
 
@@ -283,7 +285,7 @@ div.flex-1.overflow-y-auto::-webkit-scrollbar {
   
   /* Garante espaço para o input fixo */
   .chat-container .flex-1.overflow-y-auto {
-    padding-bottom: 80px !important;
+    padding-bottom: 90px !important;
   }
 }
 
@@ -416,24 +418,6 @@ aside *,
   }
 }
 
-/* Espaço adicional no fundo do chat para dispositivos móveis */
-@media (max-width: 768px) {
-  /* Adiciona padding na parte inferior do chat para evitar sobreposição com o input fixo */
-  .chat-container {
-    padding-bottom: 78px !important; /* Valor exato para coincidir com o input (60px de altura + 8px de padding) */
-  }
-  
-  /* Garante que o espaço seja respeitado em todas as views */
-  main.flex-1.overflow-auto {
-    padding-bottom: 78px !important;
-  }
-  
-  /* Garante que o ScrollArea também respeite o espaço */
-  .scroll-area-viewport > div {
-    padding-bottom: 78px !important;
-  }
-}
-
 /* Estilos para o cabeçalho de conversa */
 .chat-conversation-header {
   display: flex;
@@ -459,6 +443,10 @@ aside *,
     gap: 0.5rem;
     padding: 0.5rem;
     margin-bottom: 1rem;
+    margin-top: 15px; /* Espaço adicional no topo para evitar sobreposição com o header fixo */
+    position: relative;
+    z-index: 5;
+    background-color: hsl(var(--background));
   }
   
   /* Reduzir o tamanho do texto em telas pequenas */
@@ -550,6 +538,51 @@ body::-webkit-scrollbar {
   }
   .sidebar-collapsed .chat-container .flex-shrink-0.fixed {
     left: 64px !important; /* Largura do sidebar quando recolhido */
+  }
+}
+
+/* Ajustes específicos para dispositivos móveis */
+@media (max-width: 768px) {
+  /* Ajustes para o container principal */
+  .chat-container {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    padding-top: 60px;  /* Altura aproximada do header */
+    margin-top: 0 !important;
+    margin-bottom: 0 !important;
+  }
+
+  /* Área de chat rolável */
+  .chat-container .flex-1.overflow-y-auto {
+    flex: 1 1 auto;
+    overflow-y: auto;
+    padding-bottom: 110px !important;
+    -webkit-overflow-scrolling: touch;
+  }
+  
+  /* Input fixo no rodapé */
+  .chat-container .flex-shrink-0.fixed {
+    position: fixed !important;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 40;
+    background-color: hsl(var(--background));
+    box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1);
+    padding-bottom: env(safe-area-inset-bottom, 10px);
+  }
+  
+  /* Cabeçalho da conversa */
+  .chat-conversation-header {
+    margin-top: 0;
+    margin-bottom: 15px;
+  }
+  
+  /* Height ajustado para o contêiner principal para garantir que preencha toda a tela */
+  .flex.flex-col.bg-background.min-h-full {
+    min-height: 100vh;
+    height: 100vh;
   }
 }
 
