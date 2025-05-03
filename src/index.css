@@ -679,20 +679,5 @@ body::-webkit-scrollbar {
     scroll-margin-bottom: 80px;
     margin-bottom: 10px;
   }
-  
-  /* Regras para o sidebar mobile quando aberto */
-  .sidebar-mobile-open aside {
-    z-index: 1000 !important; /* Z-index muito alto para garantir que fique acima de tudo */
-    box-shadow: 0 0 15px rgba(0, 0, 0, 0.2); /* Sombra para dar destaque */
-  }
-  
-  /* Overlay para o fundo quando o sidebar está aberto */
-  .sidebar-mobile-open::before {
-    content: '';
-    position: fixed;
-    inset: 0;
-    background-color: rgba(0, 0, 0, 0.5);
-    z-index: 40; /* Abaixo do sidebar mas acima do conteúdo */
-  }
 }
 
