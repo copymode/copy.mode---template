@@ -450,7 +450,7 @@ export default function Home() {
           <div className="flex flex-col h-[calc(100vh-140px)] overflow-hidden">
             {/* Área de chat rolável */}
             <div 
-              className="flex-1 overflow-y-auto pb-4 px-4"
+              className="flex-1 overflow-y-auto pb-24 px-4"
               ref={scrollAreaRef}
             >
               <div className="max-w-3xl mx-auto space-y-4 pt-4">
@@ -463,7 +463,7 @@ export default function Home() {
             </div>
 
             {/* Input fixo no rodapé */}
-            <div className="flex-shrink-0 p-4 bg-background z-10 shadow-sm">
+            <div className="flex-shrink-0 p-4 bg-background z-20 fixed bottom-0 left-0 right-0 md:static md:bottom-auto shadow-md">
               <div className="max-w-3xl mx-auto">
                 <ChatInput 
                   onSendMessage={handleSendMessage} 
