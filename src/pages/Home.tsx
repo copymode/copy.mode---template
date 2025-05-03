@@ -432,7 +432,7 @@ export default function Home() {
               className="flex-1 overflow-y-auto px-4" 
               ref={scrollAreaRef}
             >
-              <div className="max-w-3xl mx-auto space-y-4 pt-4">
+              <div className="max-w-3xl mx-auto space-y-4">
                 {/* Cabeçalho informativo com avatares e nomes */}
                 <ChatConversationHeader 
                   expertId={selectedExpert}
