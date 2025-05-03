@@ -67,14 +67,14 @@ Os arquivos de build serão gerados na pasta `dist/`.
 
 ### 2. Implantação em Servidor Web
 
-#### Opção 1: Hospedagem Estática (Vercel, Netlify, etc.)
+#### Opção 1: Hospedagem Estática (Netlify ou similar)
 
 1. Configure o projeto na plataforma escolhida
 2. Defina as variáveis de ambiente:
    - `VITE_SUPABASE_URL`
    - `VITE_SUPABASE_ANON_KEY`
 3. Configure o redirecionamento para o SPA:
-   - Crie um arquivo `_redirects` (Netlify) ou `vercel.json` (Vercel) para redirecionar todas as rotas para o `index.html`
+   - Crie um arquivo `_redirects` (Netlify) para redirecionar todas as rotas para o `index.html`
 
 #### Opção 2: Servidor Tradicional (Nginx, Apache)
 
