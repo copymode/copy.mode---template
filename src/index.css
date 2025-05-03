@@ -654,7 +654,7 @@ body::-webkit-scrollbar {
   /* Configuração específica para a área de chat móvel */
   .mobile-chat-area {
     padding-top: 10px !important;
-    padding-bottom: calc(70px + 10px) !important; /* Altura do input (60px) + 10px de margem */
+    padding-bottom: calc(80px + 20px) !important; /* Aumentado: Altura do input (60px) + padding do container (20px) + margem extra (20px) */
     min-height: calc(100vh - 130px);
     -webkit-overflow-scrolling: touch;
     overscroll-behavior-y: contain;
@@ -676,23 +676,8 @@ body::-webkit-scrollbar {
   
   /* Garantir que o div de referência de scroll esteja visível */
   .mobile-chat-area > div > div:last-child {
-    scroll-margin-bottom: 80px;
-    margin-bottom: 10px;
-  }
-  
-  /* Regras para o sidebar mobile quando aberto */
-  .sidebar-mobile-open aside {
-    z-index: 1000 !important; /* Z-index muito alto para garantir que fique acima de tudo */
-    box-shadow: 0 0 15px rgba(0, 0, 0, 0.2); /* Sombra para dar destaque */
-  }
-  
-  /* Overlay para o fundo quando o sidebar está aberto */
-  .sidebar-mobile-open::before {
-    content: '';
-    position: fixed;
-    inset: 0;
-    background-color: rgba(0, 0, 0, 0.5);
-    z-index: 40; /* Abaixo do sidebar mas acima do conteúdo */
+    scroll-margin-bottom: 100px; /* Aumentado para garantir visibilidade */
+    margin-bottom: 30px; /* Aumentado para espaçamento adicional no final */
   }
 }
 

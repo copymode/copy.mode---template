@@ -428,13 +428,15 @@ export default function Home() {
         <>
           {/* Layout flexível com área de chat rolável e input fixo */}
           <div className="flex flex-col h-screen overflow-hidden chat-container">
-            {/* Área de chat rolável */}
+            {/* Área de conversa com padding suficiente para o input */}
             <div 
-              className="flex-1 overflow-y-auto px-4 pt-4 pb-20 mobile-chat-area" 
-              ref={scrollAreaRef}
+              className="flex-1 overflow-y-auto px-4 pt-4 pb-20 mobile-chat-area md:pb-4"
+              // Adiciona padding-bottom com base na altura do input no elemento pai
+              style={{ 
+                paddingBottom: 'calc(80px + env(safe-area-inset-bottom, 16px))'
+              }}
             >
-              <div className="max-w-3xl mx-auto space-y-4">
-                {/* Cabeçalho informativo com avatares e nomes */}
+              <div className="max-w-3xl mx-auto">
                 <ChatConversationHeader 
                   expertId={selectedExpert}
                   agentId={selectedAgent}

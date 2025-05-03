@@ -31,22 +31,26 @@ export function ChatArea({ messages, isTyping = false, typingContent = "" }: Cha
       // Verifica se estamos em um dispositivo móvel
       const isMobile = window.innerWidth <= 768;
       
-      // Scroll com comportamento específico para mobile
-      scrollRef.current.scrollIntoView({ 
-        behavior: isMobile ? "smooth" : "auto",
-        block: "end",
-        inline: "nearest"
-      });
-      
-      // Verifica se é necessário adicionar um pequeno atraso extra para iOS
-      if (isMobile && /iPhone|iPad|iPod/.test(navigator.userAgent)) {
-        setTimeout(() => {
-          scrollRef.current?.scrollIntoView({ 
-            behavior: "smooth",
-            block: "end"
-          });
-        }, 100);
-      }
+      // Adiciona um pequeno atraso para garantir que o layout seja renderizado completamente
+      setTimeout(() => {
+        // Scroll com comportamento específico para mobile
+        scrollRef.current?.scrollIntoView({ 
+          behavior: isMobile ? "smooth" : "auto",
+          block: "end",
+          inline: "nearest"
+        });
+        
+        // Verifica se é necessário adicionar um pequeno atraso extra para iOS
+        if (isMobile && /iPhone|iPad|iPod/.test(navigator.userAgent)) {
+          // Atraso maior para garantir que o scroll funcione corretamente no iOS
+          setTimeout(() => {
+            scrollRef.current?.scrollIntoView({ 
+              behavior: "smooth",
+              block: "end"
+            });
+          }, 200);
+        }
+      }, 50);
     }
   }, [messages, isTyping, typingContent]);
   
@@ -120,8 +124,8 @@ export function ChatArea({ messages, isTyping = false, typingContent = "" }: Cha
             </div>
           )}
           
-          {/* Referência para scroll */}
-          <div ref={scrollRef} />
+          {/* Referência para scroll com espaço adicional */}
+          <div ref={scrollRef} className="pb-4" />
         </div>
       )}
     </div>
