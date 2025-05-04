@@ -48,9 +48,6 @@
     /* Scrollbar Colors (Light) */
     --scrollbar-thumb: 215 20% 80%; /* Light gray for thumb */
     --scrollbar-track: 0 0% 100%; /* White/transparent for track */
-
-    /* Variável para calcular altura real do viewport (fallback para navegadores sem suporte) */
-    --vh: 1vh;
   }
 
   .dark {
@@ -109,11 +106,10 @@
   }
 
   * {
-    border-color: hsl(var(--border));
+    @apply border-border;
   }
   body {
-    background-color: hsl(var(--background));
-    color: hsl(var(--foreground));
+    @apply bg-background text-foreground;
     font-feature-settings: "rlig" 1, "calt" 1;
     /* Remove potential conflicting height from default body if present */
     /* height: auto; */ 
@@ -147,17 +143,7 @@
 
 @layer components {
   .copy-btn {
-    padding: 0.5rem;
-    border-radius: 9999px;
-    transition-property: color, background-color, border-color, text-decoration-color, fill, stroke;
-    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
-    transition-duration: 150ms;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-  .copy-btn:hover {
-    background-color: hsl(var(--secondary));
+    @apply p-2 rounded-full transition-colors hover:bg-secondary flex items-center justify-center;
   }
 }
 
@@ -557,7 +543,7 @@ body::-webkit-scrollbar {
 
 /* Ajustes para headers e conteúdos em dispositivos móveis */
 @media (max-width: 768px) {
-  /* Fixar o header na parte superior da tela de forma absoluta para não ser afetado pelo teclado */
+  /* Fixar o header na parte superior da tela */
   header.bg-background.border-b.sticky {
     position: fixed !important;
     top: 0;
@@ -566,12 +552,6 @@ body::-webkit-scrollbar {
     width: 100%;
     z-index: 50;
     height: 56px; /* Altura definida para o header */
-    /* Propriedades que evitam o reposicionamento pelo teclado virtual */
-    position: fixed !important;
-    transform: translateZ(0);
-    will-change: transform;
-    -webkit-transform: translateZ(0);
-    -webkit-backface-visibility: hidden;
   }
 
   /* Adicionar padding-top em todos os contêineres principais para compensar o header fixo */
@@ -627,19 +607,6 @@ body::-webkit-scrollbar {
   .flex.flex-col.bg-background.min-h-full {
     min-height: 100vh;
     height: 100vh;
-  }
-}
-
-/* Desabilitar ajustes automáticos da ViewPort em dispositivos Apple */
-@supports (-webkit-touch-callout: none) {
-  /* Evitar que iOS redimensione a viewport ao abrir o teclado */
-  @media (max-width: 768px) {
-    header.bg-background.border-b.sticky {
-      position: fixed !important;
-      top: 0 !important;
-      left: 0 !important;
-      right: 0 !important;
-    }
   }
 }
 
@@ -972,304 +939,4 @@ html:not(.dark) div.container.mx-auto.max-w-6xl div.text-center.p-8.border.round
 }
 
 /* Prevenção de barras de rolagem horizontais */
-
-/* Estilos para navegadores que suportam VirtualKeyboard API */
-body.virtual-keyboard-supported {
-  /* Definir valores iniciais para as variáveis do teclado */
-  --keyboard-height: 0px;
-  --keyboard-width: 0px;
-  --keyboard-x: 0px;
-  --keyboard-y: 0px;
-}
-
-/* Quando o teclado virtual estiver visível em navegadores que suportam a API */
-body.virtual-keyboard-supported.virtual-keyboard-visible {
-  /* Ajusta o padding inferior para evitar que o conteúdo fique sob o teclado */
-  overflow: auto !important;
-  position: static !important;
-  
-  /* Ajusta o conteúdo principal para evitar o teclado */
-  main.flex-1.overflow-auto,
-  .chat-container .flex-1.overflow-y-auto {
-    padding-bottom: calc(var(--keyboard-height) + 80px) !important;
-  }
-  
-  /* Ajusta o input fixo para ficar acima do teclado */
-  .chat-container .flex-shrink-0.fixed,
-  .flex-shrink-0.p-4.bg-background.z-20.fixed {
-    position: fixed !important;
-    bottom: var(--keyboard-height) !important;
-    z-index: 999 !important;
-    background-color: hsl(var(--background)) !important;
-    box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1) !important;
-    transform: translateZ(0);
-    opacity: 1 !important;
-    visibility: visible !important;
-    display: flex !important;
-  }
-  
-  /* Mantém o cabeçalho visível */
-  header.bg-background.border-b.sticky {
-    position: fixed !important;
-    top: 0;
-    z-index: 50;
-  }
-  
-  /* Evita pulos no layout */
-  .chat-conversation-header {
-    position: sticky;
-    top: 56px;
-    z-index: 30;
-    background-color: hsl(var(--background));
-  }
-}
-
-/* Ajustes específicos para dispositivos móveis com VirtualKeyboard API */
-@media (max-width: 768px) {
-  body.virtual-keyboard-supported.virtual-keyboard-visible {
-    /* Remove transformações que podem causar problemas */
-    * {
-      transition-property: none !important;
-    }
-    
-    /* Força o conteúdo a ser rolável */
-    html, body, #root {
-      overflow: auto !important;
-      height: auto !important;
-    }
-  }
-}
-
-/* Suporte para a meta tag "interactive-widget" que é mais moderna */
-@supports (padding: env(keyboard-inset-height)) {
-  body {
-    /* As variáveis env() já estão definidas pelo navegador */
-    --keyboard-height: env(keyboard-inset-height, 0px);
-    --keyboard-width: env(keyboard-inset-width, 0px);
-  }
-  
-  @media (max-width: 768px) {
-    .chat-container .flex-shrink-0.fixed {
-      bottom: env(keyboard-inset-height, 0px) !important;
-      position: fixed !important;
-      opacity: 1 !important;
-      visibility: visible !important;
-      display: flex !important;
-    }
-    
-    .chat-container .flex-1.overflow-y-auto {
-      padding-bottom: calc(env(keyboard-inset-height, 0px) + 80px) !important;
-    }
-  }
-}
-
-/* Estilos específicos para o iOS */
-html.ios-device,
-body.ios-device {
-  /* Evitar reajustes de altura em iOS */
-  height: 100%;
-  position: fixed;
-  width: 100%;
-  overflow: hidden;
-}
-
-/* Quando o iOS mostra o teclado */
-body.ios-device.ios-keyboard-visible {
-  /* Permitir rolagem quando o teclado está aberto */
-  position: absolute;
-  overflow: auto;
-  height: auto;
-  min-height: 100%;
-  -webkit-overflow-scrolling: touch;
-}
-
-/* Prevenir problemas com posicionamento fixo em iOS */
-@media (max-width: 768px) {
-  body.ios-device header.bg-background.border-b.sticky {
-    position: absolute !important;
-    top: 0;
-    left: 0;
-    right: 0;
-    width: 100%;
-  }
-  
-  body.ios-device.ios-keyboard-visible .flex-shrink-0.fixed,
-  body.ios-device.ios-keyboard-visible .chat-container .flex-shrink-0.fixed {
-    position: absolute !important;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    opacity: 1 !important;
-    visibility: visible !important;
-    display: flex !important;
-    z-index: 9999;
-  }
-  
-  /* Assegurar que o conteúdo principal seja rolável */
-  body.ios-device.ios-keyboard-visible main.flex-1.overflow-auto,
-  body.ios-device.ios-keyboard-visible .flex-1.overflow-y-auto {
-    padding-top: 56px;
-    overflow-y: auto !important;
-    -webkit-overflow-scrolling: touch;
-    position: relative;
-    height: auto;
-  }
-  
-  /* Garantir posicionamento correto do cabeçalho de conversa */
-  body.ios-device.ios-keyboard-visible .chat-conversation-header {
-    position: relative;
-    top: 0;
-    margin-top: 10px;
-    margin-bottom: 10px;
-  }
-}
-
-/* Estilo para entrada fixa quando teclado está visível */
-body.keyboard-visible .chat-container .flex-shrink-0.fixed {
-  position: fixed !important;
-  bottom: 0 !important;
-  left: 0 !important;
-  right: 0 !important;
-  z-index: 9999 !important;
-  box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1) !important;
-  background-color: hsl(var(--background)) !important;
-  opacity: 1 !important;
-  visibility: visible !important;
-  display: flex !important;
-}
-
-/* Corrigir a exibição nas diferentes versões */
-body.keyboard-visible .flex-shrink-0.fixed,
-body.virtual-keyboard-visible .flex-shrink-0.fixed {
-  opacity: 1 !important;
-  visibility: visible !important;
-  display: flex !important;
-  z-index: 9999 !important;
-}
-
-/* Prevenção de barras de rolagem horizontais */
-
-/* SOLUÇÃO DEFINITIVA PARA INPUTS FIXOS SOBRE TECLADO VIRTUAL EM DISPOSITIVOS MÓVEIS */
-/* Regras aprimoradas para manter o input de chat visível quando o teclado estiver aberto */
-
-/* Garantir que o input permaneça visível e fixo na parte inferior */
-.chat-container .flex-shrink-0.fixed {
-  position: fixed !important;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  width: 100%;
-  box-sizing: border-box;
-  z-index: 999;
-  background-color: hsl(var(--background));
-  box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1);
-  padding-bottom: env(safe-area-inset-bottom, 10px);
-  transition: none !important;
-  transform: translateZ(0) !important;
-  will-change: transform;
-  -webkit-transform: translateZ(0) !important;
-  -webkit-backface-visibility: hidden;
-}
-
-/* Espaço adicional para o input na área de conteúdo quando o teclado está visível */
-body.keyboard-visible .chat-container .flex-1.overflow-y-auto,
-body.virtual-keyboard-visible .chat-container .flex-1.overflow-y-auto,
-body.ios-keyboard-visible .chat-container .flex-1.overflow-y-auto {
-  padding-bottom: 140px !important;
-}
-
-/* Estilo específico para quando o input recebe foco */
-body .chat-container.input-focused .flex-shrink-0.fixed,
-body.keyboard-visible .chat-container .flex-shrink-0.fixed,
-body.virtual-keyboard-visible .chat-container .flex-shrink-0.fixed,
-body.ios-keyboard-visible .chat-container .flex-shrink-0.fixed,
-body.input-is-focused .chat-container .flex-shrink-0.fixed {
-  position: fixed !important;
-  bottom: 0 !important;
-  left: 0 !important;
-  right: 0 !important;
-  z-index: 999 !important;
-  opacity: 1 !important;
-  visibility: visible !important;
-  display: flex !important;
-  transform: translateZ(0) !important;
-  will-change: transform;
-  -webkit-transform: translateZ(0) !important;
-  -webkit-backface-visibility: hidden;
-}
-
-/* Viewport fixa e com altura real para mobile */
-@media (max-width: 768px) {
-  :root {
-    --vh: 1vh;
-  }
-
-  html, body, #root {
-    /* Altura controlável via JavaScript */
-    min-height: calc(var(--vh, 1vh) * 100);
-    height: 100%;
-    touch-action: manipulation;
-    -webkit-overflow-scrolling: touch;
-  }
-
-  /* Quando o teclado está aberto, garantir que tudo seja rolável */
-  body.keyboard-visible,
-  body.virtual-keyboard-visible,
-  body.ios-keyboard-visible,
-  body.input-is-focused {
-    /* Permitir que o conteúdo role ao invés de fixar a viewport */
-    position: relative !important;
-    overflow: auto !important;
-    -webkit-overflow-scrolling: touch;
-    height: auto !important;
-    min-height: 100% !important;
-  }
-
-  /* Garantir que elementos em foco sejam visíveis */
-  body.keyboard-visible *:focus,
-  body.virtual-keyboard-visible *:focus,
-  body.ios-keyboard-visible *:focus,
-  body.input-is-focused *:focus {
-    position: relative;
-    z-index: 100;
-  }
-}
-
-/* Tratamento específico para iOS */
-@supports (-webkit-touch-callout: none) {
-  /* iOS específico */
-  body.ios-device.ios-keyboard-visible {
-    /* Comportamento adequado para iOS */
-    position: fixed;
-    width: 100%;
-    height: 100%;
-    overflow: auto;
-    -webkit-overflow-scrolling: touch;
-  }
-  
-  /* Fixar o input de chat na parte inferior quando o teclado estiver visível no iOS */
-  body.ios-device.ios-keyboard-visible .chat-container .flex-shrink-0.fixed {
-    position: fixed !important;
-    bottom: 0 !important;
-    z-index: 999 !important;
-    transform: translateZ(0) !important;
-    -webkit-transform: translateZ(0) !important;
-  }
-}
-
-/* Garantir que tudo permaneça na mesma posição relativa em qualquer estado */
-.fixed-regardless-of-keyboard {
-  position: fixed !important;
-  bottom: 0 !important;
-  left: 0 !important;
-  right: 0 !important;
-  z-index: 999 !important;
-}
-
-/* Quando o input está focado, garantir visibilidade completa */
-.input-focused-visible {
-  opacity: 1 !important;
-  visibility: visible !important;
-  display: flex !important;
-}
 
