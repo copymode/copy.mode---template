@@ -151,7 +151,11 @@ export function ContentTypeForm({ onCancel, contentTypeToEdit }: ContentTypeForm
           <Button variant="outline" onClick={onCancel} type="button" disabled={isLoading}>
             Cancelar
           </Button>
-          <Button type="submit" disabled={isLoading}>
+          <Button 
+            type="submit" 
+            disabled={isLoading}
+            className="bg-black text-white hover:bg-black/90 dark:bg-primary dark:text-primary-foreground dark:hover:bg-primary/90"
+          >
             {isLoading ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />

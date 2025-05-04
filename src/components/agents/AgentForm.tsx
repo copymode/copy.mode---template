@@ -611,7 +611,11 @@ export function AgentForm({ onCancel, agentToEdit }: AgentFormProps) {
           >
             Cancelar
           </Button>
-          <Button type="submit" disabled={isSubmitting || isFileLoading} >
+          <Button 
+            type="submit" 
+            disabled={isSubmitting || isFileLoading} 
+            className="bg-black text-white hover:bg-black/90 dark:bg-primary dark:text-primary-foreground dark:hover:bg-primary/90"
+          >
             {(isSubmitting || isFileLoading) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             {isSubmitting
               ? (isEditMode ? "Salvando..." : "Criando...")
