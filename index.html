@@ -2,9 +2,10 @@
 <html lang="pt-BR">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover, height=device-height" />
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <title>Copy Mode - Criar copies com IA</title>
     <meta name="description" content="Crie copies persuasivas para redes sociais com ajuda de agentes de inteligência artificial" />
     <meta name="author" content="Copy Mode" />
@@ -17,6 +18,46 @@
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:site" content="@copymode" />
     <meta name="twitter:image" content="/opengraph-image.png" />
+    
+    <!-- Script para corrigir problemas de viewport em iOS -->
+    <script>
+      // Solução para o problema de header em iOS
+      // Impede que a viewport seja redimensionada quando o teclado abre
+      window.addEventListener('load', function() {
+        // Detecta se é iOS
+        const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+        
+        if (isIOS) {
+          // Fixa a altura da viewport no carregamento inicial
+          document.documentElement.style.height = `${window.innerHeight}px`;
+          document.body.style.height = `${window.innerHeight}px`;
+          
+          // Atualiza o header durante o scroll
+          document.addEventListener('scroll', function() {
+            const header = document.querySelector('header');
+            if (header) {
+              header.style.position = 'fixed';
+              header.style.top = '0';
+              header.style.left = '0';
+              header.style.right = '0';
+              header.style.zIndex = '9999';
+            }
+          });
+          
+          // Garante que o header permaneça fixo quando o teclado abre
+          window.visualViewport.addEventListener('resize', function() {
+            const header = document.querySelector('header');
+            if (header) {
+              header.style.position = 'fixed';
+              header.style.top = '0';
+              header.style.left = '0';
+              header.style.right = '0';
+              header.style.zIndex = '9999';
+            }
+          });
+        }
+      });
+    </script>
   </head>
 
   <body>
