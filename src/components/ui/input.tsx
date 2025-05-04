@@ -22,6 +22,7 @@ const Input = React.forwardRef<HTMLInputElement, React.ComponentProps<"input">>(
         type={type}
         className={cn(
           "h-10 w-full p-3 rounded-lg focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-offset-0 text-lg",
+          theme === 'light' ? 'placeholder:opacity-45' : 'placeholder:opacity-35',
           className
         )}
         style={{

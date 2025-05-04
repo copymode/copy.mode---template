@@ -24,6 +24,7 @@ const Textarea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(
       <textarea
         className={cn(
           "min-h-[60px] max-h-[200px] resize-none p-3 w-full text-lg focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-offset-0 rounded-lg",
+          theme === 'light' ? 'placeholder:opacity-45' : 'placeholder:opacity-35',
           className
         )}
         style={{

@@ -664,7 +664,7 @@ export default function Home() {
                         onFocus={() => setIsPromptInputFocused(true)}
                         onBlur={() => setIsPromptInputFocused(false)}
                         rows={1}
-                        className="min-h-[60px] max-h-[200px] resize-none p-3 w-full text-lg focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-offset-0 rounded-lg placeholder:opacity-40"
+                        className={`min-h-[60px] max-h-[200px] resize-none p-3 w-full text-lg focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-offset-0 rounded-lg ${theme === 'light' ? 'placeholder:opacity-45' : 'placeholder:opacity-35'}`}
                         style={{ 
                           fontSize: '16px',
                           backgroundColor: theme === 'light'
