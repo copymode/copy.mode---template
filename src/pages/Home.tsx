@@ -556,126 +556,142 @@ export default function Home() {
            </AlertDialog>
         </>
       ) : (
-        <div className="flex-1 grid place-items-center p-4">
-          <Card className="w-full max-w-4xl p-8 shadow-lg">
-            <CardHeader className="items-center text-center">
-               <Sparkles 
-                 size={48} 
-                 className={theme === 'light' ? "mb-4 text-black" : "mb-4 text-primary"} 
-               />
-               <CardTitle className="text-2xl">Crie sua próxima Copy!</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-6">
-               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 place-items-center">
-                   <Select value={selectedExpert} onValueChange={setSelectedExpert}>
-                     <SelectTriggerWithAvatar
-                       avatarSrc={selectedExpert ? experts.find(e => e.id === selectedExpert)?.avatar : null}
-                       selectedName={selectedExpert ? experts.find(e => e.id === selectedExpert)?.name : null}
-                     >
-                       <SelectValue placeholder="Selecione o Expert" />
-                     </SelectTriggerWithAvatar>
-                     <SelectContent>
-                       {experts?.map((expert) => (
-                         <SelectItemWithAvatar 
-                           key={expert.id} 
-                           value={expert.id} 
-                           avatarSrc={expert.avatar || null}
-                           name={expert.name}
-                         >
-                           {expert.name}
-                         </SelectItemWithAvatar>
-                       ))}
-                     </SelectContent>
-                   </Select>
+        <div className="flex flex-col h-screen overflow-hidden">
+          {/* Layout estilo ChatGPT com todos os elementos centralizados */}
+          <div className="flex flex-1 flex-col justify-center items-center px-4">
+            <div className="w-full max-w-3xl mx-auto flex flex-col items-center">
+              <Sparkles 
+                size={48} 
+                className={theme === 'light' ? "mb-2 md:mb-4 text-black" : "mb-2 md:mb-4 text-primary"} 
+              />
+              <h1 className="text-xl md:text-2xl font-bold mb-3 md:mb-6">Crie sua próxima Copy!</h1>
+            
+              {/* Seletores em grid */}
+              <div className="w-full grid grid-cols-1 sm:grid-cols-3 gap-2 md:gap-4 mb-3 md:mb-6">
+                <Select value={selectedExpert} onValueChange={setSelectedExpert}>
+                  <SelectTriggerWithAvatar
+                    avatarSrc={selectedExpert ? experts.find(e => e.id === selectedExpert)?.avatar : null}
+                    selectedName={selectedExpert ? experts.find(e => e.id === selectedExpert)?.name : null}
+                    className="h-10 md:h-auto"
+                  >
+                    <SelectValue placeholder="Selecione o Expert" />
+                  </SelectTriggerWithAvatar>
+                  <SelectContent>
+                    {experts?.map((expert) => (
+                      <SelectItemWithAvatar 
+                        key={expert.id} 
+                        value={expert.id} 
+                        avatarSrc={expert.avatar || null}
+                        name={expert.name}
+                      >
+                        {expert.name}
+                      </SelectItemWithAvatar>
+                    ))}
+                  </SelectContent>
+                </Select>
 
-                   <Select value={selectedAgent} onValueChange={setSelectedAgent}>
-                     <SelectTriggerWithAvatar
-                       avatarSrc={selectedAgent ? agents.find(a => a.id === selectedAgent)?.avatar : null}
-                       selectedName={selectedAgent ? agents.find(a => a.id === selectedAgent)?.name : null}
-                     >
-                       <SelectValue placeholder="Selecione o Agente *" />
-                     </SelectTriggerWithAvatar>
-                     <SelectContent>
-                       {agents?.map((agent) => (
-                         <SelectItemWithAvatar 
-                           key={agent.id} 
-                           value={agent.id} 
-                           avatarSrc={agent.avatar || null}
-                           name={agent.name}
-                         >
-                           {agent.name}
-                         </SelectItemWithAvatar>
-                       ))}
-                     </SelectContent>
-                   </Select>
+                <Select value={selectedAgent} onValueChange={setSelectedAgent}>
+                  <SelectTriggerWithAvatar
+                    avatarSrc={selectedAgent ? agents.find(a => a.id === selectedAgent)?.avatar : null}
+                    selectedName={selectedAgent ? agents.find(a => a.id === selectedAgent)?.name : null}
+                    className="h-10 md:h-auto"
+                  >
+                    <SelectValue placeholder="Selecione o Agente *" />
+                  </SelectTriggerWithAvatar>
+                  <SelectContent>
+                    {agents?.map((agent) => (
+                      <SelectItemWithAvatar 
+                        key={agent.id} 
+                        value={agent.id} 
+                        avatarSrc={agent.avatar || null}
+                        name={agent.name}
+                      >
+                        {agent.name}
+                      </SelectItemWithAvatar>
+                    ))}
+                  </SelectContent>
+                </Select>
 
-                   <Select value={selectedContentType} onValueChange={setSelectedContentType}>
-                     <SelectTriggerWithAvatar
-                       avatarSrc={selectedContentType 
-                         ? contentTypes.find(ct => ct.name === selectedContentType)?.avatar || null 
-                         : null}
-                       selectedName={selectedContentType 
-                         ? contentTypes.find(ct => ct.name === selectedContentType)?.name || null 
-                         : null}
-                     >
-                       <SelectValue placeholder="Tipo de Conteúdo *" />
-                     </SelectTriggerWithAvatar>
-                     <SelectContent>
-                       {contentTypes.map((contentType) => (
-                         <SelectItemWithAvatar
-                           key={contentType.id} 
-                           value={contentType.name}
-                           avatarSrc={contentType.avatar || null}
-                           name={contentType.name}
-                         >
-                           {contentType.name}
-                         </SelectItemWithAvatar>
-                       ))}
-                     </SelectContent>
-                   </Select>
-               </div>
-
-                <div className="relative">
-                 <Textarea 
-                   placeholder="Digite o tema ou as informações para sua copy aqui..."
-                   value={promptInput}
-                   onChange={(e) => setPromptInput(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' && !e.shiftKey) {
-                        e.preventDefault();
-                        handleSendMessage(promptInput); 
+                <Select value={selectedContentType} onValueChange={setSelectedContentType}>
+                  <SelectTriggerWithAvatar
+                    avatarSrc={selectedContentType 
+                      ? contentTypes.find(ct => ct.name === selectedContentType)?.avatar || null 
+                      : null}
+                    selectedName={selectedContentType 
+                      ? contentTypes.find(ct => ct.name === selectedContentType)?.name || null 
+                      : null}
+                    className="h-10 md:h-auto"
+                  >
+                    <SelectValue placeholder="Tipo de Conteúdo *" />
+                  </SelectTriggerWithAvatar>
+                  <SelectContent>
+                    {contentTypes.map((contentType) => (
+                      <SelectItemWithAvatar
+                        key={contentType.id} 
+                        value={contentType.name}
+                        avatarSrc={contentType.avatar || null}
+                        name={contentType.name}
+                      >
+                        {contentType.name}
+                      </SelectItemWithAvatar>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              {/* Campo de input centralizado integrado na mesma div */}
+              <div className="w-full mt-2">
+                <form onSubmit={(e) => { 
+                  e.preventDefault(); 
+                  if (!promptInput.trim() || isGenerating || !selectedAgent || !selectedContentType) return;
+                  handleSendMessage(promptInput);
+                }} className="p-2 md:p-4">
+                  <div className="flex items-end w-full space-x-2">
+                    <div className="flex-1">
+                      <Textarea 
+                        placeholder="Digite o tema ou as informações para sua copy aqui..."
+                        value={promptInput}
+                        onChange={(e) => {
+                          setPromptInput(e.target.value);
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' && !e.shiftKey) {
+                            e.preventDefault();
+                            handleSendMessage(promptInput); 
+                          }
+                        }}
+                        rows={1}
+                        className="min-h-[50px] md:min-h-[60px] max-h-[120px] md:max-h-[200px] resize-none border rounded-lg p-2 md:p-3 w-full text-md md:text-lg"
+                        style={{ fontSize: '16px' }}
+                        disabled={isGenerating}
+                      />
+                    </div>
+                    
+                    <BlackButton 
+                      disabled={isGenerating || !promptInput.trim() || !selectedAgent || !selectedContentType}
+                      size="small"
+                    >
+                      {isGenerating ? 
+                        <div className="h-3 w-3 md:h-4 md:w-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div> : 
+                        <SendHorizonal size={18} />
                       }
-                    }}
-                   rows={6}
-                   className="w-full resize-y min-h-[140px] shadow-sm pr-16"
-                   disabled={isGenerating}
-                 />
-                 <div className="absolute right-3 bottom-3">
-                   <BlackButton 
-                     onClick={() => handleSendMessage(promptInput)}
-                     disabled={isGenerating || !promptInput.trim() || !selectedAgent || !selectedContentType}
-                     size="small"
-                   >
-                     {isGenerating ? 
-                       <div className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div> : 
-                       <SendHorizonal size={18} />
-                     }
-                   </BlackButton>
-                 </div>
-               </div>
+                    </BlackButton>
+                  </div>
+                </form>
+              </div>
+            </div>
+            
+            {isGenerating && (
+              <div className="max-w-3xl mx-auto w-full px-2">
+                <ChatArea 
+                  messages={[]} 
+                  isTyping={true}
+                  typingContent={typingContent}
+                />
+              </div>
+            )}
+          </div>
 
-               {isGenerating && (
-                 <div className="mt-4">
-                   <ChatArea 
-                     messages={[]} 
-                     isTyping={true}
-                     typingContent={typingContent}
-                   />
-                 </div>
-               )}
-            </CardContent>
-          </Card>
-          
           <AlertDialog open={showApiKeyAlert} onOpenChange={setShowApiKeyAlert}>
              <AlertDialogContent>
                  <AlertDialogHeader>
