@@ -99,8 +99,31 @@ export function ChatInput({ onSendMessage, disabled = false }: ChatInputProps) {
     ? isFocused ? '0 2px 8px rgba(0, 0, 0, 0.18)' : '0 1px 3px rgba(0, 0, 0, 0.15)'
     : isFocused ? '0 2px 8px rgba(0, 0, 0, 0.45)' : '0 1px 3px rgba(0, 0, 0, 0.4)';
 
+  // Estilos específicos para mobile vs desktop
+  const formStyle = isMobile ? 
+    { 
+      paddingTop: '5px', 
+      paddingBottom: '5px', 
+      paddingLeft: '5px', 
+      paddingRight: '5px' 
+    } : {};
+
+  // Altura do textarea ajustada para mobile para simetria
+  const textareaStyle = {
+    fontSize: '16px',
+    backgroundColor: inputBgColor,
+    border: 'none',
+    boxShadow: boxShadow,
+    transition: 'background-color 0.2s ease, box-shadow 0.2s ease',
+    ...(isMobile ? { minHeight: '50px' } : {})
+  };
+
   return (
-    <form onSubmit={handleSubmit} className="p-4">
+    <form 
+      onSubmit={handleSubmit} 
+      style={formStyle}
+      className={isMobile ? "" : "p-4"}
+    >
       <div className="flex items-center w-full space-x-2">
         <div className="flex-1">
           <Textarea
@@ -114,14 +137,8 @@ export function ChatInput({ onSendMessage, disabled = false }: ChatInputProps) {
             onFocus={() => setIsFocused(true)}
             onBlur={() => setIsFocused(false)}
             rows={1}
-            className={`min-h-[60px] max-h-[200px] resize-none p-3 w-full text-lg focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-offset-0 rounded-lg ${theme === 'light' ? 'placeholder:opacity-45' : 'placeholder:opacity-35'}`}
-            style={{ 
-              fontSize: '16px',
-              backgroundColor: inputBgColor,
-              border: 'none',
-              boxShadow: boxShadow,
-              transition: 'background-color 0.2s ease, box-shadow 0.2s ease'
-            }}
+            className={`resize-none p-3 w-full text-lg focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-offset-0 rounded-lg ${theme === 'light' ? 'placeholder:opacity-45' : 'placeholder:opacity-35'} ${isMobile ? "" : "min-h-[60px] max-h-[200px]"}`}
+            style={textareaStyle}
             disabled={disabled}
           />
         </div>
@@ -130,11 +147,6 @@ export function ChatInput({ onSendMessage, disabled = false }: ChatInputProps) {
           <SendHorizonal size={20} />
         </BlackButton>
       </div>
-      {isMobile && (
-        <div className="text-xs text-muted-foreground mt-1 text-center">
-          Use o botão para enviar a mensagem
-        </div>
-      )}
     </form>
   );
 }
