@@ -811,18 +811,6 @@ body::-webkit-scrollbar {
   max-width: 80%;
 }
 
-/* No modo claro, o balão será preto com texto branco */
-:root .user-message-bubble {
-  background-color: black;
-  color: white;
-}
-
-/* No modo escuro, o balão mantém a cor vermelha (primary) */
-.dark .user-message-bubble {
-  background-color: hsl(var(--primary));
-  color: hsl(var(--primary-foreground));
-}
-
 /* Estilos específicos para o botão de submit */
 :root .submit-button-light {
   background-color: black !important;

@@ -116,9 +116,9 @@ export function ChatArea({ messages, isTyping = false, typingContent = "" }: Cha
               <div 
                 className={`relative group ${
                   message.role === "user" 
-                    ? "user-message-bubble" 
-                    : "bg-secondary text-secondary-foreground rounded-t-lg rounded-br-lg"
-                } px-4 py-3 max-w-[80%]`}
+                    ? "user-message-bubble bg-secondary text-secondary-foreground" 
+                    : "text-foreground w-full"
+                } px-4 py-3 ${message.role === "user" ? "max-w-[80%]" : ""}`}
               >
                 {message.role === "assistant" && (
                   <Button
@@ -165,7 +165,7 @@ export function ChatArea({ messages, isTyping = false, typingContent = "" }: Cha
           {/* Indicador de digitação */}
           {typingContent && (
             <div key="typing-indicator" className="flex justify-start">
-              <div className="bg-secondary text-secondary-foreground rounded-t-lg rounded-br-lg max-w-[80%]">
+              <div className="text-foreground w-full">
                 <TypingIndicator content={typingContent} />
               </div>
             </div>
