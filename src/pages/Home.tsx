@@ -649,7 +649,7 @@ export default function Home() {
                   <div className="flex items-end w-full space-x-2">
                     <div className="flex-1">
                       <Textarea 
-                        placeholder="Digite o tema ou as informações para sua copy aqui..."
+                        placeholder="Digite seu prompt..."
                         value={promptInput}
                         onChange={(e) => {
                           setPromptInput(e.target.value);
