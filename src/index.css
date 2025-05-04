@@ -543,7 +543,7 @@ body::-webkit-scrollbar {
 
 /* Ajustes para headers e conteúdos em dispositivos móveis */
 @media (max-width: 768px) {
-  /* Fixar o header na parte superior da tela */
+  /* Fixar o header na parte superior da tela de forma absoluta para não ser afetado pelo teclado */
   header.bg-background.border-b.sticky {
     position: fixed !important;
     top: 0;
@@ -552,6 +552,12 @@ body::-webkit-scrollbar {
     width: 100%;
     z-index: 50;
     height: 56px; /* Altura definida para o header */
+    /* Propriedades que evitam o reposicionamento pelo teclado virtual */
+    position: fixed !important;
+    transform: translateZ(0);
+    will-change: transform;
+    -webkit-transform: translateZ(0);
+    -webkit-backface-visibility: hidden;
   }
 
   /* Adicionar padding-top em todos os contêineres principais para compensar o header fixo */
@@ -607,6 +613,19 @@ body::-webkit-scrollbar {
   .flex.flex-col.bg-background.min-h-full {
     min-height: 100vh;
     height: 100vh;
+  }
+}
+
+/* Desabilitar ajustes automáticos da ViewPort em dispositivos Apple */
+@supports (-webkit-touch-callout: none) {
+  /* Evitar que iOS redimensione a viewport ao abrir o teclado */
+  @media (max-width: 768px) {
+    header.bg-background.border-b.sticky {
+      position: fixed !important;
+      top: 0 !important;
+      left: 0 !important;
+      right: 0 !important;
+    }
   }
 }
 
