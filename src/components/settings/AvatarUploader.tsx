@@ -214,7 +214,7 @@ export const AvatarUploader = ({ userId, userName, avatarUrl, onAvatarUpdated }:
             <Button
               onClick={triggerFileInput}
               disabled={isUploadingAvatar}
-              className="w-full"
+              className="w-full bg-black text-white hover:bg-black/90 dark:bg-primary dark:text-primary-foreground dark:hover:bg-primary/90"
             >
               {isUploadingAvatar ? (
                 <>Enviando...</>
