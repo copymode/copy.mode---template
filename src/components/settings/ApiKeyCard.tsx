@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -93,6 +92,7 @@ const ApiKeyCard = () => {
         <Button 
           onClick={handleSaveApiKey} 
           disabled={!apiKey || isSaving}
+          className="bg-black text-white hover:bg-black/90 dark:bg-primary dark:text-primary-foreground dark:hover:bg-primary/90"
         >
           <Save className="mr-2 h-4 w-4" />
           {isSaving ? "Salvando..." : "Salvar Chave API"}

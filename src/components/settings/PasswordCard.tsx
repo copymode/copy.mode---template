@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -144,6 +143,7 @@ const PasswordCard = () => {
         <Button 
           onClick={handlePasswordChange}
           disabled={isChangingPassword || !currentPassword || !newPassword || !confirmPassword}
+          className="bg-black text-white hover:bg-black/90 dark:bg-primary dark:text-primary-foreground dark:hover:bg-primary/90"
         >
           <Key className="mr-2 h-4 w-4" />
           {isChangingPassword ? "Alterando..." : "Alterar Senha"}
