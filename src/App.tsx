@@ -31,10 +31,15 @@ function GlobalManager() {
   // Aplicar correção de altura para dispositivos móveis
   useViewportHeight();
   
-  // Configurar suporte a teclado virtual (hook abrangente)
+  // Hook melhorado com manipulação direta via JavaScript
+  // Este hook implementa a abordagem do ChatGPT e deve ser priorizado
+  const useKeyboardVisible = require('./hooks/use-keyboard-visible').useKeyboardVisible;
+  useKeyboardVisible();
+  
+  // Estes hooks adicionais são mantidos como fallback e compatibilidade
   useVirtualKeyboard({ overlaysContent: true });
   
-  // Inicialização de funcionalidades de teclado virtual
+  // Inicialização básica de meta tags
   useEffect(() => {
     // Só configurar em dispositivos móveis
     if (!isMobileDevice()) return;
@@ -47,46 +52,10 @@ function GlobalManager() {
       document.body.classList.add('ios-device');
     }
     
-    // 1. Configurar a meta tag viewport
+    // Configurar a meta tag viewport
     setupViewportMeta();
     
-    // 2. Configurar a API VirtualKeyboard (se disponível)
-    setupVirtualKeyboard(true);
-    
-    // 3. Adicionar listeners de teclado com múltiplas estratégias
-    const cleanup = addKeyboardListeners(
-      // Quando o teclado fica visível
-      () => {
-        document.body.classList.add('keyboard-visible');
-        
-        // Para iOS, adicionamos classes específicas
-        if (isIOS) {
-          document.body.classList.add('ios-keyboard-visible');
-          
-          // Um pequeno atraso para permitir que o layout seja reajustado
-          setTimeout(() => {
-            window.scrollTo(0, 0);
-          }, 50);
-        }
-        
-        // Para depuração
-        console.log('Teclado virtual aberto');
-      },
-      // Quando o teclado é escondido
-      () => {
-        document.body.classList.remove('keyboard-visible');
-        
-        if (isIOS) {
-          document.body.classList.remove('ios-keyboard-visible');
-        }
-        
-        // Para depuração
-        console.log('Teclado virtual fechado');
-      }
-    );
-    
     return () => {
-      cleanup();
       document.body.classList.remove('keyboard-visible');
       if (isIOS) {
         document.body.classList.remove('ios-keyboard-visible');

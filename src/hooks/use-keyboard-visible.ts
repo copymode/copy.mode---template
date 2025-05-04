@@ -1,119 +1,142 @@
-import { useState, useEffect } from 'react';
+import { useEffect } from 'react';
 
 /**
- * Hook aprimorado para detectar quando o teclado virtual está visível em dispositivos móveis
- * Utiliza múltiplas estratégias para melhor compatibilidade entre dispositivos
- * @returns {boolean} Verdadeiro quando o teclado está visível
+ * Hook que implementa a solução definitiva para o posicionamento do input
+ * quando o teclado virtual está visível em dispositivos móveis.
+ * 
+ * Inspirado na solução usada pelo ChatGPT mobile.
  */
 export function useKeyboardVisible() {
-  const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
-
   useEffect(() => {
-    // Somente em dispositivos móveis
+    // Verifica se é dispositivo móvel
     if (typeof window === 'undefined' || window.innerWidth > 768) {
       return;
     }
 
-    // Guarda valores iniciais para referência
-    const initialWindowHeight = window.innerHeight;
-    const initialVisualHeight = window.visualViewport?.height || initialWindowHeight;
-    
-    let lastKnownHeight = initialVisualHeight;
-    let timeoutId: number | null = null;
-    
-    const handleResize = () => {
-      if (!window.visualViewport) return;
+    // Elementos alvo
+    let inputContainer: HTMLElement | null = null;
+    let chatContainer: HTMLElement | null = null;
+    const isMobile = window.innerWidth <= 768;
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream;
+
+    // Função para obter os elementos - executamos após um delay para garantir que o DOM esteja pronto
+    const getElements = () => {
+      // Seletor específico para os containers de chat
+      inputContainer = document.querySelector('.chat-container .flex-shrink-0.fixed');
+      chatContainer = document.querySelector('.chat-container');
       
-      // Calculamos a diferença de altura do viewport em porcentagem
-      const currentHeight = window.visualViewport.height;
-      const heightDiff = initialVisualHeight - currentHeight;
-      const heightDiffPercent = (heightDiff / initialVisualHeight) * 100;
-      
-      // Detectar se foi um movimento significativo (mais de 20% do viewport)
-      // Este valor é mais confiável entre diferentes dispositivos
-      const significant = heightDiffPercent > 20;
-      
-      // Detectar direção da mudança (para cima = teclado aberto)
-      const isOpeningKeyboard = currentHeight < lastKnownHeight;
-      
-      // Atualizar o estado apenas se a mudança for significativa e na direção correta
-      // ou se estiver fechando o teclado
-      if ((significant && isOpeningKeyboard) || (!isOpeningKeyboard && isKeyboardVisible)) {
-        // Cancelar qualquer timeout anterior para evitar piscar
-        if (timeoutId) window.clearTimeout(timeoutId);
-        
-        // Adicionar uma pequena espera para evitar alterações durante animações
-        timeoutId = window.setTimeout(() => {
-          const newKeyboardState = significant && isOpeningKeyboard;
-          
-          // Atualizar o estado e a classe do body
-          setIsKeyboardVisible(newKeyboardState);
-          if (newKeyboardState) {
-            document.body.classList.add('keyboard-visible');
-          } else {
-            document.body.classList.remove('keyboard-visible');
-          }
-          
-          timeoutId = null;
-        }, 100);
+      // Adiciona class para identificar dispositivo
+      if (isIOS) {
+        document.documentElement.classList.add('ios-device');
+        document.body.classList.add('ios-device');
       }
       
-      // Atualizar última altura conhecida para a próxima comparação
-      lastKnownHeight = currentHeight;
+      if (inputContainer) {
+        console.log('Input container encontrado!');
+      }
     };
 
-    // Adicionar detecção para foco em elementos de input/textarea
+    // Chamamos após um pequeno delay para garantir que os elementos estejam presentes
+    setTimeout(getElements, 500);
+
+    // Função que será chamada quando um input ou textarea receber foco
     const handleFocus = (e: FocusEvent) => {
+      if (!isMobile) return;
+      
+      // Verificar novamente se é o input do chat
+      if (!inputContainer || !chatContainer) {
+        getElements();
+        if (!inputContainer) return;
+      }
+
+      // Somente processa se for elemento de input/textarea dentro do container
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
-        // Em iOS, o foco em campos geralmente significa que o teclado será aberto
-        const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
-        if (isIOS) {
-          // Pequeno delay para permitir que o teclado abra antes de aplicar classes
-          window.setTimeout(() => {
-            setIsKeyboardVisible(true);
-            document.body.classList.add('keyboard-visible');
-          }, 300);
+        const isInChatContainer = chatContainer?.contains(e.target);
+        if (!isInChatContainer) return;
+        
+        console.log('Input recebeu foco!');
+        
+        // Adiciona as classes para tratar o teclado visível
+        document.body.classList.add('keyboard-visible');
+        
+        // Aplica estilo direto via JavaScript
+        if (inputContainer) {
+          // Estilo forçado via JavaScript 
+          inputContainer.style.position = 'fixed';
+          inputContainer.style.bottom = '0';
+          inputContainer.style.left = '0';
+          inputContainer.style.right = '0';
+          inputContainer.style.zIndex = '9999';
+          inputContainer.style.display = 'flex';
+          inputContainer.style.opacity = '1';
+          inputContainer.style.visibility = 'visible';
+          inputContainer.style.backgroundColor = 'var(--background)';
+          inputContainer.style.boxShadow = '0 -2px 10px rgba(0, 0, 0, 0.1)';
+          
+          // Tratamento específico para iOS
+          if (isIOS) {
+            document.body.classList.add('ios-keyboard-visible');
+            setTimeout(() => {
+              window.scrollTo(0, 0);
+              inputContainer!.style.position = 'fixed';
+            }, 100);
+          }
         }
       }
     };
 
-    // Identificar quando o foco sai de um campo de input/textarea
+    // Função chamada quando o input perde o foco
     const handleBlur = (e: FocusEvent) => {
+      if (!isMobile) return;
+      
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
-        // Verificar se o próximo elemento com foco também é um campo
-        // Se não for, provavelmente o teclado está fechando
-        const nextFocus = e.relatedTarget;
-        if (!(nextFocus instanceof HTMLInputElement || nextFocus instanceof HTMLTextAreaElement)) {
-          window.setTimeout(() => {
-            setIsKeyboardVisible(false);
+        const isInChatContainer = chatContainer?.contains(e.target);
+        if (!isInChatContainer) return;
+        
+        console.log('Input perdeu foco');
+        
+        // Remove classes apenas se o próximo elemento com foco não for um input/textarea
+        if (!(e.relatedTarget instanceof HTMLInputElement || e.relatedTarget instanceof HTMLTextAreaElement)) {
+          setTimeout(() => {
             document.body.classList.remove('keyboard-visible');
-          }, 300);
+            
+            if (isIOS) {
+              document.body.classList.remove('ios-keyboard-visible');
+            }
+          }, 100);
         }
       }
     };
 
-    // Inscrever nos eventos relevantes
-    if (window.visualViewport) {
-      window.visualViewport.addEventListener('resize', handleResize);
-      window.visualViewport.addEventListener('scroll', handleResize);
-    }
-    
-    // Eventos de foco são importantes especialmente para iOS
-    document.addEventListener('focusin', handleFocus);
-    document.addEventListener('focusout', handleBlur);
+    // Adiciona ouvintes de evento
+    document.addEventListener('focusin', handleFocus, true);
+    document.addEventListener('focusout', handleBlur, true);
 
-    // Limpar eventos ao desmontar o componente
-    return () => {
+    // Detecta quando o teclado é fechado pelo botão do sistema (apenas para Android e alguns navegadores)
+    window.addEventListener('resize', () => {
+      if (!isMobile) return;
+      
+      // Se a altura da visualização voltar ao normal, assumimos que o teclado foi fechado
       if (window.visualViewport) {
-        window.visualViewport.removeEventListener('resize', handleResize);
-        window.visualViewport.removeEventListener('scroll', handleResize);
+        const isKeyboardClosed = window.visualViewport.height >= window.innerHeight * 0.85;
+        
+        if (isKeyboardClosed) {
+          document.body.classList.remove('keyboard-visible');
+          if (isIOS) {
+            document.body.classList.remove('ios-keyboard-visible');
+          }
+        }
       }
-      document.removeEventListener('focusin', handleFocus);
-      document.removeEventListener('focusout', handleBlur);
-      document.body.classList.remove('keyboard-visible');
-      if (timeoutId) window.clearTimeout(timeoutId);
-    };
-  }, [isKeyboardVisible]);
+    });
 
-  return isKeyboardVisible;
+    // Limpeza ao desmontar
+    return () => {
+      document.removeEventListener('focusin', handleFocus, true);
+      document.removeEventListener('focusout', handleBlur, true);
+      document.body.classList.remove('keyboard-visible');
+      if (isIOS) {
+        document.body.classList.remove('ios-keyboard-visible');
+      }
+    };
+  }, []);
 } 
