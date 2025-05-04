@@ -31,7 +31,7 @@
 
     --border: 220 20% 91%; /* Very Light Gray */
     --input: 220 20% 91%; /* Very Light Gray */
-    --ring: 358 100% 67%; /* Airbnb Red for focus ring */
+    --ring: 0 0% 0%; /* Preto para o anel de foco no tema claro */
 
     --radius: 0.5rem;
 
@@ -43,7 +43,7 @@
     --sidebar-accent: 220 20% 91%; /* Very Light Gray (like border) */
     --sidebar-accent-foreground: 222 47% 11%; /* Dark Gray */
     --sidebar-border: 220 20% 88%; /* Slightly darker border for sidebar */
-    --sidebar-ring: 358 100% 67%; /* Airbnb Red */
+    --sidebar-ring: 0 0% 0%; /* Preto para o anel de foco do sidebar no tema claro */
 
     /* Scrollbar Colors (Light) */
     --scrollbar-thumb: 215 20% 80%; /* Light gray for thumb */
@@ -802,5 +802,142 @@ body::-webkit-scrollbar {
     max-width: 100%;
     overflow-x: auto;
   }
+}
+
+/* Classe personalizada para o balão de mensagem do usuário */
+.user-message-bubble {
+  border-radius: 0.5rem 0.5rem 0 0.5rem;
+  padding: 0.75rem 1rem;
+  max-width: 80%;
+}
+
+/* No modo claro, o balão será preto com texto branco */
+:root .user-message-bubble {
+  background-color: black;
+  color: white;
+}
+
+/* No modo escuro, o balão mantém a cor vermelha (primary) */
+.dark .user-message-bubble {
+  background-color: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
+}
+
+/* Estilos específicos para o botão de submit */
+:root .submit-button-light {
+  background-color: black !important;
+  color: white !important;
+}
+
+:root .submit-button-light:hover {
+  background-color: rgba(0, 0, 0, 0.9) !important;
+}
+
+.dark .submit-button-dark {
+  background-color: hsl(var(--primary)) !important;
+  color: hsl(var(--primary-foreground)) !important;
+}
+
+/* Estilos específicos para o botão de submit do chat */
+.chat-submit-button-light {
+  background-color: black !important;
+  color: white !important;
+  border: none !important;
+}
+
+.chat-submit-button-light:hover {
+  background-color: rgba(0, 0, 0, 0.9) !important;
+}
+
+.chat-submit-button-dark {
+  background-color: hsl(var(--primary)) !important;
+  color: hsl(var(--primary-foreground)) !important;
+}
+
+/* Estilos para garantir que o variant do botão não sobrescreva nossa cor */
+:root button[type="submit"].chat-submit-button-light {
+  background-color: black !important;
+  color: white !important;
+}
+
+.dark button[type="submit"].chat-submit-button-dark {
+  background-color: hsl(var(--primary)) !important;
+  color: hsl(var(--primary-foreground)) !important;
+}
+
+/* SLIDER - CORREÇÃO */
+/* Modo Claro: Slider Preto */
+:root:not(.dark) .absolute.h-full.bg-primary {
+  background-color: black !important;
+}
+
+:root:not(.dark) .block.h-5.w-5.rounded-full.border-2.border-primary {
+  border-color: black !important;
+}
+
+/* Override específico para o Slider */
+html:not(.dark) div[id="temperature"].relative.flex.w-full [role="slider"] {
+  border-color: black !important;
+}
+
+html:not(.dark) div[id="temperature"].relative.flex.w-full .absolute.h-full.bg-primary {
+  background-color: black !important;
+}
+
+/* Substitui quaisquer outros seletores que possam afetar o tema escuro */
+
+/* Botão "Criar Expert" na página Experts - Preto no modo claro */
+html:not(.dark) div.container.py-6.space-y-8 div.flex.justify-between.items-center button {
+  background-color: black !important;
+  color: white !important;
+}
+
+html:not(.dark) div.container.py-6.space-y-8 div.flex.justify-between.items-center button:hover {
+  background-color: rgba(0, 0, 0, 0.9) !important;
+}
+
+/* Botão "Criar primeiro expert" na página vazia também preto no modo claro */
+html:not(.dark) div.text-center.p-8.border.rounded-lg.bg-background button {
+  background-color: black !important;
+  color: white !important;
+}
+
+html:not(.dark) div.text-center.p-8.border.rounded-lg.bg-background button:hover {
+  background-color: rgba(0, 0, 0, 0.9) !important;
+}
+
+/* Botão de submissão no formulário de expert (Salvar Alterações/Criar Expert) */
+html:not(.dark) form.space-y-6 div.flex.justify-end.gap-2 button[type="submit"] {
+  background-color: black !important;
+  color: white !important;
+}
+
+html:not(.dark) form.space-y-6 div.flex.justify-end.gap-2 button[type="submit"]:hover {
+  background-color: rgba(0, 0, 0, 0.9) !important;
+}
+
+/* Garantir que os botões do formulário tenham bordas pretas no modo claro */
+html:not(.dark) form.space-y-6 div.flex.justify-end.gap-2 button[type="submit"]:focus {
+  outline-color: black !important;
+}
+
+/* Botão "Novo Agente" na página Admin */
+html:not(.dark) div.container.mx-auto.max-w-6xl div.w-full.flex.justify-end button {
+  background-color: black !important;
+  color: white !important;
+}
+
+html:not(.dark) div.container.mx-auto.max-w-6xl div.w-full.flex.justify-end button:hover {
+  background-color: rgba(0, 0, 0, 0.9) !important;
+}
+
+/* Botão "Criar primeiro agente" na página Admin vazia */
+html:not(.dark) div.container.mx-auto.max-w-6xl div.text-center.p-8.border.rounded-lg button {
+  background-color: black !important;
+  color: white !important;
+}
+
+html:not(.dark) div.container.mx-auto.max-w-6xl div.text-center.p-8.border.rounded-lg button:hover {
+  background-color: rgba(0, 0, 0, 0.9) !important;
 }
 

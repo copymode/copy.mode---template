@@ -20,6 +20,7 @@ import { v4 as uuidv4 } from "uuid";
 import { SelectItemWithAvatar, SelectTriggerWithAvatar } from "@/components/ui/select-with-avatar";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { useLocation } from "react-router-dom";
+import { useTheme } from "@/context/ThemeContext";
 
 // Interface para props do cabeçalho
 interface ChatConversationHeaderProps {
@@ -82,6 +83,57 @@ function ChatConversationHeader({
   );
 }
 
+// Componente de botão personalizado para evitar conflitos de estilo
+function BlackButton({ 
+  onClick, 
+  disabled, 
+  children,
+  size = "normal"
+}: { 
+  onClick?: () => void;
+  disabled?: boolean;
+  children: React.ReactNode;
+  size?: "normal" | "small";
+}) {
+  const { theme } = useTheme();
+  
+  // Logs de depuração
+  console.log("Home - Tema atual:", theme);
+  
+  const dimensions = size === "normal" 
+    ? { width: '60px', height: '60px' } 
+    : { width: '40px', height: '40px' };
+    
+  // Cores baseadas no tema, garantindo contraste máximo para evitar problemas
+  const bgColor = theme === 'light' 
+    ? 'rgb(0, 0, 0)' // Preto puro no tema claro
+    : 'rgb(238, 51, 78)'; // Vermelho no tema escuro
+  
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      style={{
+        backgroundColor: bgColor,
+        color: 'white',
+        ...dimensions,
+        borderRadius: '9999px',
+        border: 'none',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        flexShrink: 0,
+        cursor: disabled ? 'not-allowed' : 'pointer',
+        opacity: disabled ? 0.5 : 1,
+        transition: 'opacity 0.2s ease',
+      }}
+    >
+      {children}
+    </button>
+  );
+}
+
 export default function Home() {
   const { 
     experts,
@@ -99,6 +151,7 @@ export default function Home() {
   const { currentUser } = useAuth();
   const { toast } = useToast();
   const location = useLocation();
+  const { theme } = useTheme();
   
   // Initialize state with undefined, not depending on currentChat which might be null initially
   const [selectedExpert, setSelectedExpert] = useState<string | undefined>(undefined);
@@ -506,7 +559,10 @@ export default function Home() {
         <div className="flex-1 grid place-items-center p-4">
           <Card className="w-full max-w-4xl p-8 shadow-lg">
             <CardHeader className="items-center text-center">
-               <Sparkles size={48} className="mb-4 text-primary" />
+               <Sparkles 
+                 size={48} 
+                 className={theme === 'light' ? "mb-4 text-black" : "mb-4 text-primary"} 
+               />
                <CardTitle className="text-2xl">Crie sua próxima Copy!</CardTitle>
             </CardHeader>
             <CardContent className="space-y-6">
@@ -594,16 +650,18 @@ export default function Home() {
                    className="w-full resize-y min-h-[140px] shadow-sm pr-16"
                    disabled={isGenerating}
                  />
-                 <Button 
-                   type="button"
-                   size="icon" 
-                   className="absolute right-3 bottom-3 h-10 w-10 rounded-full"
-                   onClick={() => handleSendMessage(promptInput)} 
-                   disabled={isGenerating || !promptInput.trim() || !selectedAgent || !selectedContentType}
-                   aria-label="Gerar Copy"
-                 >
-                   {isGenerating ? <div className="h-4 w-4 border-2 border-background/80 border-t-transparent rounded-full animate-spin"></div> : <SendHorizonal size={18} />}
-                 </Button>
+                 <div className="absolute right-3 bottom-3">
+                   <BlackButton 
+                     onClick={() => handleSendMessage(promptInput)}
+                     disabled={isGenerating || !promptInput.trim() || !selectedAgent || !selectedContentType}
+                     size="small"
+                   >
+                     {isGenerating ? 
+                       <div className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div> : 
+                       <SendHorizonal size={18} />
+                     }
+                   </BlackButton>
+                 </div>
                </div>
 
                {isGenerating && (

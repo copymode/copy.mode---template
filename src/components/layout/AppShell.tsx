@@ -499,9 +499,9 @@ export function AppShell({ children }: AppShellProps) {
                             logout();
                             closeSidebarIfMobile();
                           }}
-                          className="text-sidebar-foreground rounded-full"
+                          className="rounded-full"
                         >
-                          <LogOut size={16} />
+                          <LogOut size={18} />
                         </Button>
                       </TooltipTrigger>
                       <TooltipContent side="right" className="bg-popover text-popover-foreground">
@@ -511,15 +511,14 @@ export function AppShell({ children }: AppShellProps) {
                   ) : (
                     <Button 
                       variant="outline" 
-                      size="sm"
+                      size="icon"
                       onClick={() => {
                         logout();
                         closeSidebarIfMobile();
                       }}
-                      className="text-sidebar-foreground"
+                      className="rounded-full"
                     >
-                      <LogOut size={16} className="mr-2" />
-                      <span>Sair</span>
+                      <LogOut size={18} />
                     </Button>
                   )}
              </div>

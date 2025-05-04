@@ -116,7 +116,7 @@ export function ChatArea({ messages, isTyping = false, typingContent = "" }: Cha
               <div 
                 className={`relative group ${
                   message.role === "user" 
-                    ? "bg-primary text-primary-foreground rounded-t-lg rounded-bl-lg" 
+                    ? "user-message-bubble" 
                     : "bg-secondary text-secondary-foreground rounded-t-lg rounded-br-lg"
                 } px-4 py-3 max-w-[80%]`}
               >

@@ -1,7 +1,50 @@
 import { useState, FormEvent } from "react";
 import { Textarea } from "@/components/ui/textarea";
-import { Button } from "@/components/ui/button";
 import { SendHorizonal } from "lucide-react";
+import { useTheme } from "@/context/ThemeContext";
+
+// Componente de botão personalizado simplificado
+function BlackButton({ 
+  disabled, 
+  children 
+}: { 
+  disabled: boolean;
+  children: React.ReactNode;
+}) {
+  const { theme } = useTheme();
+  
+  // Logs de depuração para verificar o tema
+  console.log("Tema atual:", theme);
+  
+  // Cores baseadas no tema, garantindo contraste máximo para evitar problemas
+  const bgColor = theme === 'light' 
+    ? 'rgb(0, 0, 0)' // Preto puro no tema claro
+    : 'rgb(238, 51, 78)'; // Vermelho no tema escuro
+  
+  return (
+    <button
+      type="submit"
+      disabled={disabled}
+      style={{
+        backgroundColor: bgColor,
+        color: 'white',
+        width: '60px',
+        height: '60px',
+        borderRadius: '9999px',
+        border: 'none',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        flexShrink: 0,
+        cursor: disabled ? 'not-allowed' : 'pointer',
+        opacity: disabled ? 0.5 : 1,
+        transition: 'opacity 0.2s ease',
+      }}
+    >
+      {children}
+    </button>
+  );
+}
 
 interface ChatInputProps {
   onSendMessage: (message: string) => void;
@@ -28,8 +71,10 @@ export function ChatInput({ onSendMessage, disabled = false }: ChatInputProps) {
     }
   };
 
+  const isButtonDisabled = !isTyping || disabled;
+
   return (
-    <form onSubmit={handleSubmit} className="p-4 border-t">
+    <form onSubmit={handleSubmit} className="p-4">
       <div className="flex items-end w-full space-x-2">
         <div className="flex-1">
           <Textarea
@@ -41,21 +86,14 @@ export function ChatInput({ onSendMessage, disabled = false }: ChatInputProps) {
             }}
             onKeyDown={handleKeyDown}
             rows={1}
-            className="min-h-[60px] max-h-[200px] resize-none border rounded-lg p-3"
+            className="min-h-[60px] max-h-[200px] resize-none border rounded-lg p-3 w-full"
             disabled={disabled}
           />
         </div>
         
-        <Button
-          type="submit"
-          size="icon"
-          className={`flex-shrink-0 h-[60px] w-[60px] rounded-full transition-opacity ${
-            isTyping ? "opacity-100" : "opacity-70"
-          }`}
-          disabled={!isTyping || disabled}
-        >
-          <SendHorizonal className="h-5 w-5" />
-        </Button>
+        <BlackButton disabled={isButtonDisabled}>
+          <SendHorizonal size={20} />
+        </BlackButton>
       </div>
     </form>
   );
