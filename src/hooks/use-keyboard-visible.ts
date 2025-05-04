@@ -50,6 +50,15 @@ export function useKeyboardVisible() {
           setIsKeyboardVisible(newKeyboardState);
           if (newKeyboardState) {
             document.body.classList.add('keyboard-visible');
+            
+            // Scroll para elemento ativo
+            const activeElement = document.activeElement as HTMLElement;
+            if (activeElement && activeElement !== document.body) {
+              // Pequeno delay para dar tempo do teclado abrir completamente
+              setTimeout(() => {
+                activeElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+              }, 300);
+            }
           } else {
             document.body.classList.remove('keyboard-visible');
           }
@@ -72,7 +81,27 @@ export function useKeyboardVisible() {
           window.setTimeout(() => {
             setIsKeyboardVisible(true);
             document.body.classList.add('keyboard-visible');
+            
+            // Para iOS, precisamos garantir o scroll após o teclado abrir
+            const activeElement = e.target as HTMLElement;
+            if (activeElement) {
+              setTimeout(() => {
+                activeElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+              }, 400);
+            }
           }, 300);
+         } else {
+           // Para Android, marcamos como teclado visível
+           setIsKeyboardVisible(true);
+           document.body.classList.add('keyboard-visible');
+           
+           // Scroll para elemento com foco
+           const activeElement = e.target as HTMLElement;
+           if (activeElement) {
+             setTimeout(() => {
+               activeElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+             }, 300);
+           }
          }
       }
     };

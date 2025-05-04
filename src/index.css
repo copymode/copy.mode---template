@@ -999,7 +999,7 @@ body.virtual-keyboard-supported.virtual-keyboard-visible {
   .flex-shrink-0.p-4.bg-background.z-20.fixed {
     position: fixed !important;
     bottom: var(--keyboard-height) !important;
-    z-index: 50 !important;
+    z-index: 999 !important;
     background-color: hsl(var(--background)) !important;
     box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1) !important;
     transform: translateZ(0);
@@ -1192,5 +1192,188 @@ body.ios-device.ios-keyboard-visible .chat-container .flex-shrink-0.fixed {
   position: fixed !important;
   bottom: 0 !important;
   z-index: 9999 !important;
+}
+
+/* Melhoria para dispositivos móveis - Versão 2023 */
+@media (max-width: 768px) {
+  /* Regra para todos os inputs e textareas quando focados */
+  input:focus, textarea:focus {
+    position: relative !important;
+    z-index: 99 !important;
+  }
+  
+  /* Quando o teclado está visível */
+  body.keyboard-visible {
+    /* Adiciona espaço extra no fundo para evitar que o conteúdo fique sob o teclado */
+    margin-bottom: 40vh !important;
+    overflow-y: auto !important;
+    height: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+    
+    /* Aplica scroll automático para o elemento focado */
+    *:focus {
+      scroll-margin-bottom: 40vh !important;
+    }
+  }
+  
+  /* Tratamento específico para iOS quando o teclado está visível */
+  body.ios-device.ios-keyboard-visible .chat-container .flex-shrink-0.fixed {
+    position: fixed !important;
+    bottom: 0 !important;
+    z-index: 9999 !important;
+    padding-bottom: env(safe-area-inset-bottom, 10px) !important;
+  }
+  
+  /* Regras específicas para o ChatInput na versão mobile */
+  .chat-container .flex-shrink-0.fixed,
+  .flex-shrink-0.p-4.bg-background.z-20.fixed {
+    position: fixed !important;
+    bottom: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    z-index: 999 !important;
+    background-color: hsl(var(--background)) !important;
+  }
+  
+  /* Comportamento quando o teclado está visível */
+  body.keyboard-visible .chat-container .flex-shrink-0.fixed,
+  body.keyboard-visible .flex-shrink-0.p-4.bg-background.z-20.fixed,
+  body.ios-keyboard-visible .chat-container .flex-shrink-0.fixed,
+  body.ios-keyboard-visible .flex-shrink-0.p-4.bg-background.z-20.fixed,
+  body.virtual-keyboard-visible .chat-container .flex-shrink-0.fixed,
+  body.virtual-keyboard-visible .flex-shrink-0.p-4.bg-background.z-20.fixed {
+    position: fixed !important;
+    bottom: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    z-index: 999 !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+    display: flex !important;
+    background-color: hsl(var(--background)) !important;
+    box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1) !important;
+  }
+}
+
+/* Estilo base para o container de input em telas de chat */
+.chat-container .flex-shrink-0.fixed {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 500;
+  background-color: hsl(var(--background));
+  box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1);
+  padding-bottom: env(safe-area-inset-bottom, 10px);
+}
+
+/* Base padding para o conteúdo de chat */
+.chat-container .flex-1.overflow-y-auto {
+  padding-bottom: 80px;
+}
+
+/* Estilos específicos para o iOS */
+html.ios-device,
+body.ios-device {
+  /* Evitar reajustes de altura em iOS */
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+}
+
+/* Quando o iOS mostra o teclado */
+body.ios-device.ios-keyboard-visible {
+  /* Permitir rolagem quando o teclado está aberto */
+  position: relative;
+  overflow: auto;
+  height: auto;
+  min-height: 100%;
+}
+
+/* Tratamento específico para iOS quando o teclado está visível */
+body.ios-device.ios-keyboard-visible .chat-container .flex-shrink-0.fixed {
+  position: fixed !important;
+  bottom: 0 !important;
+  z-index: 9999 !important;
+}
+
+/* Estilos para elementos focados quando o teclado está visível */
+.keyboard-focused {
+  position: relative;
+  z-index: 100 !important;
+}
+
+/* Estilos específicos para o container de chat quando o input está focado */
+.chat-container.input-focused .flex-shrink-0.fixed,
+.chat-container.input-focused .flex-shrink-0.p-4.bg-background.z-20.fixed {
+  position: fixed !important;
+  bottom: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  z-index: 999 !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+  display: flex !important;
+  box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1) !important;
+}
+
+/* Tratamento específico para iOS quando o teclado está visível e o ChatInput deve ficar fixo */
+body.ios-device.ios-keyboard-visible .chat-container .flex-shrink-0.fixed,
+body.ios-device.ios-keyboard-visible .flex-shrink-0.p-4.bg-background.z-20.fixed {
+  position: fixed !important;
+  bottom: 0 !important;
+  z-index: 9999 !important;
+  padding-bottom: env(safe-area-inset-bottom, 10px) !important;
+}
+
+/* Comportamento quando o teclado está visível */
+body.keyboard-visible .chat-container .flex-shrink-0.fixed,
+body.keyboard-visible .flex-shrink-0.p-4.bg-background.z-20.fixed,
+body.virtual-keyboard-visible .chat-container .flex-shrink-0.fixed,
+body.virtual-keyboard-visible .flex-shrink-0.p-4.bg-background.z-20.fixed {
+  position: fixed !important;
+  bottom: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  z-index: 999 !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+  display: flex !important;
+  background-color: hsl(var(--background)) !important;
+  box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1) !important;
+  transform: translateZ(0);
+}
+
+/* Scroll automático para elementos com foco quando o teclado está visível */
+@media (max-width: 768px) {
+  body.keyboard-visible {
+    /* Aumento de padding para acomodar o teclado */
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  
+  /* Estilo para inputs gerais em qualquer página quando o teclado está visível */
+  body.keyboard-visible input:focus,
+  body.keyboard-visible textarea:focus {
+    z-index: 100 !important;
+    position: relative !important;
+    scroll-margin-bottom: 40vh !important;
+  }
+  
+  /* Quando o input de chat está focado, vamos dar um espaço no conteúdo acima */
+  body.keyboard-visible .chat-container.input-focused .flex-1.overflow-y-auto {
+    padding-bottom: 60vh !important;
+  }
+}
+
+/* Garante que o elemento com foco em dispositivos iOS não fique coberto pelo teclado */
+@supports (-webkit-touch-callout: none) {
+  /* Aplicado apenas para dispositivos iOS */
+  body.ios-keyboard-visible input:focus,
+  body.ios-keyboard-visible textarea:focus {
+    padding-bottom: 5px !important;
+    margin-bottom: 5px !important;
+    position: relative !important;
+    z-index: 100 !important;
+  }
 }
 

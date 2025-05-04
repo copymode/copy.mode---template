@@ -59,6 +59,37 @@ function GlobalManager() {
       () => {
         document.body.classList.add('keyboard-visible');
         
+        // Tentar manter o elemento de input visível
+        const activeElement = document.activeElement as HTMLElement;
+        if (activeElement && activeElement !== document.body) {
+          // Pequeno delay para dar tempo do teclado abrir completamente
+          setTimeout(() => {
+            try {
+              // Tentar centralizar o elemento no campo de visão
+              activeElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+              
+              // Adicionar classe ao elemento ativo para estilização específica
+              activeElement.classList.add('keyboard-focused');
+              
+              // Verificar se o elemento está dentro de um container de chat
+              const chatContainer = activeElement.closest('.chat-container');
+              if (chatContainer) {
+                // Se estiver em um container de chat, garantir que o input fique visível
+                const inputContainer = chatContainer.querySelector('.flex-shrink-0.fixed') as HTMLElement;
+                if (inputContainer) {
+                  inputContainer.style.position = 'fixed';
+                  inputContainer.style.bottom = '0';
+                  inputContainer.style.zIndex = '9999';
+                  inputContainer.style.opacity = '1';
+                  inputContainer.style.visibility = 'visible';
+                }
+              }
+            } catch (err) {
+              console.warn('Erro ao ajustar scroll para input:', err);
+            }
+          }, 300);
+        }
+        
         // Para iOS, adicionamos classes específicas
         if (isIOS) {
           document.body.classList.add('ios-keyboard-visible');
@@ -76,6 +107,12 @@ function GlobalManager() {
       () => {
         document.body.classList.remove('keyboard-visible');
         
+        // Remover classe de qualquer elemento que estava em foco
+        const keyboardFocused = document.querySelector('.keyboard-focused');
+        if (keyboardFocused) {
+          keyboardFocused.classList.remove('keyboard-focused');
+        }
+        
         if (isIOS) {
           document.body.classList.remove('ios-keyboard-visible');
         }
@@ -85,8 +122,49 @@ function GlobalManager() {
       }
     );
     
+    // 4. Adicionar evento específico para inputs dentro de containers de chat
+    const addChatInputBehavior = () => {
+      const chatInputs = document.querySelectorAll('.chat-container textarea, .chat-container input');
+      
+      chatInputs.forEach(input => {
+        input.addEventListener('focus', () => {
+          const container = input.closest('.chat-container');
+          if (container) {
+            // Marcar o container para estilização
+            container.classList.add('input-focused');
+            
+            // Rolar para o input após um pequeno delay
+            setTimeout(() => {
+              (input as HTMLElement).scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }, 100);
+          }
+        });
+        
+        input.addEventListener('blur', () => {
+          const container = input.closest('.chat-container');
+          if (container) {
+            container.classList.remove('input-focused');
+          }
+        });
+      });
+    };
+    
+    // Executar inicialmente
+    addChatInputBehavior();
+    
+    // Re-executar quando o DOM for alterado (novos inputs)
+    const observer = new MutationObserver(() => {
+      addChatInputBehavior();
+    });
+    
+    observer.observe(document.body, {
+      childList: true,
+      subtree: true
+    });
+    
     return () => {
       cleanup();
+      observer.disconnect();
       document.body.classList.remove('keyboard-visible');
       if (isIOS) {
         document.body.classList.remove('ios-keyboard-visible');
