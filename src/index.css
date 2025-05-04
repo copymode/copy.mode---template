@@ -48,6 +48,9 @@
     /* Scrollbar Colors (Light) */
     --scrollbar-thumb: 215 20% 80%; /* Light gray for thumb */
     --scrollbar-track: 0 0% 100%; /* White/transparent for track */
+
+    /* Variável para calcular altura real do viewport (fallback para navegadores sem suporte) */
+    --vh: 1vh;
   }
 
   .dark {
@@ -106,10 +109,11 @@
   }
 
   * {
-    @apply border-border;
+    border-color: hsl(var(--border));
   }
   body {
-    @apply bg-background text-foreground;
+    background-color: hsl(var(--background));
+    color: hsl(var(--foreground));
     font-feature-settings: "rlig" 1, "calt" 1;
     /* Remove potential conflicting height from default body if present */
     /* height: auto; */ 
@@ -143,7 +147,17 @@
 
 @layer components {
   .copy-btn {
-    @apply p-2 rounded-full transition-colors hover:bg-secondary flex items-center justify-center;
+    padding: 0.5rem;
+    border-radius: 9999px;
+    transition-property: color, background-color, border-color, text-decoration-color, fill, stroke;
+    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+    transition-duration: 150ms;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .copy-btn:hover {
+    background-color: hsl(var(--secondary));
   }
 }
 
@@ -543,7 +557,7 @@ body::-webkit-scrollbar {
 
 /* Ajustes para headers e conteúdos em dispositivos móveis */
 @media (max-width: 768px) {
-  /* Fixar o header na parte superior da tela */
+  /* Fixar o header na parte superior da tela de forma absoluta para não ser afetado pelo teclado */
   header.bg-background.border-b.sticky {
     position: fixed !important;
     top: 0;
@@ -552,6 +566,12 @@ body::-webkit-scrollbar {
     width: 100%;
     z-index: 50;
     height: 56px; /* Altura definida para o header */
+    /* Propriedades que evitam o reposicionamento pelo teclado virtual */
+    position: fixed !important;
+    transform: translateZ(0);
+    will-change: transform;
+    -webkit-transform: translateZ(0);
+    -webkit-backface-visibility: hidden;
   }
 
   /* Adicionar padding-top em todos os contêineres principais para compensar o header fixo */
@@ -607,6 +627,19 @@ body::-webkit-scrollbar {
   .flex.flex-col.bg-background.min-h-full {
     min-height: 100vh;
     height: 100vh;
+  }
+}
+
+/* Desabilitar ajustes automáticos da ViewPort em dispositivos Apple */
+@supports (-webkit-touch-callout: none) {
+  /* Evitar que iOS redimensione a viewport ao abrir o teclado */
+  @media (max-width: 768px) {
+    header.bg-background.border-b.sticky {
+      position: fixed !important;
+      top: 0 !important;
+      left: 0 !important;
+      right: 0 !important;
+    }
   }
 }
 

@@ -7,6 +7,16 @@ import { Toaster } from "./components/ui/toaster";
 import { Toaster as Sonner } from "./components/ui/sonner";
 import { TooltipProvider } from "./components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { useViewportHeight } from "./hooks/use-viewport-height";
+import { useVirtualKeyboard } from "./hooks/use-virtual-keyboard";
+import { useEffect } from "react";
+import { 
+  setupViewportMeta, 
+  setupVirtualKeyboard, 
+  addKeyboardListeners, 
+  isMobileDevice,
+  isIOSDevice 
+} from "./lib/keyboard-utilities";
 
 // Pages
 import Login from "./pages/Login";
@@ -15,6 +25,77 @@ import Experts from "./pages/Experts";
 import Admin from "./pages/Admin";
 import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
+
+// Componente para gerenciar funcionalidades globais
+function GlobalManager() {
+  // Aplicar correção de altura para dispositivos móveis
+  useViewportHeight();
+  
+  // Configurar suporte a teclado virtual (hook abrangente)
+  useVirtualKeyboard({ overlaysContent: true });
+  
+  // Inicialização de funcionalidades de teclado virtual
+  useEffect(() => {
+    // Só configurar em dispositivos móveis
+    if (!isMobileDevice()) return;
+    
+    // Detectar iOS para tratamento específico
+    const isIOS = isIOSDevice();
+    
+    if (isIOS) {
+      document.documentElement.classList.add('ios-device');
+      document.body.classList.add('ios-device');
+    }
+    
+    // 1. Configurar a meta tag viewport
+    setupViewportMeta();
+    
+    // 2. Configurar a API VirtualKeyboard (se disponível)
+    setupVirtualKeyboard(true);
+    
+    // 3. Adicionar listeners de teclado com múltiplas estratégias
+    const cleanup = addKeyboardListeners(
+      // Quando o teclado fica visível
+      () => {
+        document.body.classList.add('keyboard-visible');
+        
+        // Para iOS, adicionamos classes específicas
+        if (isIOS) {
+          document.body.classList.add('ios-keyboard-visible');
+          
+          // Um pequeno atraso para permitir que o layout seja reajustado
+          setTimeout(() => {
+            window.scrollTo(0, 0);
+          }, 50);
+        }
+        
+        // Para depuração
+        console.log('Teclado virtual aberto');
+      },
+      // Quando o teclado é escondido
+      () => {
+        document.body.classList.remove('keyboard-visible');
+        
+        if (isIOS) {
+          document.body.classList.remove('ios-keyboard-visible');
+        }
+        
+        // Para depuração
+        console.log('Teclado virtual fechado');
+      }
+    );
+    
+    return () => {
+      cleanup();
+      document.body.classList.remove('keyboard-visible');
+      if (isIOS) {
+        document.body.classList.remove('ios-keyboard-visible');
+      }
+    };
+  }, []);
+  
+  return null;
+}
 
 // Auth guard component
 function ProtectedRoute({ children, adminOnly = false }: { children: React.ReactNode, adminOnly?: boolean }) {
@@ -88,6 +169,8 @@ const App = () => {
           <AuthProvider>
             <DataProvider>
               <Router>
+                {/* Gerenciador global de funcionalidades */}
+                <GlobalManager />
                 <AppRoutes />
               </Router>
             </DataProvider>
