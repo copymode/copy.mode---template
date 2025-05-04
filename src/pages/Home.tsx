@@ -159,6 +159,7 @@ export default function Home() {
   const [selectedContentType, setSelectedContentType] = useState<string | undefined>(undefined);
   
   const [promptInput, setPromptInput] = useState("");
+  const [isPromptInputFocused, setIsPromptInputFocused] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [typingContent, setTypingContent] = useState("");
   const scrollAreaRef = useRef<HTMLDivElement>(null);
@@ -660,9 +661,21 @@ export default function Home() {
                             handleSendMessage(promptInput); 
                           }
                         }}
+                        onFocus={() => setIsPromptInputFocused(true)}
+                        onBlur={() => setIsPromptInputFocused(false)}
                         rows={1}
-                        className="min-h-[50px] md:min-h-[60px] max-h-[120px] md:max-h-[200px] resize-none border rounded-lg p-2 md:p-3 w-full text-md md:text-lg"
-                        style={{ fontSize: '16px' }}
+                        className="min-h-[60px] max-h-[200px] resize-none p-3 w-full text-lg focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-offset-0 rounded-lg placeholder:opacity-40"
+                        style={{ 
+                          fontSize: '16px',
+                          backgroundColor: theme === 'light'
+                            ? isPromptInputFocused ? '#ffffff' : 'hsl(220, 20%, 91%)'
+                            : isPromptInputFocused ? 'hsl(217, 33%, 25%)' : 'hsl(222, 47%, 16%)',
+                          border: 'none',
+                          boxShadow: theme === 'light'
+                            ? isPromptInputFocused ? '0 2px 8px rgba(0, 0, 0, 0.18)' : '0 1px 3px rgba(0, 0, 0, 0.15)'
+                            : isPromptInputFocused ? '0 2px 8px rgba(0, 0, 0, 0.45)' : '0 1px 3px rgba(0, 0, 0, 0.4)',
+                          transition: 'background-color 0.2s ease, box-shadow 0.2s ease'
+                        }}
                         disabled={isGenerating}
                       />
                     </div>

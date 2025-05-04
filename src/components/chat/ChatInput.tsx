@@ -13,9 +13,6 @@ function BlackButton({
 }) {
   const { theme } = useTheme();
   
-  // Logs de depuração para verificar o tema
-  console.log("Tema atual:", theme);
-  
   // Cores baseadas no tema, garantindo contraste máximo para evitar problemas
   const bgColor = theme === 'light' 
     ? 'rgb(0, 0, 0)' // Preto puro no tema claro
@@ -55,6 +52,8 @@ export function ChatInput({ onSendMessage, disabled = false }: ChatInputProps) {
   const [message, setMessage] = useState("");
   const [isTyping, setIsTyping] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
+  const [isFocused, setIsFocused] = useState(false);
+  const { theme } = useTheme();
   
   // Detectar se é dispositivo móvel baseado na largura da tela
   useEffect(() => {
@@ -89,6 +88,16 @@ export function ChatInput({ onSendMessage, disabled = false }: ChatInputProps) {
   };
 
   const isButtonDisabled = !isTyping || disabled;
+  
+  // Definir cores baseadas no tema
+  const inputBgColor = theme === 'light'
+    ? isFocused ? '#ffffff' : 'hsl(220, 20%, 91%)' // Cor dos botões selecionados no modo claro, branco quando focado
+    : isFocused ? 'hsl(217, 33%, 25%)' : 'hsl(222, 47%, 16%)'; // No modo escuro: sem foco mais escuro, com foco mais claro
+
+  // Definir sombra baseada no tema
+  const boxShadow = theme === 'light'
+    ? isFocused ? '0 2px 8px rgba(0, 0, 0, 0.18)' : '0 1px 3px rgba(0, 0, 0, 0.15)'
+    : isFocused ? '0 2px 8px rgba(0, 0, 0, 0.45)' : '0 1px 3px rgba(0, 0, 0, 0.4)';
 
   return (
     <form onSubmit={handleSubmit} className="p-4">
@@ -102,9 +111,17 @@ export function ChatInput({ onSendMessage, disabled = false }: ChatInputProps) {
               setIsTyping(e.target.value.length > 0);
             }}
             onKeyDown={handleKeyDown}
+            onFocus={() => setIsFocused(true)}
+            onBlur={() => setIsFocused(false)}
             rows={1}
-            className="min-h-[60px] max-h-[200px] resize-none border rounded-lg p-3 w-full text-lg"
-            style={{ fontSize: '16px' }}
+            className="min-h-[60px] max-h-[200px] resize-none p-3 w-full text-lg focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-offset-0 rounded-lg"
+            style={{ 
+              fontSize: '16px',
+              backgroundColor: inputBgColor,
+              border: 'none',
+              boxShadow: boxShadow,
+              transition: 'background-color 0.2s ease, box-shadow 0.2s ease'
+            }}
             disabled={disabled}
           />
         </div>
