@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useAuth } from "@/context/AuthContext";
+import { useTheme } from "@/context/ThemeContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -13,6 +14,7 @@ export function LoginForm() {
   const {
     toast
   } = useToast();
+  const { theme } = useTheme();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -71,7 +73,15 @@ export function LoginForm() {
           </div>
         </CardContent>
         <CardFooter className="flex flex-col gap-2">
-          <Button type="submit" className="w-full" disabled={isLoading}>
+          <Button 
+            type="submit" 
+            className={`w-full ${
+              theme === 'dark' 
+                ? 'bg-red-600 hover:bg-red-700 text-white' 
+                : 'bg-black hover:bg-gray-800 text-white'
+            }`} 
+            disabled={isLoading}
+          >
             {isLoading ? "Entrando..." : <>
                 <LogIn className="mr-2 h-4 w-4" />
                 Entrar
