@@ -479,12 +479,11 @@ export default function Home() {
         </div>
       ) : !isInitialState ? (
         <>
-          {/* Layout flexível com área de chat rolável e input fixo */}
-          <div className="flex flex-col h-screen overflow-hidden chat-container">
+          {/* Layout flexível com área de chat sem rolagem e input fixo */}
+          <div className="flex flex-col h-screen overflow-hidden chat-container home-no-scroll">
             {/* Área de conversa com padding suficiente para o input */}
             <div 
-              className="flex-1 overflow-y-auto px-4 pt-4 pb-20 mobile-chat-area md:pb-4"
-              // Adiciona padding-bottom com base na altura do input no elemento pai
+              className="flex-1 overflow-hidden px-4 pt-4 pb-20 mobile-chat-area md:pb-4 home-no-scroll"
               style={{ 
                 paddingBottom: 'calc(80px + env(safe-area-inset-bottom, 16px))'
               }}
@@ -556,9 +555,9 @@ export default function Home() {
            </AlertDialog>
         </>
       ) : (
-        <div className="flex flex-col h-screen overflow-hidden">
+        <div className="flex flex-col h-screen overflow-hidden home-no-scroll">
           {/* Layout estilo ChatGPT com todos os elementos centralizados */}
-          <div className="flex flex-1 flex-col justify-center items-center px-4">
+          <div className="flex flex-1 flex-col justify-center items-center px-4 home-no-scroll">
             <div className="w-full max-w-3xl mx-auto flex flex-col items-center">
               <Sparkles 
                 size={48} 

@@ -100,9 +100,7 @@
   html,
   body,
   #root {
-    height: 100%; /* Ensure full viewport height */
-    touch-action: pan-x pan-y;
-    -ms-touch-action: pan-x pan-y;
+    height: 100%;
   }
 
   * {
@@ -927,5 +925,268 @@ html:not(.dark) div.container.mx-auto.max-w-6xl div.text-center.p-8.border.round
 
 html:not(.dark) div.container.mx-auto.max-w-6xl div.text-center.p-8.border.rounded-lg button:hover {
   background-color: rgba(0, 0, 0, 0.9) !important;
+}
+
+/* Estilos para o conteúdo Markdown */
+.markdown-content {
+  font-size: 1rem;
+  line-height: 1.6;
+}
+
+.markdown-content h1,
+.markdown-content h2,
+.markdown-content h3,
+.markdown-content h4,
+.markdown-content h5,
+.markdown-content h6 {
+  margin-top: 1.5em;
+  margin-bottom: 0.75em;
+  font-weight: 600;
+  line-height: 1.25;
+}
+
+.markdown-content h1 {
+  font-size: 1.75em;
+}
+
+.markdown-content h2 {
+  font-size: 1.5em;
+}
+
+.markdown-content h3 {
+  font-size: 1.25em;
+}
+
+.markdown-content p {
+  margin-bottom: 1em;
+}
+
+.markdown-content ul,
+.markdown-content ol {
+  margin-top: 0.5em;
+  margin-bottom: 1em;
+  padding-left: 1.5em;
+}
+
+.markdown-content li {
+  margin-bottom: 0.25em;
+}
+
+.markdown-content a {
+  color: hsl(var(--primary));
+  text-decoration: underline;
+}
+
+.markdown-content code {
+  font-family: monospace;
+  padding: 0.2em 0.4em;
+  margin: 0;
+  font-size: 0.85em;
+  border-radius: 3px;
+  background-color: rgba(0, 0, 0, 0.08);
+}
+
+.markdown-content pre {
+  margin-top: 1em;
+  margin-bottom: 1em;
+  border-radius: 6px;
+  overflow: auto;
+}
+
+.markdown-content blockquote {
+  margin: 1em 0;
+  padding-left: 1em;
+  border-left: 3px solid hsl(var(--primary));
+  color: hsl(var(--muted-foreground));
+}
+
+.markdown-content table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 1em;
+}
+
+.markdown-content th,
+.markdown-content td {
+  padding: 0.5em;
+  border: 1px solid hsl(var(--border));
+}
+
+.markdown-content th {
+  background-color: rgba(0, 0, 0, 0.05);
+}
+
+/* Estilos ajustados para modo escuro */
+.dark .markdown-content code {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.dark .markdown-content th {
+  background-color: rgba(255, 255, 255, 0.05);
+}
+
+/* Estilos adicionais para blocos de código */
+.code-block-wrapper {
+  margin: 1em 0;
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.code-block-wrapper pre {
+  margin: 0 !important;
+  border-radius: 0 !important;
+}
+
+/* Ajusta espaçamento em blocos de código em dispositivos móveis */
+@media (max-width: 768px) {
+  .markdown-content pre {
+    max-width: 100%;
+    overflow-x: auto;
+  }
+  
+  .code-block-wrapper {
+    max-width: 100%;
+    overflow-x: auto;
+  }
+}
+
+/* Classe personalizada para o balão de mensagem do usuário */
+.user-message-bubble {
+  border-radius: 0.5rem 0.5rem 0 0.5rem;
+  padding: 0.75rem 1rem;
+  max-width: 80%;
+}
+
+/* Estilos específicos para o botão de submit */
+:root .submit-button-light {
+  background-color: black !important;
+  color: white !important;
+}
+
+:root .submit-button-light:hover {
+  background-color: rgba(0, 0, 0, 0.9) !important;
+}
+
+.dark .submit-button-dark {
+  background-color: hsl(var(--primary)) !important;
+  color: hsl(var(--primary-foreground)) !important;
+}
+
+/* Estilos específicos para o botão de submit do chat */
+.chat-submit-button-light {
+  background-color: black !important;
+  color: white !important;
+  border: none !important;
+}
+
+.chat-submit-button-light:hover {
+  background-color: rgba(0, 0, 0, 0.9) !important;
+}
+
+.chat-submit-button-dark {
+  background-color: hsl(var(--primary)) !important;
+  color: hsl(var(--primary-foreground)) !important;
+}
+
+/* Estilos para garantir que o variant do botão não sobrescreva nossa cor */
+:root button[type="submit"].chat-submit-button-light {
+  background-color: black !important;
+  color: white !important;
+}
+
+.dark button[type="submit"].chat-submit-button-dark {
+  background-color: hsl(var(--primary)) !important;
+  color: hsl(var(--primary-foreground)) !important;
+}
+
+/* SLIDER - CORREÇÃO */
+/* Modo Claro: Slider Preto */
+:root:not(.dark) .absolute.h-full.bg-primary {
+  background-color: black !important;
+}
+
+:root:not(.dark) .block.h-5.w-5.rounded-full.border-2.border-primary {
+  border-color: black !important;
+}
+
+/* Override específico para o Slider */
+html:not(.dark) div[id="temperature"].relative.flex.w-full [role="slider"] {
+  border-color: black !important;
+}
+
+html:not(.dark) div[id="temperature"].relative.flex.w-full .absolute.h-full.bg-primary {
+  background-color: black !important;
+}
+
+/* Substitui quaisquer outros seletores que possam afetar o tema escuro */
+
+/* Botão "Criar Expert" na página Experts - Preto no modo claro */
+html:not(.dark) div.container.py-6.space-y-8 div.flex.justify-between.items-center button {
+  background-color: black !important;
+  color: white !important;
+}
+
+html:not(.dark) div.container.py-6.space-y-8 div.flex.justify-between.items-center button:hover {
+  background-color: rgba(0, 0, 0, 0.9) !important;
+}
+
+/* Botão "Criar primeiro expert" na página vazia também preto no modo claro */
+html:not(.dark) div.text-center.p-8.border.rounded-lg.bg-background button {
+  background-color: black !important;
+  color: white !important;
+}
+
+html:not(.dark) div.text-center.p-8.border.rounded-lg.bg-background button:hover {
+  background-color: rgba(0, 0, 0, 0.9) !important;
+}
+
+/* Botão de submissão no formulário de expert (Salvar Alterações/Criar Expert) */
+html:not(.dark) form.space-y-6 div.flex.justify-end.gap-2 button[type="submit"] {
+  background-color: black !important;
+  color: white !important;
+}
+
+html:not(.dark) form.space-y-6 div.flex.justify-end.gap-2 button[type="submit"]:hover {
+  background-color: rgba(0, 0, 0, 0.9) !important;
+}
+
+/* Garantir que os botões do formulário tenham bordas pretas no modo claro */
+html:not(.dark) form.space-y-6 div.flex.justify-end.gap-2 button[type="submit"]:focus {
+  outline-color: black !important;
+}
+
+/* Botão "Novo Agente" na página Admin */
+html:not(.dark) div.container.mx-auto.max-w-6xl div.w-full.flex.justify-end button {
+  background-color: black !important;
+  color: white !important;
+}
+
+html:not(.dark) div.container.mx-auto.max-w-6xl div.w-full.flex.justify-end button:hover {
+  background-color: rgba(0, 0, 0, 0.9) !important;
+}
+
+/* Botão "Criar primeiro agente" na página Admin vazia */
+html:not(.dark) div.container.mx-auto.max-w-6xl div.text-center.p-8.border.rounded-lg button {
+  background-color: black !important;
+  color: white !important;
+}
+
+html:not(.dark) div.container.mx-auto.max-w-6xl div.text-center.p-8.border.rounded-lg button:hover {
+  background-color: rgba(0, 0, 0, 0.9) !important;
+}
+
+/* Classe específica para remover o scroll APENAS na página Home */
+.home-no-scroll {
+  overflow: hidden !important;
+  overflow-y: hidden !important;
+  overflow-x: hidden !important;
+}
+
+@media (max-width: 768px) {
+  .home-no-scroll {
+    overflow: hidden !important;
+    overflow-y: hidden !important;
+    overflow-x: hidden !important;
+  }
 }
 
