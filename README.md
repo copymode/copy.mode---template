@@ -2,9 +2,10 @@
 
 ## Versões do Projeto
 
-**Versão Atual**: v1.38.0
+**Versão Atual**: v1.39.0
 
 ### Histórico de Versões
+- **v1.39.0**: Melhorias no comportamento do input em dispositivos móveis quando o teclado virtual é aberto, garantindo que o campo permaneça visível
 - **v1.38.0**: Redução do tamanho máximo de caracteres do placeholder das mensagens no sidebar de 35 para 25, evitando sobreposição com o ícone da lixeira
 - **v1.27.24**: Ajustes nos balões de chat: removido fundo das mensagens da IA, aplicado bg-secondary para mensagens do usuário e alterada largura do texto da IA para 100%
 - **v1.27.23**: Ajuste do campo de input das conversas com a IA: tamanho da fonte aumentado e permitir quebra de linha com Enter na versão mobile
