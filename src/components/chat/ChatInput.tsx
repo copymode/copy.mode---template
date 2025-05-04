@@ -25,8 +25,8 @@ function BlackButton({
       style={{
         backgroundColor: bgColor,
         color: 'white',
-        width: '60px',
-        height: '60px',
+        width: '50px',
+        height: '50px',
         borderRadius: '9999px',
         border: 'none',
         display: 'flex',
@@ -101,7 +101,7 @@ export function ChatInput({ onSendMessage, disabled = false }: ChatInputProps) {
 
   return (
     <form onSubmit={handleSubmit} className="p-4">
-      <div className="flex items-end w-full space-x-2">
+      <div className="flex items-center w-full space-x-2">
         <div className="flex-1">
           <Textarea
             placeholder="Digite sua mensagem..."

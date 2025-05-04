@@ -101,8 +101,8 @@ function BlackButton({
   console.log("Home - Tema atual:", theme);
   
   const dimensions = size === "normal" 
-    ? { width: '60px', height: '60px' } 
-    : { width: '40px', height: '40px' };
+    ? { width: '50px', height: '50px' } 
+    : { width: '50px', height: '50px' };
     
   // Cores baseadas no tema, garantindo contraste máximo para evitar problemas
   const bgColor = theme === 'light' 
@@ -647,7 +647,7 @@ export default function Home() {
                   if (!promptInput.trim() || isGenerating || !selectedAgent || !selectedContentType) return;
                   handleSendMessage(promptInput);
                 }} className="p-2 md:p-4">
-                  <div className="flex items-end w-full space-x-2">
+                  <div className="flex items-center w-full space-x-2">
                     <div className="flex-1">
                       <Textarea 
                         placeholder="Digite seu prompt..."
