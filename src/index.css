@@ -552,6 +552,9 @@ body::-webkit-scrollbar {
     width: 100%;
     z-index: 50;
     height: 56px; /* Altura definida para o header */
+    /* Previne que o teclado virtual afete o posicionamento */
+    transform: translateZ(0);
+    will-change: transform;
   }
 
   /* Adicionar padding-top em todos os contêineres principais para compensar o header fixo */
@@ -612,40 +615,49 @@ body::-webkit-scrollbar {
 
 /* Estilos para quando o teclado virtual está visível em dispositivos móveis */
 @media (max-width: 768px) {
-  /* Quando o teclado está visível */
-  body.keyboard-visible {
-    /* Reposiciona o header para ficar no topo */
-    header.bg-background.border-b.sticky,
-    header.bg-background.border-b.fixed {
-      position: absolute !important;
-      top: 0;
-      left: 0;
-      right: 0;
-      z-index: 50;
-    }
-    
-    /* Reposiciona o input para que não seja encoberto pelo teclado */
-    .chat-container .flex-shrink-0.fixed,
-    .flex-shrink-0.p-4.bg-background.z-20.fixed {
-      position: absolute !important;
-      bottom: 0;
-      left: 0;
-      right: 0;
-    }
-    
-    /* Ajusta o padding da área de conteúdo para acomodar ambos */
-    main.flex-1.overflow-auto {
-      padding-top: 70px !important;
-      padding-bottom: 90px !important;
-    }
-    
-    /* Garante que o conteúdo seja rolável e não fixo */
-    .flex-1.overflow-y-auto,
-    .chat-container .flex-1.overflow-y-auto {
-      overflow-y: auto !important;
-      -webkit-overflow-scrolling: touch;
-      position: relative !important;
-    }
+  /* Sempre manter o header em posição fixa com altura absoluta */
+  header.bg-background.border-b.sticky,
+  header.bg-background.border-b.fixed {
+    position: fixed !important;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 50;
+    /* Impede que seja afetado pelo resize da viewport */
+    height: 56px;
+    transform: translateZ(0);
+    will-change: transform;
+    -webkit-backface-visibility: hidden;
+    backface-visibility: hidden;
+  }
+  
+  /* Fixar o input para que não seja empurrado pelo teclado */
+  .chat-container .flex-shrink-0.fixed,
+  .flex-shrink-0.p-4.bg-background.z-20.fixed {
+    position: fixed !important;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    transform: translateZ(0);
+    will-change: transform;
+    z-index: 40;
+  }
+  
+  /* Permitir que o conteúdo seja rolável independente do teclado */
+  .flex-1.overflow-y-auto,
+  .chat-container .flex-1.overflow-y-auto {
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch;
+    position: relative !important;
+  }
+  
+  /* Evita elementos pulando quando o teclado abre */
+  body, html, #root {
+    height: 100%;
+    position: relative;
+    overflow: hidden;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
   }
 }
 
