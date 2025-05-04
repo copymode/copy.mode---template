@@ -2,9 +2,10 @@
 
 ## Versões do Projeto
 
-**Versão Atual**: v1.27.22
+**Versão Atual**: v1.27.23
 
 ### Histórico de Versões
+- **v1.27.23**: Ajuste do campo de input das conversas com a IA: tamanho da fonte aumentado e permitir quebra de linha com Enter na versão mobile
 - **v1.27.22**: Ajuste de cor do botão "Enviar Nova Foto" na tela de Configurações para preto no tema claro e vermelho no tema escuro
 - **v1.27.21**: Ajuste de cores dos botões "Alterar Senha" e "Salvar Chave API" para preto no modo claro e vermelho no modo escuro
 - **v1.27.20**: Ajuste do botão "Sair" para ter a mesma aparência do botão "Modo Claro" no sidebar
