@@ -19,8 +19,4 @@ if (/iPhone|iPad|iPod|Android/i.test(navigator.userAgent)) {
   }, { passive: false });
 }
 
-// Também podemos definir overflow no <html> e <body> diretamente pelo JS
-document.documentElement.style.overflow = 'hidden';
-document.body.style.overflow = 'hidden';
-
 createRoot(document.getElementById("root")!).render(<App />);
