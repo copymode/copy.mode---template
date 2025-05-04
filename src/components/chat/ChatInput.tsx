@@ -70,37 +70,51 @@ export function ChatInput({ onSendMessage, disabled = false }: ChatInputProps) {
     };
   }, []);
   
-  // Efeito para garantir que o componente fique visível quando focado em dispositivos móveis
+  // Efeito para lidar com o foco em dispositivos móveis
   useEffect(() => {
-    if (!isMobile || !isFocused || !textareaRef.current) return;
+    if (!isMobile || !textareaRef.current) return;
     
-    // Quando focado em dispositivos móveis, garantir que o textarea seja visível
-    const handleVisibility = () => {
-      if (textareaRef.current) {
-        // Atraso para permitir que o teclado abra completamente
-        setTimeout(() => {
-          // Adicionar classe ao container pai
-          const chatContainer = textareaRef.current?.closest('.chat-container');
-          if (chatContainer) {
-            chatContainer.classList.add('input-focused');
-          }
-          
-          // Garantir que o elemento esteja visível
-          textareaRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        }, 300);
+    // Quando o input é focado em dispositivos móveis
+    const handleFocus = () => {
+      // Garantir que o container de chat tenha a classe para fixar o input
+      const chatContainer = textareaRef.current?.closest('.chat-container');
+      if (chatContainer) {
+        chatContainer.classList.add('input-focused');
       }
+      
+      // Adicionar classe ao body
+      document.body.classList.add('input-is-focused');
+      
+      // Mantém o input visível scrollando até ele
+      setTimeout(() => {
+        if (textareaRef.current) {
+          textareaRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      }, 100);
     };
     
-    handleVisibility();
-    
-    // Limpar ao perder o foco
-    return () => {
+    // Quando o input perde o foco
+    const handleBlur = () => {
+      // Remover classe do container
       const chatContainer = textareaRef.current?.closest('.chat-container');
       if (chatContainer) {
         chatContainer.classList.remove('input-focused');
       }
+      
+      // Remover classe do body
+      document.body.classList.remove('input-is-focused');
     };
-  }, [isMobile, isFocused]);
+    
+    // Adicionar event listeners
+    const textarea = textareaRef.current;
+    textarea.addEventListener('focus', handleFocus);
+    textarea.addEventListener('blur', handleBlur);
+    
+    return () => {
+      textarea.removeEventListener('focus', handleFocus);
+      textarea.removeEventListener('blur', handleBlur);
+    };
+  }, [isMobile]);
   
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
@@ -132,30 +146,21 @@ export function ChatInput({ onSendMessage, disabled = false }: ChatInputProps) {
     ? isFocused ? '0 2px 8px rgba(0, 0, 0, 0.18)' : '0 1px 3px rgba(0, 0, 0, 0.15)'
     : isFocused ? '0 2px 8px rgba(0, 0, 0, 0.45)' : '0 1px 3px rgba(0, 0, 0, 0.4)';
 
-  // Estilos específicos para mobile vs desktop
-  const formStyle = isMobile ? 
-    { 
-      paddingTop: '5px', 
-      paddingBottom: '5px', 
-      paddingLeft: '5px', 
-      paddingRight: '5px' 
-    } : {};
-
-  // Altura do textarea ajustada para mobile para simetria
+  // Estilos para o textarea (mantido tamanho original)
   const textareaStyle = {
     fontSize: '16px',
     backgroundColor: inputBgColor,
     border: 'none',
     boxShadow: boxShadow,
     transition: 'background-color 0.2s ease, box-shadow 0.2s ease',
-    ...(isMobile ? { minHeight: '50px' } : {})
+    minHeight: '60px',
+    maxHeight: '200px'
   };
 
   return (
     <form 
       onSubmit={handleSubmit} 
-      style={formStyle}
-      className={isMobile ? "" : "p-4"}
+      className="p-4"
     >
       <div className="flex items-center w-full space-x-2">
         <div className="flex-1">
@@ -171,7 +176,7 @@ export function ChatInput({ onSendMessage, disabled = false }: ChatInputProps) {
             onFocus={() => setIsFocused(true)}
             onBlur={() => setIsFocused(false)}
             rows={1}
-            className={`resize-none p-3 w-full text-lg focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-offset-0 rounded-lg ${theme === 'light' ? 'placeholder:opacity-45' : 'placeholder:opacity-35'} ${isMobile ? "" : "min-h-[60px] max-h-[200px]"}`}
+            className="resize-none p-3 w-full text-lg focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-offset-0 rounded-lg min-h-[60px] max-h-[200px]"
             style={textareaStyle}
             disabled={disabled}
           />
