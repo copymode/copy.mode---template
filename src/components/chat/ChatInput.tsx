@@ -1,4 +1,4 @@
-import { useState, FormEvent, useEffect } from "react";
+import { useState, FormEvent, useEffect, useRef } from "react";
 import { Textarea } from "@/components/ui/textarea";
 import { SendHorizonal } from "lucide-react";
 import { useTheme } from "@/context/ThemeContext";
@@ -54,6 +54,7 @@ export function ChatInput({ onSendMessage, disabled = false }: ChatInputProps) {
   const [isMobile, setIsMobile] = useState(false);
   const [isFocused, setIsFocused] = useState(false);
   const { theme } = useTheme();
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
   
   // Detectar se é dispositivo móvel baseado na largura da tela
   useEffect(() => {
@@ -68,6 +69,38 @@ export function ChatInput({ onSendMessage, disabled = false }: ChatInputProps) {
       window.removeEventListener('resize', checkIfMobile);
     };
   }, []);
+  
+  // Efeito para garantir que o componente fique visível quando focado em dispositivos móveis
+  useEffect(() => {
+    if (!isMobile || !isFocused || !textareaRef.current) return;
+    
+    // Quando focado em dispositivos móveis, garantir que o textarea seja visível
+    const handleVisibility = () => {
+      if (textareaRef.current) {
+        // Atraso para permitir que o teclado abra completamente
+        setTimeout(() => {
+          // Adicionar classe ao container pai
+          const chatContainer = textareaRef.current?.closest('.chat-container');
+          if (chatContainer) {
+            chatContainer.classList.add('input-focused');
+          }
+          
+          // Garantir que o elemento esteja visível
+          textareaRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }, 300);
+      }
+    };
+    
+    handleVisibility();
+    
+    // Limpar ao perder o foco
+    return () => {
+      const chatContainer = textareaRef.current?.closest('.chat-container');
+      if (chatContainer) {
+        chatContainer.classList.remove('input-focused');
+      }
+    };
+  }, [isMobile, isFocused]);
   
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
@@ -127,6 +160,7 @@ export function ChatInput({ onSendMessage, disabled = false }: ChatInputProps) {
       <div className="flex items-center w-full space-x-2">
         <div className="flex-1">
           <Textarea
+            ref={textareaRef}
             placeholder="Digite sua mensagem..."
             value={message}
             onChange={(e) => {
