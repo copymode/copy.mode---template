@@ -1,4 +1,4 @@
-import { useState, FormEvent } from "react";
+import { useState, FormEvent, useEffect } from "react";
 import { Textarea } from "@/components/ui/textarea";
 import { SendHorizonal } from "lucide-react";
 import { useTheme } from "@/context/ThemeContext";
@@ -54,6 +54,21 @@ interface ChatInputProps {
 export function ChatInput({ onSendMessage, disabled = false }: ChatInputProps) {
   const [message, setMessage] = useState("");
   const [isTyping, setIsTyping] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
+  
+  // Detectar se é dispositivo móvel baseado na largura da tela
+  useEffect(() => {
+    const checkIfMobile = () => {
+      setIsMobile(window.innerWidth <= 768);
+    };
+    
+    checkIfMobile();
+    window.addEventListener('resize', checkIfMobile);
+    
+    return () => {
+      window.removeEventListener('resize', checkIfMobile);
+    };
+  }, []);
   
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
@@ -65,7 +80,9 @@ export function ChatInput({ onSendMessage, disabled = false }: ChatInputProps) {
   };
   
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === "Enter" && !e.shiftKey) {
+    // No mobile, Enter sempre quebra linha (não envia)
+    // Em desktop, Enter sem Shift continua enviando a mensagem
+    if (e.key === "Enter" && !e.shiftKey && !isMobile) {
       e.preventDefault();
       handleSubmit(e);
     }
@@ -86,7 +103,8 @@ export function ChatInput({ onSendMessage, disabled = false }: ChatInputProps) {
             }}
             onKeyDown={handleKeyDown}
             rows={1}
-            className="min-h-[60px] max-h-[200px] resize-none border rounded-lg p-3 w-full"
+            className="min-h-[60px] max-h-[200px] resize-none border rounded-lg p-3 w-full text-lg"
+            style={{ fontSize: '16px' }}
             disabled={disabled}
           />
         </div>
@@ -95,6 +113,11 @@ export function ChatInput({ onSendMessage, disabled = false }: ChatInputProps) {
           <SendHorizonal size={20} />
         </BlackButton>
       </div>
+      {isMobile && (
+        <div className="text-xs text-muted-foreground mt-1 text-center">
+          Use o botão para enviar a mensagem
+        </div>
+      )}
     </form>
   );
 }
