@@ -1126,14 +1126,16 @@ body.ios-device.ios-keyboard-visible {
 
 /* Estilo para entrada fixa quando teclado está visível */
 body.keyboard-visible .chat-container .flex-shrink-0.fixed {
-  position: absolute !important;
-  bottom: 0;
-  left: 0;
-  right: 0;
+  position: fixed !important;
+  bottom: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  z-index: 9999 !important;
+  box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1) !important;
+  background-color: hsl(var(--background)) !important;
   opacity: 1 !important;
   visibility: visible !important;
   display: flex !important;
-  z-index: 9999;
 }
 
 /* Corrigir a exibição nas diferentes versões */
@@ -1183,5 +1185,12 @@ body.ios-device.ios-keyboard-visible {
   overflow: auto;
   height: auto;
   min-height: 100%;
+}
+
+/* Tratamento específico para iOS quando o teclado está visível */
+body.ios-device.ios-keyboard-visible .chat-container .flex-shrink-0.fixed {
+  position: fixed !important;
+  bottom: 0 !important;
+  z-index: 9999 !important;
 }
 
