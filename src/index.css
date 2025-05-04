@@ -48,6 +48,10 @@
     /* Scrollbar Colors (Light) */
     --scrollbar-thumb: 215 20% 80%; /* Light gray for thumb */
     --scrollbar-track: 0 0% 100%; /* White/transparent for track */
+
+    /* Variáveis para layout */
+    --sidebar-width-expanded: 240px;
+    --sidebar-width-collapsed: 64px;
   }
 
   .dark {

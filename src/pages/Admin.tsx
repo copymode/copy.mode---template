@@ -153,7 +153,7 @@ export default function Admin() {
   };
 
   return (
-    <div className="container mx-auto max-w-6xl py-8">
+    <div className="container mx-auto max-w-6xl py-8 pb-24">
       <Tabs defaultValue="agents" value={activeTab} onValueChange={setActiveTab}>
         <div className="flex flex-col mb-6 gap-4">
           <div className="w-full">

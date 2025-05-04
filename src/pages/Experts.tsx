@@ -85,7 +85,7 @@ export default function Experts() {
   };
   
   return (
-    <div className="container py-6 space-y-8">
+    <div className="container py-6 pb-24 space-y-8">
       <div className="flex justify-between items-center">
         <h1 className="text-2xl font-bold">Meus Experts</h1>
         

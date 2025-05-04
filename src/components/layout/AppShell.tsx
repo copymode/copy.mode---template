@@ -204,7 +204,12 @@ export function AppShell({ children }: AppShellProps) {
         ref={sidebarRef}
         className={`bg-sidebar fixed inset-y-0 left-0 z-30 transform transition-all duration-300 ease-in-out border-r border-sidebar-border overflow-hidden 
                     md:relative md:translate-x-0 md:h-full ${sidebarOpen ? "translate-x-0" : "-translate-x-full"} 
-                    ${sidebarCollapsed ? "md:w-20" : "md:w-64"}`}
+                    ${sidebarCollapsed ? "md:w-16" : "md:w-60"}`}
+        style={{
+          "--current-sidebar-width": sidebarCollapsed ? 
+            "var(--sidebar-width-collapsed)" : 
+            "var(--sidebar-width-expanded)"
+        } as React.CSSProperties}
       >
         <div className="flex flex-col h-full">
           <div className={`flex items-center justify-between p-4 flex-shrink-0 ${sidebarCollapsed ? 'md:justify-center' : 'md:justify-between'}`}>
@@ -534,22 +539,37 @@ export function AppShell({ children }: AppShellProps) {
         />
       )}
       
-      <div className="flex flex-col overflow-hidden"> 
+      <div className="flex flex-col overflow-hidden">
         <header className="bg-background border-b py-3 px-4 sticky top-0 z-10 flex-shrink-0">
-           <div className="flex items-center justify-between">
-              <button 
-                className="p-1 rounded-md md:hidden text-foreground hover:bg-secondary"
-                onClick={toggleSidebar}
-              >
-                <Menu size={24} />
-              </button>
-              <div className="flex-1 md:ml-0">
-                {/* Potential placeholder or title? */}
+          <div className="flex items-center justify-between">
+            <button
+              className="p-1 rounded-md md:hidden text-foreground hover:bg-secondary"
+              onClick={toggleSidebar}
+            >
+              <Menu size={24} />
+            </button>
+            <div className="flex-1 md:ml-0">
+              {/* Potential placeholder or title? */}
+            </div>
+          </div>
+        </header>
+        
+        <main className="flex-1 overflow-auto p-4 md:p-6 relative">
+          {children}
+          
+          {/* Footer fixo para Admin e Experts */}
+          {(location.pathname === "/admin" || location.pathname === "/experts") && (
+            <div className="fixed bottom-0 left-0 right-0 bg-background border-t z-10 shadow-md"
+                style={{ 
+                  left: isDesktop ? 'var(--current-sidebar-width)' : '0',
+                  height: '40px' // Altura fixa para o footer
+                }}
+            >
+              <div className="container mx-auto max-w-6xl h-full flex items-center justify-center">
+                {/* Área reservada para conteúdo fixo no footer */}
               </div>
             </div>
-        </header>
-        <main className="flex-1 overflow-auto p-4 md:p-6">
-          {children}
+          )}
         </main>
       </div>
     </div>
