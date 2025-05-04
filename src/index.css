@@ -929,3 +929,14 @@ html:not(.dark) div.container.mx-auto.max-w-6xl div.text-center.p-8.border.round
   background-color: rgba(0, 0, 0, 0.9) !important;
 }
 
+/* Estilo para manter o conteúdo fixo nas páginas admin e expert */
+.container.mx-auto.max-w-6xl,
+.container.py-6.space-y-8 {
+  padding-bottom: 2rem;
+  min-height: min-content;
+  position: relative;
+  z-index: 1;
+}
+
+/* Prevenção de barras de rolagem horizontais */
+

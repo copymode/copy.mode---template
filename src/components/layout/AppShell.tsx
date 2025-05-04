@@ -534,7 +534,7 @@ export function AppShell({ children }: AppShellProps) {
         />
       )}
       
-      <div className="flex flex-col overflow-hidden"> 
+      <div className="flex flex-col h-screen overflow-hidden"> 
         <header className="bg-background border-b py-3 px-4 sticky top-0 z-10 flex-shrink-0">
            <div className="flex items-center justify-between">
               <button 
@@ -548,8 +548,10 @@ export function AppShell({ children }: AppShellProps) {
               </div>
             </div>
         </header>
-        <main className="flex-1 overflow-auto p-4 md:p-6">
-          {children}
+        <main className="flex-1 overflow-auto p-4 md:p-6 relative">
+          <div className="pb-20">
+            {children}
+          </div>
         </main>
       </div>
     </div>
