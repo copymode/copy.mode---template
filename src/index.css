@@ -969,15 +969,25 @@ html:not(.dark) div.container.mx-auto.max-w-6xl div.text-center.p-8.border.round
   padding-bottom: 20px;
 }
 
-/* Solução definitiva para eliminar scroll na home */
-html.no-scroll,
-html.no-scroll body {
+/* Solução específica para eliminar scroll APENAS na página Home */
+.home-page-no-scroll {
   overflow: hidden !important;
+}
+
+/* Solução muito específica para tela home */
+body.home-page-no-scroll main {
+  overflow: hidden !important;
+}
+
+/* Seletor específico para home-container */
+.home-container {
   height: 100vh !important;
-  position: fixed !important;
-  left: 0 !important;
-  right: 0 !important;
-  top: 0 !important;
-  bottom: 0 !important;
+  max-height: 100vh !important;
+  overflow: hidden !important;
+}
+
+/* Garantir que outras páginas mantenham o scroll */
+body:not(.home-page-no-scroll) main {
+  overflow: auto !important;
 }
 
