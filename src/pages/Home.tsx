@@ -710,6 +710,10 @@ export default function Home() {
                     </div>
                     
                     <BlackButton 
+                      onClick={() => {
+                        if (!promptInput.trim() || isGenerating || !selectedAgent || !selectedContentType) return;
+                        handleSendMessage(promptInput);
+                      }}
                       disabled={isGenerating || !promptInput.trim() || !selectedAgent || !selectedContentType}
                       size="small"
                     >

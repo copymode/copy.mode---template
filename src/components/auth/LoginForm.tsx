@@ -55,7 +55,21 @@ export function LoginForm() {
   };
   return <Card className="w-[350px] mx-auto">
       <CardHeader>
-        <CardTitle className="text-2xl text-center">Copy Mode</CardTitle>
+        <div className="flex justify-center mb-2">
+          {theme === 'light' ? (
+            <img 
+              src="/logoblack.png" 
+              alt="Copy Mode" 
+              className="h-10 w-auto" 
+            />
+          ) : (
+            <img 
+              src="/logowhite.png" 
+              alt="Copy Mode" 
+              className="h-10 w-auto" 
+            />
+          )}
+        </div>
         <CardDescription className="text-center">Entre com seu e-mail para continuar.</CardDescription>
       </CardHeader>
       <form onSubmit={handleSubmit}>
