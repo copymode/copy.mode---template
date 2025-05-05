@@ -248,6 +248,8 @@ export default function Home() {
       // --- FASE 1: Criar chat se necessário ---
       // Primeiro verificamos se já temos um chat ou precisamos criar um
       let chatId = currentChat?.id;
+      let activeChat = currentChat;
+      
       if (!chatId) {
         console.log("Criando novo chat...");
         const newChat = createChat({
@@ -258,6 +260,7 @@ export default function Home() {
         });
         
         chatId = newChat.id;
+        activeChat = newChat;
         console.log(`Chat criado: ${chatId}`);
         
         // Aguardar um pouco para garantir que o chat foi criado no banco
@@ -269,7 +272,29 @@ export default function Home() {
       
       // --- FASE 2: Adicionar mensagem do usuário ---
       console.log(`Adicionando mensagem do usuário ao chat ${chatId}`);
-      await addMessageToChat(chatId, message, 'user');
+      
+      // Criar a mensagem do usuário
+      const userMessage: Message = {
+        id: uuidv4(),
+        content: message,
+        role: 'user',
+        chatId: chatId,
+        createdAt: new Date()
+      };
+      
+      // Atualizar localmente antes de salvar no banco
+      if (activeChat) {
+        const updatedChat = {
+          ...activeChat,
+          messages: [...activeChat.messages, userMessage],
+          updatedAt: new Date()
+        };
+        setCurrentChat(updatedChat);
+        activeChat = updatedChat;
+      }
+      
+      // Salvar no banco de dados sem atualizar o estado local novamente
+      await addMessageToChat(chatId, message, 'user', false);
       
       // Pequeno delay para garantir que a mensagem foi salva
       await new Promise(resolve => setTimeout(resolve, 300));
@@ -301,27 +326,35 @@ export default function Home() {
       
       // --- FASE 5: Adicionar resposta ao banco ---
       console.log(`Salvando resposta no banco para chat ${chatId}`);
-      await addMessageToChat(chatId, response, 'assistant');
       
-      // Aguardar um pouco para garantir que a mensagem foi salva
-      await new Promise(resolve => setTimeout(resolve, 500));
+      // Criar a mensagem do assistente
+      const assistantMessage: Message = {
+        id: uuidv4(),
+        content: response,
+        role: 'assistant',
+        chatId: chatId,
+        createdAt: new Date()
+      };
       
-      // --- FASE 6: Atualizar UI ---
+      // Atualizar localmente antes de salvar no banco
+      if (activeChat) {
+        const finalChat = {
+          ...activeChat,
+          messages: [...activeChat.messages, assistantMessage],
+          updatedAt: new Date()
+        };
+        setCurrentChat(finalChat);
+      }
+      
+      // Salvar no banco de dados sem atualizar o estado local novamente
+      await addMessageToChat(chatId, response, 'assistant', false);
+      
+      // --- FASE 6: Finalizar UI ---
       console.log("Atualizando UI com nova mensagem");
       
-      // IMPORTANTE: Limpar estado typewriter ANTES de atualizar o chat
+      // IMPORTANTE: Limpar estado typewriter
       setTypingContent("");
       setIsGenerating(false);
-      
-      // Pequeno delay antes de atualizar o chat
-      await new Promise(resolve => setTimeout(resolve, 300));
-      
-      // Buscar o chat atualizado e redefinir o estado
-      const updatedChat = chats.find(c => c.id === chatId);
-      if (updatedChat) {
-        console.log("Atualizando chat com mensagens:", updatedChat.messages.length);
-        setCurrentChat({...updatedChat});
-      }
       
     } catch (error) {
       console.error("Erro durante o processo:", error);
@@ -367,6 +400,7 @@ export default function Home() {
       });
       
       const chatId = chat.id;
+      let activeChat = chat;
       console.log(`Chat criado: ${chatId}`);
       
       // Aguardar criação do chat
@@ -374,10 +408,33 @@ export default function Home() {
       
       // --- FASE 2: Adicionar mensagem do usuário ---
       console.log(`Adicionando mensagem do usuário ao chat ${chatId}`);
+      
+      // Criar a mensagem do usuário
+      const userMessage: Message = {
+        id: uuidv4(),
+        content: `Crie uma copy para ${contentType} com as seguintes informações:\n\n${info}`,
+        role: 'user',
+        chatId: chatId,
+        createdAt: new Date()
+      };
+      
+      // Atualizar localmente antes de salvar no banco
+      if (activeChat) {
+        const updatedChat = {
+          ...activeChat,
+          messages: [...activeChat.messages, userMessage],
+          updatedAt: new Date()
+        };
+        setCurrentChat(updatedChat);
+        activeChat = updatedChat;
+      }
+      
+      // Salvar no banco de dados sem atualizar o estado local novamente
       await addMessageToChat(
         chatId,
         `Crie uma copy para ${contentType} com as seguintes informações:\n\n${info}`,
-        "user"
+        "user",
+        false
       );
       
       // Aguardar persistência da mensagem
@@ -407,13 +464,28 @@ export default function Home() {
       
       // --- FASE 5: Adicionar resposta ao banco ---
       console.log(`Salvando resposta no banco para chat ${chatId}`);
-      await addMessageToChat(chatId, response, 'assistant');
       
-      // Aguardar um pouco para garantir que a mensagem foi salva
-      await new Promise(resolve => setTimeout(resolve, 500));
+      // Criar a mensagem do assistente
+      const assistantMessage: Message = {
+        id: uuidv4(),
+        content: response,
+        role: 'assistant',
+        chatId: chatId,
+        createdAt: new Date()
+      };
       
-      // --- FASE 6: Atualizar UI ---
-      console.log("Atualizando UI com nova mensagem");
+      // Atualizar localmente antes de salvar no banco
+      if (activeChat) {
+        const finalChat = {
+          ...activeChat,
+          messages: [...activeChat.messages, assistantMessage],
+          updatedAt: new Date()
+        };
+        setCurrentChat(finalChat);
+      }
+      
+      // Salvar no banco de dados sem atualizar o estado local novamente
+      await addMessageToChat(chatId, response, 'assistant', false);
       
       // Limpar estado typewriter
       setTypingContent("");
@@ -425,25 +497,16 @@ export default function Home() {
         description: "Sua copy foi criada e está pronta para uso.",
       });
       
-      // Pequeno delay antes de atualizar o chat
-      await new Promise(resolve => setTimeout(resolve, 300));
-      
-      // Atualizar o chat atual
-      const updatedChat = chats.find(c => c.id === chatId);
-      if (updatedChat) {
-        console.log("Atualizando chat com mensagens:", updatedChat.messages.length);
-        setCurrentChat({...updatedChat});
-      }
-      
     } catch (error) {
       console.error("Erro durante o processo:", error);
-      setIsGenerating(false);
-      setTypingContent("");
       toast({
-        title: "Erro",
-        description: error instanceof Error ? error.message : "Erro ao gerar copy",
+        title: "Erro na Geração",
+        description: error instanceof Error ? error.message : "Ocorreu um erro ao gerar a copy.",
         variant: "destructive",
       });
+      
+      setIsGenerating(false);
+      setTypingContent("");
     }
   };
   

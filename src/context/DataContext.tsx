@@ -85,7 +85,7 @@ interface DataContextType {
   currentChat: Chat | null;
   setCurrentChat: (chat: Chat | null) => void;
   createChat: (copyRequest: CopyRequest) => Chat;
-  addMessageToChat: (chatId: string, content: string, role: "user" | "assistant") => void;
+  addMessageToChat: (chatId: string, content: string, role: "user" | "assistant", updateState?: boolean) => void;
   deleteChat: (id: string) => void;
   deleteMessageFromChat: (chatId: string, messageId: string) => void;
   
@@ -940,12 +940,11 @@ export function DataProvider({ children }: { children: ReactNode }) {
     return newChat;
   }, [contentTypes, agents, currentUser]);
   
-  const addMessageToChat = useCallback((chatId: string, content: string, role: "user" | "assistant") => {
-    if (!currentUser) return;
+  const addMessageToChat = useCallback((chatId: string, content: string, role: "user" | "assistant", updateState: boolean = true) => {
+    if (!currentUser || !chatId || !content) return;
     
-    console.log("addMessageToChat: Adding message to chat", { chatId, role, contentLength: content.length });
+    console.log(`Adding message to chat ${chatId} with role ${role}`);
     
-    // Criar objeto de mensagem para a UI
     const newMessage: Message = {
       id: uuidv4(),
       content,
@@ -954,37 +953,31 @@ export function DataProvider({ children }: { children: ReactNode }) {
       createdAt: new Date()
     };
     
-    // Atualizar estado local
-    setChats(prevChats => {
-      const updatedChats = prevChats.map(chat => {
-        if (chat.id === chatId && (currentUser.role === 'admin' || chat.userId === currentUser.id)) {
-          console.log("addMessageToChat: Updating chat in chats array", chat.id);
-          return { 
-            ...chat, 
-            messages: [...chat.messages, newMessage],
-            updatedAt: new Date() 
-          };
-        }
-        return chat;
-      });
-      console.log("addMessageToChat: Updated chats array", updatedChats.find(c => c.id === chatId));
-      return updatedChats;
-    });
-
-    setCurrentChat(prev => {
-      if (prev?.id === chatId) {
-        console.log("addMessageToChat: Updating currentChat", { 
-          prevMessageCount: prev.messages.length,
-          newMessageId: newMessage.id 
-        });
+    // Sempre atualiza a lista de chats para o sidebar
+    setChats(prev => prev.map(chat => {
+      if (chat.id === chatId) {
         return {
-          ...prev,
-          messages: [...prev.messages, newMessage],
+          ...chat,
+          messages: [...chat.messages, newMessage],
           updatedAt: new Date()
         };
       } 
-      return prev;
-    });
+      return chat;
+    }));
+    
+    // Atualiza o chat atual apenas se updateState for true
+    if (updateState) {
+      setCurrentChat(prev => {
+        if (prev?.id === chatId) {
+          return {
+            ...prev,
+            messages: [...prev.messages, newMessage],
+            updatedAt: new Date()
+          };
+        } 
+        return prev;
+      });
+    }
     
     // Salvar mensagem e atualizar chat no banco de dados
     (async () => {
