@@ -940,3 +940,12 @@ html:not(.dark) div.container.mx-auto.max-w-6xl div.text-center.p-8.border.round
 
 /* Prevenção de barras de rolagem horizontais */
 
+/* Seletores para o novo atributo data-empty */
+[data-empty="true"] {
+  opacity: 0.25 !important;
+}
+
+html.dark [data-empty="true"] {
+  opacity: 0.18 !important;
+}
+

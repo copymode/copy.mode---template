@@ -8,7 +8,36 @@ const Select = SelectPrimitive.Root
 
 const SelectGroup = SelectPrimitive.Group
 
-const SelectValue = SelectPrimitive.Value
+const SelectValue = React.forwardRef<
+  React.ElementRef<typeof SelectPrimitive.Value>,
+  React.ComponentPropsWithoutRef<typeof SelectPrimitive.Value> & {
+    hasSelection?: boolean;
+  }
+>(({ className, hasSelection, ...props }, ref) => {
+  const { theme } = useTheme();
+  
+  // Aplicando opacidade apenas quando não há seleção
+  // Quando há seleção, não aplicamos estilo para manter o comportamento original
+  const style = !hasSelection 
+    ? { opacity: theme === 'light' ? 0.25 : 0.18 } 
+    : undefined;
+  
+  // Adicionar atributo personalizado para facilitar seleção CSS
+  const dataAttributes = {
+    'data-empty': !hasSelection ? 'true' : undefined,
+    style
+  };
+  
+  return (
+    <SelectPrimitive.Value
+      ref={ref}
+      className={cn(className)}
+      {...dataAttributes}
+      {...props}
+    />
+  );
+});
+SelectValue.displayName = SelectPrimitive.Value.displayName;
 
 const SelectTrigger = React.forwardRef<
   React.ElementRef<typeof SelectPrimitive.Trigger>,

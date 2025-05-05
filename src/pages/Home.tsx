@@ -575,7 +575,10 @@ export default function Home() {
                     selectedName={selectedExpert ? experts.find(e => e.id === selectedExpert)?.name : null}
                     className="h-10 md:h-auto"
                   >
-                    <SelectValue placeholder="Selecione o Expert" />
+                    <SelectValue 
+                      placeholder="Selecione o Expert" 
+                      hasSelection={!!selectedExpert} 
+                    />
                   </SelectTriggerWithAvatar>
                   <SelectContent>
                     {experts?.map((expert) => (
@@ -597,7 +600,10 @@ export default function Home() {
                     selectedName={selectedAgent ? agents.find(a => a.id === selectedAgent)?.name : null}
                     className="h-10 md:h-auto"
                   >
-                    <SelectValue placeholder="Selecione o Agente *" />
+                    <SelectValue 
+                      placeholder="Selecione o Agente *" 
+                      hasSelection={!!selectedAgent} 
+                    />
                   </SelectTriggerWithAvatar>
                   <SelectContent>
                     {agents?.map((agent) => (
@@ -623,7 +629,10 @@ export default function Home() {
                       : null}
                     className="h-10 md:h-auto"
                   >
-                    <SelectValue placeholder="Tipo de Conteúdo *" />
+                    <SelectValue 
+                      placeholder="Tipo de Conteúdo *" 
+                      hasSelection={!!selectedContentType} 
+                    />
                   </SelectTriggerWithAvatar>
                   <SelectContent>
                     {contentTypes.map((contentType) => (
