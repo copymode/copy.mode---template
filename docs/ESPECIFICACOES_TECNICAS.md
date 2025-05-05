@@ -130,7 +130,7 @@ A chave de API é armazenada no perfil do usuário e utilizada para as chamadas 
 
 ## Versão e Histórico de Alterações
 
-A versão atual do sistema é 1.33.4, com melhorias recentes focadas na experiência móvel, correção de problemas de UI e otimização de performance.
+A versão atual do sistema é 1.50, com melhorias recentes focadas na experiência móvel, correção de problemas de UI e otimização de performance.
 
 ---
 
