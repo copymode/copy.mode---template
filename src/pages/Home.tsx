@@ -6,7 +6,6 @@ import { ChatSidebar } from "@/components/chat/ChatSidebar";
 import { CopyForm } from "@/components/copy-generation/CopyForm";
 import { useToast } from "@/hooks/use-toast";
 import { useKeyboardVisible } from "@/hooks/use-keyboard-visible";
-import { useScrollLock } from "@/hooks/use-scroll-lock";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { useAuth } from "@/context/AuthContext";
 import { Menu } from "lucide-react";
@@ -173,9 +172,6 @@ export default function Home() {
 
   const messages = currentChat?.messages || [];
   const isInitialState = !currentChat;
-  
-  // Bloquear scroll na tela inicial apenas em desktop
-  useScrollLock(isInitialState, true);
 
   // Efeito para monitorar alterações de rota e garantir que o estado seja limpo ao navegar para Home
   useEffect(() => {
@@ -561,7 +557,7 @@ export default function Home() {
            </AlertDialog>
         </>
       ) : (
-        <div className="flex flex-col h-screen overflow-hidden home-container" style={{ height: '100vh', maxHeight: '100vh', overflow: 'hidden' }}>
+        <div className="flex flex-col h-screen overflow-hidden">
           {/* Layout estilo ChatGPT com todos os elementos centralizados */}
           <div className="flex flex-1 flex-col justify-center items-center px-4">
             <div className="w-full max-w-3xl mx-auto flex flex-col items-center">
