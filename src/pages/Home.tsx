@@ -481,7 +481,7 @@ export default function Home() {
       ) : !isInitialState ? (
         <>
           {/* Layout flexível com área de chat rolável e input fixo */}
-          <div className="flex flex-col h-screen chat-container">
+          <div className="flex flex-col h-screen overflow-hidden chat-container">
             {/* Área de conversa com padding suficiente para o input */}
             <div 
               className="flex-1 overflow-y-auto px-4 pt-4 pb-20 mobile-chat-area md:pb-4"
@@ -557,17 +557,16 @@ export default function Home() {
            </AlertDialog>
         </>
       ) : (
-        <div className="container mx-auto max-w-6xl h-[calc(100vh-120px)] flex items-center justify-center" data-page="home-initial-state">
+        <div className="flex flex-col h-screen overflow-hidden">
           {/* Layout estilo ChatGPT com todos os elementos centralizados */}
-          <div className="flex flex-col justify-center items-center px-4 w-full">
+          <div className="flex flex-1 flex-col justify-center items-center px-4">
             <div className="w-full max-w-3xl mx-auto flex flex-col items-center">
               <Sparkles 
-                className="w-16 h-16 text-primary mb-4"
+                size={48} 
+                className={theme === 'light' ? "mb-2 md:mb-4 text-black" : "mb-2 md:mb-4 text-primary"} 
               />
-              <h1 className="text-3xl font-bold text-center mb-2">Copy AI Expert Studio</h1>
-              <p className="text-center text-muted-foreground mb-8 max-w-md">
-                Selecione as opções abaixo para começar a gerar conteúdo personalizado com ajuda de IA.
-              </p>
+              <h1 className="text-xl md:text-2xl font-bold mb-3 md:mb-6">Crie sua próxima Copy!</h1>
+            
               {/* Seletores em grid */}
               <div className="w-full grid grid-cols-1 sm:grid-cols-3 gap-2 md:gap-4 mb-3 md:mb-6">
                 <Select value={selectedExpert} onValueChange={setSelectedExpert}>
