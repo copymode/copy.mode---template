@@ -169,7 +169,7 @@ export function AppShell({ children }: AppShellProps) {
     return <>{children}</>; 
   }
 
-  function generateChatSubtitle(content: string | undefined, maxLength = 35): string | null {
+  function generateChatSubtitle(content: string | undefined, maxLength = 27): string | null {
      if (!content) return null;
      const trimmedContent = content.trim();
      if (!trimmedContent) return null;
