@@ -6,7 +6,6 @@ import { ChatSidebar } from "@/components/chat/ChatSidebar";
 import { CopyForm } from "@/components/copy-generation/CopyForm";
 import { useToast } from "@/hooks/use-toast";
 import { useKeyboardVisible } from "@/hooks/use-keyboard-visible";
-// import { useScrollLock } from "@/hooks/use-scroll-lock";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { useAuth } from "@/context/AuthContext";
 import { Menu } from "lucide-react";
@@ -173,7 +172,7 @@ export default function Home() {
 
   const messages = currentChat?.messages || [];
   const isInitialState = !currentChat;
-  
+
   // Efeito para monitorar alterações de rota e garantir que o estado seja limpo ao navegar para Home
   useEffect(() => {
     console.log("Navegação detectada para Home, verificando se é necessário resetar estado");
@@ -563,11 +562,12 @@ export default function Home() {
           <div className="flex flex-col justify-center items-center px-4 w-full">
             <div className="w-full max-w-3xl mx-auto flex flex-col items-center">
               <Sparkles 
-                size={48} 
-                className={theme === 'light' ? "mb-2 md:mb-4 text-black" : "mb-2 md:mb-4 text-primary"} 
+                className="w-16 h-16 text-primary mb-4"
               />
-              <h1 className="text-xl md:text-2xl font-bold mb-3 md:mb-6">Crie sua próxima Copy!</h1>
-            
+              <h1 className="text-3xl font-bold text-center mb-2">Copy AI Expert Studio</h1>
+              <p className="text-center text-muted-foreground mb-8 max-w-md">
+                Selecione as opções abaixo para começar a gerar conteúdo personalizado com ajuda de IA.
+              </p>
               {/* Seletores em grid */}
               <div className="w-full grid grid-cols-1 sm:grid-cols-3 gap-2 md:gap-4 mb-3 md:mb-6">
                 <Select value={selectedExpert} onValueChange={setSelectedExpert}>
@@ -576,7 +576,7 @@ export default function Home() {
                     selectedName={selectedExpert ? experts.find(e => e.id === selectedExpert)?.name : null}
                     className="h-10 md:h-auto"
                   >
-                    <SelectValue placeholder="Selecione o Expert" className="text-gray-700 dark:text-gray-300 font-medium" />
+                    <SelectValue placeholder="Selecione o Expert" />
                   </SelectTriggerWithAvatar>
                   <SelectContent>
                     {experts?.map((expert) => (
@@ -598,7 +598,7 @@ export default function Home() {
                     selectedName={selectedAgent ? agents.find(a => a.id === selectedAgent)?.name : null}
                     className="h-10 md:h-auto"
                   >
-                    <SelectValue placeholder="Selecione o Agente *" className="text-gray-700 dark:text-gray-300 font-medium" />
+                    <SelectValue placeholder="Selecione o Agente *" />
                   </SelectTriggerWithAvatar>
                   <SelectContent>
                     {agents?.map((agent) => (
@@ -624,7 +624,7 @@ export default function Home() {
                       : null}
                     className="h-10 md:h-auto"
                   >
-                    <SelectValue placeholder="Tipo de Conteúdo *" className="text-gray-700 dark:text-gray-300 font-medium" />
+                    <SelectValue placeholder="Tipo de Conteúdo *" />
                   </SelectTriggerWithAvatar>
                   <SelectContent>
                     {contentTypes.map((contentType) => (
