@@ -2,16 +2,24 @@ import { useState, FormEvent, useEffect } from "react";
 import { Textarea } from "@/components/ui/textarea";
 import { SendHorizonal } from "lucide-react";
 import { useTheme } from "@/context/ThemeContext";
+import { useKeyboardVisible } from "@/hooks/use-keyboard-visible";
 
 // Componente de botão personalizado simplificado
 function BlackButton({ 
+  onClick, 
   disabled, 
-  children 
+  children,
+  size = "normal"
 }: { 
-  disabled: boolean;
+  onClick?: () => void;
+  disabled?: boolean;
   children: React.ReactNode;
+  size?: "normal" | "small";
 }) {
   const { theme } = useTheme();
+  
+  // Logs de depuração
+  console.log("ChatInput - Tema atual:", theme);
   
   // Cores baseadas no tema, garantindo contraste máximo para evitar problemas
   const bgColor = theme === 'light' 
@@ -21,12 +29,13 @@ function BlackButton({
   return (
     <button
       type="submit"
+      onClick={onClick}
       disabled={disabled}
       style={{
         backgroundColor: bgColor,
         color: 'white',
-        width: '50px',
-        height: '50px',
+        width: size === "small" ? '40px' : '50px',
+        height: size === "small" ? '40px' : '50px',
         borderRadius: '9999px',
         border: 'none',
         display: 'flex',
@@ -54,6 +63,7 @@ export function ChatInput({ onSendMessage, disabled = false }: ChatInputProps) {
   const [isMobile, setIsMobile] = useState(false);
   const [isFocused, setIsFocused] = useState(false);
   const { theme } = useTheme();
+  const isKeyboardVisible = useKeyboardVisible();
   
   // Detectar se é dispositivo móvel baseado na largura da tela
   useEffect(() => {
@@ -87,6 +97,23 @@ export function ChatInput({ onSendMessage, disabled = false }: ChatInputProps) {
     }
   };
 
+  // Função para garantir scroll para o campo de entrada quando focado
+  const handleFocus = () => {
+    setIsFocused(true);
+    
+    // Em dispositivos móveis, garantir que o elemento está visível
+    if (isMobile) {
+      // Pequeno timeout para dar tempo ao teclado para abrir
+      setTimeout(() => {
+        // Scroll para o elemento atual
+        const activeElement = document.activeElement;
+        if (activeElement) {
+          activeElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      }, 300);
+    }
+  };
+
   const isButtonDisabled = !isTyping || disabled;
   
   // Definir cores baseadas no tema
@@ -99,23 +126,28 @@ export function ChatInput({ onSendMessage, disabled = false }: ChatInputProps) {
     ? isFocused ? '0 2px 8px rgba(0, 0, 0, 0.18)' : '0 1px 3px rgba(0, 0, 0, 0.15)'
     : isFocused ? '0 2px 8px rgba(0, 0, 0, 0.45)' : '0 1px 3px rgba(0, 0, 0, 0.4)';
 
-  // Estilos específicos para mobile vs desktop
+  // Estilos específicos para mobile vs desktop e quando o teclado está visível
   const formStyle = isMobile ? 
     { 
-      paddingTop: '5px', 
-      paddingBottom: '5px', 
+      paddingTop: isKeyboardVisible ? '3px' : '5px', 
+      paddingBottom: isKeyboardVisible ? '3px' : '5px', 
       paddingLeft: '5px', 
       paddingRight: '5px' 
     } : {};
 
-  // Altura do textarea ajustada para mobile para simetria
+  // Altura do textarea ajustada para mobile e quando o teclado estiver visível
   const textareaStyle = {
     fontSize: '16px',
     backgroundColor: inputBgColor,
     border: 'none',
     boxShadow: boxShadow,
     transition: 'background-color 0.2s ease, box-shadow 0.2s ease',
-    ...(isMobile ? { minHeight: '50px' } : {})
+    ...(isMobile ? { 
+      minHeight: isKeyboardVisible ? '44px' : '50px',
+      maxHeight: isKeyboardVisible ? '80px' : '150px',
+      paddingTop: isKeyboardVisible ? '10px' : '12px',
+      paddingBottom: isKeyboardVisible ? '10px' : '12px',
+    } : {})
   };
 
   return (
@@ -124,7 +156,7 @@ export function ChatInput({ onSendMessage, disabled = false }: ChatInputProps) {
       style={formStyle}
       className={isMobile ? "" : "p-4"}
     >
-      <div className="flex items-center w-full space-x-2">
+      <div className={`flex items-center w-full ${isKeyboardVisible ? 'space-x-1' : 'space-x-2'}`}>
         <div className="flex-1">
           <Textarea
             placeholder="Digite sua mensagem..."
@@ -134,7 +166,7 @@ export function ChatInput({ onSendMessage, disabled = false }: ChatInputProps) {
               setIsTyping(e.target.value.length > 0);
             }}
             onKeyDown={handleKeyDown}
-            onFocus={() => setIsFocused(true)}
+            onFocus={handleFocus}
             onBlur={() => setIsFocused(false)}
             rows={1}
             className={`resize-none p-3 w-full text-lg focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-offset-0 rounded-lg ${theme === 'light' ? 'placeholder:opacity-45' : 'placeholder:opacity-35'} ${isMobile ? "" : "min-h-[60px] max-h-[200px]"}`}
@@ -143,8 +175,11 @@ export function ChatInput({ onSendMessage, disabled = false }: ChatInputProps) {
           />
         </div>
         
-        <BlackButton disabled={isButtonDisabled}>
-          <SendHorizonal size={20} />
+        <BlackButton 
+          disabled={isButtonDisabled}
+          size={isKeyboardVisible && isMobile ? "small" : "normal"}
+        >
+          <SendHorizonal size={isKeyboardVisible && isMobile ? 18 : 20} />
         </BlackButton>
       </div>
     </form>

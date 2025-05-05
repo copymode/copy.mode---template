@@ -18,17 +18,28 @@ export function useKeyboardVisible() {
 
     // Altura original do viewport (sem o teclado)
     const originalHeight = visualViewport.height;
+    const windowHeight = window.innerHeight;
 
     const handleResize = () => {
       // Quando o teclado abre, a altura do viewport diminui significativamente
       const heightDiff = originalHeight - visualViewport.height;
       
-      // Consideramos que o teclado está aberto se a diferença for maior que 150px
-      // (um valor que funciona bem para a maioria dos dispositivos móveis)
-      setIsKeyboardVisible(heightDiff > 150);
+      // Detecta a diferença de altura com a tela original
+      const viewportChanged = heightDiff > 150;
+      
+      // Para iOS, também verifica se o elemento ativo é um input/textarea
+      const isInputFocused = 
+        document.activeElement?.tagName === 'INPUT' || 
+        document.activeElement?.tagName === 'TEXTAREA';
+      
+      // Combina os dois métodos de detecção
+      const keyboardIsVisible = viewportChanged || 
+        (isInputFocused && (window.innerHeight < windowHeight * 0.85));
+      
+      setIsKeyboardVisible(keyboardIsVisible);
       
       // Adiciona uma classe ao body para estilos específicos
-      if (heightDiff > 150) {
+      if (keyboardIsVisible) {
         document.body.classList.add('keyboard-visible');
       } else {
         document.body.classList.remove('keyboard-visible');
@@ -37,10 +48,16 @@ export function useKeyboardVisible() {
 
     // Escuta eventos de resize do visualViewport
     visualViewport.addEventListener('resize', handleResize);
+    
+    // Escuta eventos de foco para detectar quando um input é focado
+    document.addEventListener('focusin', handleResize);
+    document.addEventListener('focusout', handleResize);
 
     // Limpa evento ao desmontar o componente
     return () => {
       visualViewport.removeEventListener('resize', handleResize);
+      document.removeEventListener('focusin', handleResize);
+      document.removeEventListener('focusout', handleResize);
       document.body.classList.remove('keyboard-visible');
     };
   }, []);

@@ -152,6 +152,7 @@ export default function Home() {
   const { toast } = useToast();
   const location = useLocation();
   const { theme } = useTheme();
+  const isKeyboardVisible = useKeyboardVisible();
   
   // Initialize state with undefined, not depending on currentChat which might be null initially
   const [selectedExpert, setSelectedExpert] = useState<string | undefined>(undefined);
@@ -509,7 +510,15 @@ export default function Home() {
             </div>
 
             {/* Input fixo no rodapé */}
-            <div className="flex-shrink-0 p-4 bg-background z-20 fixed bottom-0 left-0 w-full right-0 md:static md:bottom-auto shadow-md">
+            <div 
+              className="flex-shrink-0 p-4 bg-background z-20 fixed bottom-0 left-0 w-full right-0 md:static md:bottom-auto shadow-md"
+              style={{
+                position: 'fixed',
+                bottom: isKeyboardVisible ? '0' : 'env(safe-area-inset-bottom, 0px)',
+                paddingBottom: isKeyboardVisible ? '0' : 'env(safe-area-inset-bottom, 10px)',
+                transition: 'bottom 0.3s ease-out'
+              }}
+            >
               <div className="max-w-3xl mx-auto">
                 <ChatInput 
                   onSendMessage={handleSendMessage} 
@@ -559,12 +568,23 @@ export default function Home() {
       ) : (
         <div className="flex flex-col h-screen overflow-hidden">
           {/* Layout estilo ChatGPT com todos os elementos centralizados */}
-          <div className="flex flex-1 flex-col justify-center items-center px-4">
+          <div className="flex flex-1 flex-col justify-start items-center px-4 py-8 overflow-y-auto">
             <div className="w-full max-w-3xl mx-auto flex flex-col items-center">
-              <Sparkles 
-                size={48} 
-                className={theme === 'light' ? "mb-2 md:mb-4 text-black" : "mb-2 md:mb-4 text-primary"} 
-              />
+              {/* Logo baseada no tema atual */}
+              {theme === 'light' ? (
+                <img 
+                  src="/logoblack.png" 
+                  alt="Logo" 
+                  className="h-16 md:h-20 w-auto mb-4 md:mb-6 max-w-[80%] object-contain" 
+                />
+              ) : (
+                <img 
+                  src="/logowhite.png" 
+                  alt="Logo" 
+                  className="h-16 md:h-20 w-auto mb-4 md:mb-6 max-w-[80%] object-contain" 
+                />
+              )}
+              
               <h1 className="text-xl md:text-2xl font-bold mb-3 md:mb-6">Crie sua próxima Copy!</h1>
             
               {/* Seletores em grid */}
@@ -700,6 +720,51 @@ export default function Home() {
                     </BlackButton>
                   </div>
                 </form>
+              </div>
+              
+              {/* Tutorial de 4 passos - Adicionado abaixo dos elementos existentes */}
+              <div className="w-full max-w-2xl mx-auto mt-10 mb-20 text-center px-4">
+                <h2 className="text-2xl md:text-3xl font-bold mb-8" style={{ opacity: 0.9 }}>
+                  Como Criar uma Copy em 4 Passos Simples
+                </h2>
+                
+                <div className="space-y-8">
+                  <div className="text-center">
+                    <h3 className="text-lg md:text-xl font-semibold mb-2" style={{ opacity: 0.85 }}>
+                      1. Selecione um Expert
+                    </h3>
+                    <p className="text-base md:text-lg" style={{ opacity: 0.65 }}>
+                      Escolha o especialista que melhor se alinha ao seu nicho e público-alvo. Cada expert possui conhecimentos específicos que determinarão o tom e a abordagem da sua copy, garantindo que a comunicação seja eficaz para o segmento desejado.
+                    </p>
+                  </div>
+                  
+                  <div className="text-center">
+                    <h3 className="text-lg md:text-xl font-semibold mb-2" style={{ opacity: 0.85 }}>
+                      2. Escolha um Agente
+                    </h3>
+                    <p className="text-base md:text-lg" style={{ opacity: 0.65 }}>
+                      Selecione o agente de IA adequado para seu tipo de conteúdo. Os agentes possuem diferentes características de escrita, desde mais persuasivos até mais informativos, influenciando diretamente o estilo e eficácia da copy gerada.
+                    </p>
+                  </div>
+                  
+                  <div className="text-center">
+                    <h3 className="text-lg md:text-xl font-semibold mb-2" style={{ opacity: 0.85 }}>
+                      3. Defina o Tipo de Conteúdo
+                    </h3>
+                    <p className="text-base md:text-lg" style={{ opacity: 0.65 }}>
+                      Especifique o formato (Post Feed, Story, Reels ou Anúncio) para que sua copy seja otimizada conforme as características específicas da plataforma onde será publicada, maximizando o engajamento com seu público.
+                    </p>
+                  </div>
+                  
+                  <div className="text-center">
+                    <h3 className="text-lg md:text-xl font-semibold mb-2" style={{ opacity: 0.85 }}>
+                      4. Insira seu Prompt
+                    </h3>
+                    <p className="text-base md:text-lg" style={{ opacity: 0.65 }}>
+                      Digite um prompt claro e específico incluindo objetivo da copy, público-alvo, benefícios a destacar e tom desejado. Quanto mais detalhes você fornecer nesta etapa, melhores e mais precisos serão os resultados gerados.
+                    </p>
+                  </div>
+                </div>
               </div>
             </div>
             

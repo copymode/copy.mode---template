@@ -211,8 +211,22 @@ export function AppShell({ children }: AppShellProps) {
             <button onClick={toggleSidebar} className="p-1 rounded-md text-sidebar-foreground hover:bg-sidebar-accent md:hidden">
               <ChevronsLeft size={24} />
             </button>
-            <h2 className={`text-xl font-bold text-sidebar-foreground ${sidebarCollapsed ? 'md:hidden' : 'md:block'}`}>Copy Mode</h2>
-             <Button 
+            <div className={`h-8 ${sidebarCollapsed ? 'md:hidden' : 'md:block'}`}>
+              {theme === 'light' ? (
+                <img 
+                  src="/iconblack.png" 
+                  alt="Copy Mode" 
+                  className="h-7 w-auto" 
+                />
+              ) : (
+                <img 
+                  src="/iconwhite.png" 
+                  alt="Copy Mode" 
+                  className="h-7 w-auto" 
+                />
+              )}
+            </div>
+            <Button 
               variant="ghost" 
               size="icon" 
               onClick={toggleCollapse} 

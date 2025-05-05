@@ -627,16 +627,18 @@ body::-webkit-scrollbar {
     /* Reposiciona o input para que não seja encoberto pelo teclado */
     .chat-container .flex-shrink-0.fixed,
     .flex-shrink-0.p-4.bg-background.z-20.fixed {
-      position: absolute !important;
-      bottom: 0;
+      position: fixed !important;
+      bottom: 0 !important;
       left: 0;
       right: 0;
+      padding-bottom: 0 !important;
+      box-shadow: none !important;
     }
     
     /* Ajusta o padding da área de conteúdo para acomodar ambos */
     main.flex-1.overflow-auto {
       padding-top: 70px !important;
-      padding-bottom: 90px !important;
+      padding-bottom: 60px !important;
     }
     
     /* Garante que o conteúdo seja rolável e não fixo */
@@ -645,6 +647,23 @@ body::-webkit-scrollbar {
       overflow-y: auto !important;
       -webkit-overflow-scrolling: touch;
       position: relative !important;
+      padding-bottom: 60px !important;
+    }
+    
+    /* Esconde elementos desnecessários para maximizar o espaço disponível */
+    .mobile-hidden-when-keyboard {
+      display: none !important;
+    }
+    
+    /* Reduz tamanho de elementos para economizar espaço */
+    .mobile-compact-when-keyboard {
+      transform: scale(0.9);
+      transform-origin: bottom;
+    }
+    
+    /* Ajuste para garantir que o fundo do input não tenha lacunas */
+    .chat-container .flex-shrink-0.fixed {
+      border-top: 1px solid rgba(0, 0, 0, 0.1);
     }
   }
 }
