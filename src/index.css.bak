@@ -8,7 +8,7 @@ span[data-radix-select-placeholder],
 div span[data-radix-select-placeholder],
 button span[data-radix-select-placeholder],
 *[data-radix-select-placeholder] {
-  color: #333333 !important;
+  color: #999999 !important;
   font-weight: 600 !important;
   opacity: 1 !important;
 }
@@ -19,7 +19,7 @@ button span[data-radix-select-placeholder],
 .dark div span[data-radix-select-placeholder],
 .dark button span[data-radix-select-placeholder],
 .dark *[data-radix-select-placeholder] {
-  color: #ffffff !important;
+  color: #999999 !important;
   font-weight: 600 !important;
   opacity: 1 !important;
 }
@@ -28,26 +28,26 @@ button span[data-radix-select-placeholder],
 .select-trigger span[class*="placeholder"],
 .select-trigger [data-placeholder],
 .select-trigger [data-radix-select-placeholder] {
-  color: #333333 !important;
+  color: #999999 !important;
   opacity: 1 !important;
 }
 
 .dark .select-trigger span[class*="placeholder"],
 .dark .select-trigger [data-placeholder],
 .dark .select-trigger [data-radix-select-placeholder] {
-  color: #ffffff !important;
+  color: #999999 !important;
   opacity: 1 !important;
 }
 
 /* Usar uma regra CSS global fora do layer para garantir maior prioridade */
 [data-radix-select-placeholder] {
-  color: #555 !important;
+  color: #aaaaaa !important;
   opacity: 1 !important;
   font-weight: 500 !important;
 }
 
 .dark [data-radix-select-placeholder] {
-  color: #DDD !important;
+  color: #777 !important;
   opacity: 1 !important;
   font-weight: 500 !important;
 }
@@ -147,13 +147,13 @@ button span[data-radix-select-placeholder],
 
   /* Estilo para placeholders de elementos em selects - com maior contraste */
   [data-radix-select-placeholder] {
-    color: #666 !important;
+    color: #aaaaaa !important;
     opacity: 1 !important;
   }
 
   /* Estilo mais específico para os placeholders no tema escuro */
   .dark [data-radix-select-placeholder] {
-    color: #DDD !important;
+    color: #777 !important;
     opacity: 1 !important;
   }
 
@@ -162,7 +162,7 @@ button span[data-radix-select-placeholder],
   div[data-radix-select-placeholder],
   button span[data-radix-select-placeholder],
   [data-state] [data-radix-select-placeholder] {
-    color: #666 !important;
+    color: #aaaaaa !important;
     opacity: 1 !important;
   }
 
@@ -171,7 +171,7 @@ button span[data-radix-select-placeholder],
   .dark div[data-radix-select-placeholder],
   .dark button span[data-radix-select-placeholder],
   .dark [data-state] [data-radix-select-placeholder] {
-    color: #DDD !important;
+    color: #777 !important;
     opacity: 1 !important;
   }
 }
