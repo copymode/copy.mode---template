@@ -2,56 +2,6 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Estilos super específicos para placeholders com maior contraste */
-[data-radix-select-placeholder],
-span[data-radix-select-placeholder],
-div span[data-radix-select-placeholder],
-button span[data-radix-select-placeholder],
-*[data-radix-select-placeholder] {
-  color: #333333 !important;
-  font-weight: 600 !important;
-  opacity: 1 !important;
-}
-
-/* Tema escuro - placeholders mais claros para contraste */
-.dark [data-radix-select-placeholder],
-.dark span[data-radix-select-placeholder],
-.dark div span[data-radix-select-placeholder],
-.dark button span[data-radix-select-placeholder],
-.dark *[data-radix-select-placeholder] {
-  color: #ffffff !important;
-  font-weight: 600 !important;
-  opacity: 1 !important;
-}
-
-/* Override específico para select-trigger */
-.select-trigger span[class*="placeholder"],
-.select-trigger [data-placeholder],
-.select-trigger [data-radix-select-placeholder] {
-  color: #333333 !important;
-  opacity: 1 !important;
-}
-
-.dark .select-trigger span[class*="placeholder"],
-.dark .select-trigger [data-placeholder],
-.dark .select-trigger [data-radix-select-placeholder] {
-  color: #ffffff !important;
-  opacity: 1 !important;
-}
-
-/* Usar uma regra CSS global fora do layer para garantir maior prioridade */
-[data-radix-select-placeholder] {
-  color: #555 !important;
-  opacity: 1 !important;
-  font-weight: 500 !important;
-}
-
-.dark [data-radix-select-placeholder] {
-  color: #DDD !important;
-  opacity: 1 !important;
-  font-weight: 500 !important;
-}
-
 @layer base {
   :root {
     /* Light Mode - Airbnb Inspired Palette */
@@ -143,36 +93,6 @@ button span[data-radix-select-placeholder],
     /* Scrollbar Colors (Dark) */
     --scrollbar-thumb: 217 33% 30%; /* Darker gray for thumb */
     --scrollbar-track: 222 47% 12%; /* Similar to background */
-  }
-
-  /* Estilo para placeholders de elementos em selects - com maior contraste */
-  [data-radix-select-placeholder] {
-    color: #666 !important;
-    opacity: 1 !important;
-  }
-
-  /* Estilo mais específico para os placeholders no tema escuro */
-  .dark [data-radix-select-placeholder] {
-    color: #DDD !important;
-    opacity: 1 !important;
-  }
-
-  /* Seletor mais específico para garantir que a regra seja aplicada */
-  span[data-radix-select-placeholder],
-  div[data-radix-select-placeholder],
-  button span[data-radix-select-placeholder],
-  [data-state] [data-radix-select-placeholder] {
-    color: #666 !important;
-    opacity: 1 !important;
-  }
-
-  /* Seletor mais específico para o tema escuro */
-  .dark span[data-radix-select-placeholder],
-  .dark div[data-radix-select-placeholder],
-  .dark button span[data-radix-select-placeholder],
-  .dark [data-state] [data-radix-select-placeholder] {
-    color: #DDD !important;
-    opacity: 1 !important;
   }
 }
 
@@ -1049,25 +969,15 @@ html:not(.dark) div.container.mx-auto.max-w-6xl div.text-center.p-8.border.round
   padding-bottom: 20px;
 }
 
-/* Solução específica para eliminar scroll APENAS na página Home */
-.home-page-no-scroll {
+/* Solução definitiva para eliminar scroll na home */
+html.no-scroll,
+html.no-scroll body {
   overflow: hidden !important;
-}
-
-/* Solução muito específica para tela home */
-body.home-page-no-scroll main {
-  overflow: hidden !important;
-}
-
-/* Seletor específico para home-container */
-.home-container {
   height: 100vh !important;
-  max-height: 100vh !important;
-  overflow: hidden !important;
-}
-
-/* Garantir que outras páginas mantenham o scroll */
-body:not(.home-page-no-scroll) main {
-  overflow: auto !important;
+  position: fixed !important;
+  left: 0 !important;
+  right: 0 !important;
+  top: 0 !important;
+  bottom: 0 !important;
 }
 

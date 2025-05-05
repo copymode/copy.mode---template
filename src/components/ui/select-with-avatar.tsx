@@ -61,16 +61,12 @@ export const SelectTriggerWithAvatar = React.forwardRef<
     ? isFocused ? '0 2px 8px rgba(0, 0, 0, 0.18)' : '0 1px 3px rgba(0, 0, 0, 0.15)'
     : isFocused ? '0 2px 8px rgba(0, 0, 0, 0.45)' : '0 1px 3px rgba(0, 0, 0, 0.4)';
   
-  // Definir cor do texto baseado no tema e se há um item selecionado
-  const textColor = selectedName
-    ? theme === 'light' ? '#333333' : '#ffffff'  // Cor quando há seleção (manter como estava)
-    : theme === 'light' ? '#7c7c7c' : '#a1a1a1'; // Cor mais clara para placeholder (reduzida 2 tons)
-  
   return (
     <SelectPrimitive.Trigger
       ref={ref}
       className={cn(
-        "select-trigger flex h-10 w-full items-center justify-between p-3 rounded-lg focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-offset-0 disabled:cursor-not-allowed disabled:opacity-50 [&>span]:line-clamp-1",
+        "flex h-10 w-full items-center justify-between p-3 rounded-lg focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-offset-0 disabled:cursor-not-allowed disabled:opacity-50 [&>span]:line-clamp-1",
+        theme === 'light' ? 'placeholder:opacity-45' : 'placeholder:opacity-35',
         className
       )}
       style={{
@@ -78,8 +74,7 @@ export const SelectTriggerWithAvatar = React.forwardRef<
         backgroundColor: inputBgColor,
         border: 'none',
         boxShadow: boxShadow,
-        transition: 'background-color 0.2s ease, box-shadow 0.2s ease',
-        color: textColor,
+        transition: 'background-color 0.2s ease, box-shadow 0.2s ease'
       }}
       onFocus={() => setIsFocused(true)}
       onBlur={() => setIsFocused(false)}

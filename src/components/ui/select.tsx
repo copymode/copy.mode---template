@@ -8,26 +8,7 @@ const Select = SelectPrimitive.Root
 
 const SelectGroup = SelectPrimitive.Group
 
-// Personalização do SelectValue para controlar a opacidade do placeholder
-const SelectValue = React.forwardRef<
-  React.ElementRef<typeof SelectPrimitive.Value>,
-  React.ComponentPropsWithoutRef<typeof SelectPrimitive.Value>
->(({ className, ...props }, ref) => {
-  const { theme } = useTheme();
-  
-  return (
-    <SelectPrimitive.Value
-      ref={ref}
-      className={cn(className)}
-      style={{
-        color: theme === 'light' ? '#333333' : '#ffffff',
-      }}
-      data-placeholder-shown-color={theme === 'light' ? '#333333' : '#ffffff'}
-      {...props}
-    />
-  );
-});
-SelectValue.displayName = SelectPrimitive.Value.displayName
+const SelectValue = SelectPrimitive.Value
 
 const SelectTrigger = React.forwardRef<
   React.ElementRef<typeof SelectPrimitive.Trigger>,
@@ -50,7 +31,8 @@ const SelectTrigger = React.forwardRef<
     <SelectPrimitive.Trigger
       ref={ref}
       className={cn(
-        "select-trigger flex h-10 w-full items-center justify-between p-3 rounded-lg focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-offset-0 disabled:cursor-not-allowed disabled:opacity-50 [&>span]:line-clamp-1",
+        "flex h-10 w-full items-center justify-between p-3 rounded-lg focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-offset-0 disabled:cursor-not-allowed disabled:opacity-50 [&>span]:line-clamp-1",
+        theme === 'light' ? 'placeholder:opacity-45' : 'placeholder:opacity-35',
         className
       )}
       style={{
@@ -58,8 +40,7 @@ const SelectTrigger = React.forwardRef<
         backgroundColor: inputBgColor,
         border: 'none',
         boxShadow: boxShadow,
-        transition: 'background-color 0.2s ease, box-shadow 0.2s ease',
-        color: theme === 'light' ? '#333333' : '#ffffff',
+        transition: 'background-color 0.2s ease, box-shadow 0.2s ease'
       }}
       onFocus={() => setIsFocused(true)}
       onBlur={() => setIsFocused(false)}
