@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useData } from "@/context/DataContext";
+import { useData } from "@/hooks/useData";
 import { Chat } from "@/types";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";

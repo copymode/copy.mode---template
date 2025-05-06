@@ -104,6 +104,9 @@ interface DataContextType {
 
 const DataContext = createContext<DataContextType | undefined>(undefined);
 
+// Exportando o DataContext para ser usado pelo hook useData em um arquivo separado
+export { DataContext };
+
 // REMOVE MOCK DATA FOR AGENTS
 /*
 const mockAgents: Agent[] = [ ... ];
@@ -169,11 +172,30 @@ export function DataProvider({ children }: { children: ReactNode }) {
     const fetchInitialData = async () => {
       setIsLoading(true);
       try {
-        // Fetch Agents - Otimização: selecione apenas os campos necessários para a listagem
-        const { data: agentsData, error: agentsError } = await supabase
-          .from(AGENTS_TABLE)
-          .select('id, name, avatar, prompt, description, temperature, created_at, updated_at, created_by')
-          .order('created_at', { ascending: false });
+        // Usando Promise.all para paralelizar requisições independentes
+        const [agentsResult, expertsResult, contentTypesResult] = await Promise.all([
+          // 1. Fetch Agents - Otimização: selecione apenas os campos necessários para a listagem
+          supabase
+            .from(AGENTS_TABLE)
+            .select('id, name, avatar, prompt, description, temperature, created_at, updated_at, created_by')
+            .order('created_at', { ascending: false }),
+            
+          // 2. Buscar Experts do DB
+          currentUser ? supabase
+            .from(EXPERTS_TABLE)
+            .select('*')
+            .eq('user_id', currentUser.id)
+            .order('created_at', { ascending: false }) : { data: null, error: null },
+            
+          // 3. Buscar ContentTypes do DB
+          supabase
+            .from(CONTENT_TYPES_TABLE)
+            .select('*')
+            .order('created_at', { ascending: false })
+        ]);
+        
+        // Processar resultados dos agentes
+        const { data: agentsData, error: agentsError } = agentsResult;
         if (agentsError) throw agentsError;
         setAgents(agentsData ? agentsData.map((dbAgent: any) => ({
           id: dbAgent.id,
@@ -188,15 +210,9 @@ export function DataProvider({ children }: { children: ReactNode }) {
           knowledgeFiles: [], // Não carregue os arquivos na listagem inicial (serão carregados sob demanda)
         })) : []);
 
-        // Buscar Experts do DB
-        const { data: expertsData, error: expertsError } = await supabase
-          .from(EXPERTS_TABLE)
-          .select('*')
-          .eq('user_id', currentUser.id)
-          .order('created_at', { ascending: false });
-          
+        // Processar resultados dos experts
+        const { data: expertsData, error: expertsError } = expertsResult;
         if (expertsError) throw expertsError;
-        
         setExperts(expertsData ? expertsData.map((dbExpert: DbExpert) => ({
           id: dbExpert.id,
           name: dbExpert.name,
@@ -211,97 +227,30 @@ export function DataProvider({ children }: { children: ReactNode }) {
           userId: dbExpert.user_id
         })) : []);
 
-        // Buscar ContentTypes do DB com tratamento de erro específico
-        try {
-          const { data: contentTypesData, error: contentTypesError } = await supabase
-            .from(CONTENT_TYPES_TABLE)
-            .select('*')
-            .order('created_at', { ascending: false });
-            
-          if (!contentTypesError) {
-            setContentTypes(contentTypesData ? contentTypesData.map((dbContentType: any) => ({
-              id: dbContentType.id,
-              name: dbContentType.name,
-              avatar: dbContentType.avatar,
-              description: dbContentType.description,
-              createdAt: new Date(dbContentType.created_at),
-              updatedAt: new Date(dbContentType.updated_at),
-              userId: dbContentType.user_id
-            })) : []);
-          } else {
-            console.log("Usando tipos de conteúdo mocados devido a erro:", contentTypesError);
-            // Manter os mocks se a tabela não existir ainda
-          }
-        } catch (error) {
-          console.log("Usando tipos de conteúdo mocados devido a erro:", error);
-          // Manter os mocks se houver qualquer erro
+        // Processar resultados dos tipos de conteúdo
+        const { data: contentTypesData, error: contentTypesError } = contentTypesResult;
+        if (!contentTypesError && contentTypesData) {
+          setContentTypes(contentTypesData.map((dbContentType: any) => ({
+            id: dbContentType.id,
+            name: dbContentType.name,
+            avatar: dbContentType.avatar,
+            description: dbContentType.description,
+            createdAt: new Date(dbContentType.created_at),
+            updatedAt: new Date(dbContentType.updated_at),
+            userId: dbContentType.user_id
+          })));
+        } else {
+          console.log("Usando tipos de conteúdo mocados devido a erro:", contentTypesError);
+          // Manter os mocks se a tabela não existir ainda
         }
 
-        // Buscar Chats do usuário do banco de dados
-        try {
-          if (currentUser) {
-            const { data: chatsData, error: chatsError } = await supabase
-              .from(CHATS_TABLE)
-              .select('*')
-              .eq('user_id', currentUser.id)
-              .order('updated_at', { ascending: false });
-            
-            if (chatsError) {
-              console.error("Erro ao carregar chats:", chatsError);
-              setChats([]); // Iniciar com lista vazia em caso de erro
-            } else if (chatsData) {
-              // Buscar mensagens para cada chat
-              const chatIds = chatsData.map(chat => chat.id);
-              const { data: messagesData, error: messagesError } = await supabase
-                .from('messages')
-                .select('*')
-                .in('chat_id', chatIds)
-                .order('created_at', { ascending: true });
-              
-              if (messagesError) {
-                console.error("Erro ao carregar mensagens:", messagesError);
-              }
-              
-              // Agrupar mensagens por chat_id
-              const messagesByChatId: Record<string, Message[]> = {};
-              if (messagesData) {
-                messagesData.forEach(msg => {
-                  if (!messagesByChatId[msg.chat_id]) {
-                    messagesByChatId[msg.chat_id] = [];
-                  }
-                  messagesByChatId[msg.chat_id].push({
-                    id: msg.id,
-                    content: msg.content,
-                    role: msg.role as "user" | "assistant",
-                    chatId: msg.chat_id,
-                    createdAt: new Date(msg.created_at)
-                  });
-                });
-              }
-              
-              // Montar objetos Chat completos
-              const loadedChats: Chat[] = chatsData.map(chat => ({
-                id: chat.id,
-                title: chat.title,
-                messages: messagesByChatId[chat.id] || [],
-                expertId: chat.expert_id || undefined,
-                agentId: chat.agent_id,
-                contentType: chat.content_type,
-                userId: chat.user_id,
-                createdAt: new Date(chat.created_at),
-                updatedAt: new Date(chat.updated_at)
-              }));
-              
-              setChats(loadedChats);
-            }
-          }
-        } catch (error) {
-          console.error("Erro ao carregar chats e mensagens:", error);
-          setChats([]);
+        // Buscar Chats do usuário do banco de dados em segundo plano
+        // Para não bloquear o restante do carregamento
+        if (currentUser) {
+          fetchUserChats();
         }
 
         setInitialLoadComplete(true); // Mark load as complete
-
       } catch (error) {
         console.error("Error loading initial data from Supabase:", error);
         // Handle error appropriately (e.g., show toast, fallback to empty)
@@ -310,6 +259,93 @@ export function DataProvider({ children }: { children: ReactNode }) {
         setChats(mockChats);
       } finally {
         setIsLoading(false);
+      }
+    };
+    
+    // Função separada para carregar chats (isolando complexidade)
+    const fetchUserChats = async () => {
+      try {
+        const { data: chatsData, error: chatsError } = await supabase
+          .from(CHATS_TABLE)
+          .select('*')
+          .eq('user_id', currentUser!.id)
+          .order('updated_at', { ascending: false });
+        
+        if (chatsError) {
+          console.error("Erro ao carregar chats:", chatsError);
+          setChats([]); // Iniciar com lista vazia em caso de erro
+          return;
+        } 
+        
+        if (!chatsData || chatsData.length === 0) {
+          setChats([]);
+          return;
+        }
+        
+        // Buscar apenas os IDs para a consulta
+        const chatIds = chatsData.map(chat => chat.id);
+        
+        // Otimização: Limitar número de mensagens por chat
+        const { data: messagesData, error: messagesError } = await supabase
+          .from('messages')
+          .select('*')
+          .in('chat_id', chatIds)
+          .order('created_at', { ascending: true });
+        
+        if (messagesError) {
+          console.error("Erro ao carregar mensagens:", messagesError);
+          
+          // Mesmo com erro nas mensagens, podemos carregar os chats sem mensagens
+          const emptyChats: Chat[] = chatsData.map(chat => ({
+            id: chat.id,
+            title: chat.title,
+            messages: [],
+            expertId: chat.expert_id || undefined,
+            agentId: chat.agent_id,
+            contentType: chat.content_type,
+            userId: chat.user_id,
+            createdAt: new Date(chat.created_at),
+            updatedAt: new Date(chat.updated_at)
+          }));
+          
+          setChats(emptyChats);
+          return;
+        }
+        
+        // Agrupar mensagens por chat_id
+        const messagesByChatId: Record<string, Message[]> = {};
+        if (messagesData) {
+          messagesData.forEach(msg => {
+            if (!messagesByChatId[msg.chat_id]) {
+              messagesByChatId[msg.chat_id] = [];
+            }
+            messagesByChatId[msg.chat_id].push({
+              id: msg.id,
+              content: msg.content,
+              role: msg.role as "user" | "assistant",
+              chatId: msg.chat_id,
+              createdAt: new Date(msg.created_at)
+            });
+          });
+        }
+        
+        // Montar objetos Chat completos
+        const loadedChats: Chat[] = chatsData.map(chat => ({
+          id: chat.id,
+          title: chat.title,
+          messages: messagesByChatId[chat.id] || [],
+          expertId: chat.expert_id || undefined,
+          agentId: chat.agent_id,
+          contentType: chat.content_type,
+          userId: chat.user_id,
+          createdAt: new Date(chat.created_at),
+          updatedAt: new Date(chat.updated_at)
+        }));
+        
+        setChats(loadedChats);
+      } catch (error) {
+        console.error("Erro ao carregar chats e mensagens:", error);
+        setChats([]);
       }
     };
 
@@ -423,7 +459,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
         createdAt: new Date(dbData.created_at),
         updatedAt: new Date(dbData.updated_at),
         createdBy: dbData.created_by,
-        // Usa knowledgeS_files com fallback seguro
+        // Usa knowledgeS_files with fallback safe
         knowledgeFiles: Array.isArray(dbData.knowledges_files) ? dbData.knowledges_files.filter(
              (file): file is KnowledgeFile => 
                file && typeof file.name === 'string' && typeof file.path === 'string'
@@ -441,32 +477,101 @@ export function DataProvider({ children }: { children: ReactNode }) {
     }
 
     try {
-      // Fetch agent data including knowledges_files (Corrected column name)
-      const { data: agentDataAny, error: fetchError } = await supabase
-        .from(AGENTS_TABLE)
-        .select('knowledges_files') // Corrected: Select knowledges_files
-        .eq('id', id)
-        .single();
-
-      if (fetchError && fetchError.code !== 'PGRST116') { 
-         console.error("Error fetching agent files before delete:", fetchError);
+      // Primeiro, buscar todos os chats associados a este agente
+      const { data: agentChats, error: chatsError } = await supabase
+        .from(CHATS_TABLE)
+        .select('id')
+        .eq('agent_id', id);
+      
+      if (chatsError) {
+        console.error("Erro ao buscar chats associados ao agente:", chatsError);
+        throw new Error(`Falha ao excluir agente: ${chatsError.message}`);
       }
-
-      // Corrected property access
-      const filesToDelete = (agentDataAny as any)?.knowledges_files as KnowledgeFile[] || [];
-      const filePathsToDelete = filesToDelete.map(f => f.path).filter(p => !!p);
-
-      if (filePathsToDelete.length > 0) {
-        console.log(`Attempting to delete files from storage: ${filePathsToDelete.join(', ')}`);
-        const { error: storageError } = await supabase.storage
-          .from(KNOWLEDGE_BUCKET)
-          .remove(filePathsToDelete);
+      
+      // Se houver chats associados, exclua-os primeiro
+      if (agentChats && agentChats.length > 0) {
+        console.log(`Excluindo ${agentChats.length} chats associados ao agente ${id}`);
         
-        if (storageError) {
-          console.error("Error deleting files from storage:", storageError);
+        // Extrair IDs dos chats
+        const chatIds = agentChats.map(chat => chat.id);
+        
+        // Excluir mensagens primeiro (devido à restrição de chave estrangeira)
+        const { error: messagesError } = await supabase
+          .from('messages')
+          .delete()
+          .in('chat_id', chatIds);
+        
+        if (messagesError) {
+          console.error("Erro ao excluir mensagens dos chats:", messagesError);
+          throw new Error(`Falha ao excluir agente: ${messagesError.message}`);
+        }
+        
+        // Agora excluir os chats
+        const { error: deleteChatsError } = await supabase
+          .from(CHATS_TABLE)
+          .delete()
+          .in('id', chatIds);
+        
+        if (deleteChatsError) {
+          console.error("Erro ao excluir chats do agente:", deleteChatsError);
+          throw new Error(`Falha ao excluir agente: ${deleteChatsError.message}`);
+        }
+        
+        // Atualizar o estado local dos chats
+        setChats(prevChats => prevChats.filter(chat => !chatIds.includes(chat.id)));
+        
+        // Se o chat atual estiver entre os excluídos, limpe-o
+        if (currentChat && chatIds.includes(currentChat.id)) {
+          setCurrentChat(null);
         }
       }
 
+      // Tentar buscar os arquivos do agente, mas com tratamento robusto de erros
+      let filesToDelete: KnowledgeFile[] = [];
+      
+      try {
+        // Buscar todos os campos em vez de apenas knowledges_files para evitar problemas de formato
+        const { data, error } = await supabase
+          .from(AGENTS_TABLE)
+          .select('*')
+          .eq('id', id)
+          .single();
+
+        if (!error && data) {
+          // Usando type assertion para garantir acesso à propriedade
+          const agentData = data as any;
+          if (agentData.knowledges_files) {
+            filesToDelete = agentData.knowledges_files as KnowledgeFile[] || [];
+          }
+        } else if (error && error.code !== 'PGRST116') { 
+          console.error("Aviso: Não foi possível buscar arquivos do agente:", error);
+          // Continuamos mesmo com erro, já que é apenas um aviso
+        }
+      } catch (fetchError) {
+        console.error("Erro ao tentar buscar arquivos do agente:", fetchError);
+        // Continuamos mesmo com erro, já que a exclusão dos arquivos é secundária
+      }
+
+      // Tentar excluir os arquivos do storage se houver algum
+      const filePathsToDelete = filesToDelete.map(f => f.path).filter(p => !!p);
+      if (filePathsToDelete.length > 0) {
+        try {
+          console.log(`Tentando excluir arquivos do storage: ${filePathsToDelete.join(', ')}`);
+          const { error: storageError } = await supabase.storage
+            .from(KNOWLEDGE_BUCKET)
+            .remove(filePathsToDelete);
+          
+          if (storageError) {
+            console.error("Aviso: Erro ao excluir arquivos do storage:", storageError);
+            // Continuamos mesmo com erro, já que é apenas um aviso
+          }
+        } catch (storageError) {
+          console.error("Erro ao tentar excluir arquivos do storage:", storageError);
+          // Continuamos mesmo com erro, já que a exclusão dos arquivos é secundária
+        }
+      }
+
+      // Finalmente, excluir o agente do banco de dados
       const { error: deleteError } = await supabase
         .from(AGENTS_TABLE)
         .delete()
@@ -476,22 +581,32 @@ export function DataProvider({ children }: { children: ReactNode }) {
         throw deleteError;
       }
 
+      // Atualizar o estado local
       setAgents(prevAgents => prevAgents.filter(agent => agent.id !== id));
+      console.log(`Agente ${id} excluído com sucesso`);
 
     } catch (error: any) {
         console.error("Error deleting agent:", error);
         throw new Error(`Falha ao excluir agente: ${error.message}`);
     }
-  }, [currentUser]);
+  }, [currentUser, setChats, currentChat]);
 
   // --- NOVA getAgentById (Busca agente e nomes de arquivos da tabela de chunks) ---
   const getAgentById = useCallback(async (agentId: string): Promise<Agent | null> => {
     console.log(`[DataContext] Buscando agente: ${agentId}`);
+    
+    // 1. Verificar se o agente já está no estado com dados completos
+    const cachedAgent = agents.find(a => a.id === agentId && a.knowledgeFiles.length > 0);
+    if (cachedAgent) {
+      console.log(`[DataContext] Agente ${agentId} encontrado no cache com ${cachedAgent.knowledgeFiles.length} arquivos`);
+      return cachedAgent;
+    }
+    
+    // 2. Buscar dados básicos do agente (otimizado - menos campos)
     try {
-      // Buscar dados completos do agente incluindo arquivos
       const { data: agentData, error } = await supabase
         .from(AGENTS_TABLE)
-        .select('*')
+        .select('id, name, avatar, prompt, description, temperature, created_at, updated_at, created_by, knowledges_files')
         .eq('id', agentId)
         .single();
 
@@ -500,7 +615,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
         return null;
       }
 
-      // Definir interface para o objeto retornado pelo Supabase
+      // 3. Definir interface para o objeto retornado pelo Supabase
       interface AgentDataFromDB {
         id: string;
         name: string;
@@ -514,29 +629,31 @@ export function DataProvider({ children }: { children: ReactNode }) {
         knowledges_files?: KnowledgeFile[];
       }
 
-      // Fazer cast para o tipo apropriado
+      // 4. Fazer cast para o tipo apropriado e extrair arquivos
       const typedAgentData = agentData as unknown as AgentDataFromDB;
-
-      // Extrair a lista de arquivos
       const knowledgeFiles = typedAgentData.knowledges_files 
         ? (typedAgentData.knowledges_files as KnowledgeFile[]).filter(
             file => file && typeof file.name === 'string' && typeof file.path === 'string'
           )
         : [];
 
-      // Se não há arquivos no campo knowledges_files, buscar na tabela de chunks como fallback
+      // 5. Se não há arquivos no knowledges_files, buscar na tabela de chunks como fallback
+      // Esta é uma consulta sob demanda que só acontece quando necessário
       if (knowledgeFiles.length === 0) {
         console.log(`[DataContext] Nenhum arquivo encontrado no campo knowledges_files, verificando na tabela de chunks...`);
         
         try {
+          // Otimização: consulta com DISTINCT para reduzir registros duplicados
           const { data: chunksData, error: chunksError } = await supabase
             .from('agent_knowledge_chunks' as any)
             .select('file_path' as any)
             .eq('agent_id', agentId)
-            .is('file_path', 'not.null');
+            .is('file_path', 'not.null')
+            // Adicionando um limite para evitar carregar muitos registros
+            .limit(100);
 
           if (!chunksError && chunksData && chunksData.length > 0) {
-            // Extrair nomes de arquivos únicos
+            // Extrair nomes de arquivos únicos usando Set para deduplicação
             const uniqueFileNames = [...new Set(chunksData.map(chunk => (chunk as any).file_path))];
             
             // Criar objetos KnowledgeFile para cada nome de arquivo
@@ -545,14 +662,25 @@ export function DataProvider({ children }: { children: ReactNode }) {
               path: name // Caminho é o próprio nome, já que estamos reconstruindo
             }));
             
-            console.log(`[DataContext] Encontrados ${filesFromChunks.length} arquivos nos chunks. Atualizando o agente...`);
+            console.log(`[DataContext] Encontrados ${filesFromChunks.length} arquivos únicos nos chunks.`);
             
-            // Atualizar o agente com os arquivos encontrados
-            const updateData: AgentUpdateData = { knowledges_files: filesFromChunks };
-            await supabase
-              .from(AGENTS_TABLE)
-              .update(updateData)
-              .eq('id', agentId);
+            // Atualizar o agente com os arquivos encontrados em background
+            // para não bloquear o retorno da função
+            if (filesFromChunks.length > 0) {
+              (async () => {
+                const updateData: AgentUpdateData = { knowledges_files: filesFromChunks };
+                try {
+                  await supabase
+                    .from(AGENTS_TABLE)
+                    .update(updateData)
+                    .eq('id', agentId);
+                  console.log(`[DataContext] Agente ${agentId} atualizado com arquivos dos chunks`); 
+                } catch (e) {
+                  // Falha silenciosa - não impede o funcionamento principal
+                  console.error(`[DataContext] Erro ao atualizar agente com arquivos:`, e);
+                }
+              })();
+            }
               
             // Usar os arquivos encontrados
             knowledgeFiles.push(...filesFromChunks);
@@ -563,7 +691,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
         }
       }
 
-      // Construir o objeto de resposta
+      // 6. Construir o objeto de resposta
       const agent: Agent = {
         id: typedAgentData.id,
         name: typedAgentData.name,
@@ -577,12 +705,12 @@ export function DataProvider({ children }: { children: ReactNode }) {
         knowledgeFiles: knowledgeFiles
       };
 
-      console.log(`[DataContext] Agente carregado com ${knowledgeFiles.length} arquivos:`, 
-        knowledgeFiles.map(f => f.name).join(', '));
+      console.log(`[DataContext] Agente carregado com ${knowledgeFiles.length} arquivos`);
       
-      // Atualizar o cache local para garantir consistência
-      setAgents(prevAgents =>
-        prevAgents.map(a => a.id === agentId ? agent : a)
+      // 7. Atualizar o cache local para garantir consistência
+      // Usando spread operator para evitar mutação direta do estado
+      setAgents(prevAgents => 
+        prevAgents.map(a => a.id === agentId ? {...agent} : a)
       );
 
       return agent;
@@ -590,7 +718,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
       console.error(`[DataContext] Erro ao buscar agente ${agentId}:`, error);
       return null;
     }
-  }, []);
+  }, [agents]);
 
   // --- Método para atualizar apenas os arquivos de um agente ---
   const updateAgentFiles = useCallback(async (
@@ -812,7 +940,57 @@ export function DataProvider({ children }: { children: ReactNode }) {
     }
     
     try {
-      // Primeiro, verificar se há avatar para excluir
+      // Primeiro, encontrar todos os chats associados a este expert
+      const { data: expertChats, error: chatsError } = await supabase
+        .from(CHATS_TABLE)
+        .select('id')
+        .eq('expert_id', id)
+        .eq('user_id', currentUser.id);
+      
+      if (chatsError) {
+        console.error("Erro ao buscar chats associados ao expert:", chatsError);
+        throw new Error(`Falha ao excluir expert: ${chatsError.message}`);
+      }
+      
+      // Se houver chats associados, exclua-os primeiro
+      if (expertChats && expertChats.length > 0) {
+        console.log(`Excluindo ${expertChats.length} chats associados ao expert ${id}`);
+        
+        // Extrair IDs dos chats
+        const chatIds = expertChats.map(chat => chat.id);
+        
+        // Excluir mensagens primeiro (devido à restrição de chave estrangeira)
+        const { error: messagesError } = await supabase
+          .from('messages')
+          .delete()
+          .in('chat_id', chatIds);
+        
+        if (messagesError) {
+          console.error("Erro ao excluir mensagens dos chats:", messagesError);
+          throw new Error(`Falha ao excluir expert: ${messagesError.message}`);
+        }
+        
+        // Agora excluir os chats
+        const { error: deleteChatsError } = await supabase
+          .from(CHATS_TABLE)
+          .delete()
+          .in('id', chatIds);
+        
+        if (deleteChatsError) {
+          console.error("Erro ao excluir chats do expert:", deleteChatsError);
+          throw new Error(`Falha ao excluir expert: ${deleteChatsError.message}`);
+        }
+        
+        // Atualizar o estado local dos chats
+        setChats(prevChats => prevChats.filter(chat => !chatIds.includes(chat.id)));
+        
+        // Se o chat atual estiver entre os excluídos, limpe-o
+        if (currentChat && chatIds.includes(currentChat.id)) {
+          setCurrentChat(null);
+        }
+      }
+      
+      // Verificar se há avatar para excluir
       let avatarUrl: string | null = null;
       try {
         const result = await supabase
@@ -854,7 +1032,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
         }
       }
       
-      // Excluir o expert do banco de dados
+      // Finalmente, excluir o expert do banco de dados
       const { error } = await supabase
         .from(EXPERTS_TABLE)
         .delete()
@@ -873,7 +1051,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
       console.error("Erro ao excluir expert:", error);
       throw error;
     }
-  }, [currentUser]);
+  }, [currentUser, setChats, currentChat]);
 
   // Chats CRUD (Mocks - Keep as is or update later)
   const stableSetCurrentChat = useCallback((chat: Chat | null) => {
@@ -1462,12 +1640,3 @@ Use estas informações como base para dar mais relevância e especificidade à 
 
   return <DataContext.Provider value={value}>{children}</DataContext.Provider>;
 }
-
-// Custom hook remains the same
-export const useData = () => {
-  const context = useContext(DataContext);
-  if (context === undefined) {
-    throw new Error("useData must be used within a DataProvider");
-  }
-  return context;
-};

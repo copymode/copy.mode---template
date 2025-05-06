@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { useData } from "@/context/DataContext";
+import { useData } from "@/hooks/useData";
 import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";

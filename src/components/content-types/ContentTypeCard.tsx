@@ -3,7 +3,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Edit, Trash } from "lucide-react";
-import { useData } from "@/context/DataContext";
+import { useData } from "@/hooks/useData";
 import { useState } from "react";
 
 interface ContentTypeCardProps {

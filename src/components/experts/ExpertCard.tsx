@@ -1,7 +1,6 @@
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Expert } from "@/types";
-import { useData } from "@/context/DataContext";
 import { useState } from "react";
 import { Edit, Trash } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -14,20 +13,7 @@ interface ExpertCardProps {
 
 export function ExpertCard({ expert, onEdit, onDelete }: ExpertCardProps) {
   const [isDeleting, setIsDeleting] = useState(false);
-  const { deleteExpert } = useData();
   
-  const handleDelete = async () => {
-    if (!onDelete) return;
-    
-    setIsDeleting(true);
-    try {
-      await deleteExpert(expert.id);
-      onDelete();
-    } finally {
-      setIsDeleting(false);
-    }
-  };
-
   return (
     <Card className="w-full">
       <CardHeader className="pb-2">
@@ -52,7 +38,12 @@ export function ExpertCard({ expert, onEdit, onDelete }: ExpertCardProps) {
               </Button>
             )}
             {onDelete && (
-              <Button variant="ghost" size="icon" onClick={handleDelete} disabled={isDeleting}>
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                onClick={onDelete} 
+                disabled={isDeleting}
+              >
                 <Trash size={16} />
                 <span className="sr-only">Delete</span>
               </Button>

@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useData } from "@/context/DataContext";
+import { useData } from "@/hooks/useData";
 import { ContentType } from "@/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";

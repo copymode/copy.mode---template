@@ -1,7 +1,7 @@
 import { useState, ReactNode, useEffect, useRef } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { useTheme } from "@/context/ThemeContext";
-import { useData } from "@/context/DataContext";
+import { useData } from "@/hooks/useData";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Menu, X, Home, Users, Settings, ChevronRight, Moon, Sun, LogOut, ChevronsLeft, ChevronsRight, Trash2, Pencil, Plus, Bot, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";

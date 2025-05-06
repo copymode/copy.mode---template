@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { useData } from "@/context/DataContext";
+import { useData } from "@/hooks/useData";
 import { ChatArea } from "@/components/chat/ChatArea";
 import { ChatInput } from "@/components/chat/ChatInput";
 import { ChatSidebar } from "@/components/chat/ChatSidebar";
