@@ -6,6 +6,7 @@
 
 ### Histórico de Versões
 - **v1.50.0**: Atualização da versão para v1.50.0 com melhorias gerais no sistema
+- **v1.46.1**: Versão estável com correções para exclusão de agentes e experts com chats associados (foreign key constraints)
 - **v1.27.24**: Ajustes nos balões de chat: removido fundo das mensagens da IA, aplicado bg-secondary para mensagens do usuário e alterada largura do texto da IA para 100%
 - **v1.27.23**: Ajuste do campo de input das conversas com a IA: tamanho da fonte aumentado e permitir quebra de linha com Enter na versão mobile
 - **v1.27.22**: Ajuste de cor do botão "Enviar Nova Foto" na tela de Configurações para preto no tema claro e vermelho no tema escuro

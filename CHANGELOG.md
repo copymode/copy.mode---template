@@ -1,6 +1,23 @@
 # Changelog
 
-## v1.46.0 (16 de maio de 2024)
+## v1.46.1 (2023-11-03)
+
+### Correções de Bugs
+- Corrigido o problema de exclusão de agentes e experts com chats associados
+- Implementada exclusão em cascata para remover chats associados antes de excluir agentes/experts
+- Adicionado tratamento robusto para a exclusão de arquivos de conhecimento e avatares
+- Corrigido bug que permitia exclusão direta sem confirmação do usuário
+
+### Segurança
+- Melhorada a proteção contra violações de chave estrangeira ao excluir entidades relacionadas
+- Implementado tratamento adequado de erros durante o processo de exclusão
+
+### Melhorias
+- Fluxo de exclusão mais robusto com tratamento de erros aprimorado
+- Manutenção do estado local após operações de exclusão em cascata
+
+## v1.46.0 (2023-10-30)
+- Versão estável anterior à correção de bugs
 
 ### 🐛 Correções de Bugs
 
