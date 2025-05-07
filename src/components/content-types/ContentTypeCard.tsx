@@ -2,8 +2,8 @@ import { ContentType } from "@/types";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Edit, Trash } from "lucide-react";
-import { useData } from "@/hooks/useData";
+import { Edit, Trash2 } from "lucide-react";
+import { useData } from "@/context/DataContext";
 import { useState } from "react";
 
 interface ContentTypeCardProps {
@@ -64,7 +64,7 @@ export function ContentTypeCard({ contentType, onEdit, onDelete }: ContentTypeCa
                 onClick={handleDelete} 
                 disabled={isDeleting}
               >
-                <Trash size={16} />
+                <Trash2 size={16} />
                 <span className="sr-only">Excluir</span>
               </Button>
             )}

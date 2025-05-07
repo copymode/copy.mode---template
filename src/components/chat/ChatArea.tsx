@@ -110,22 +110,22 @@ export function ChatArea({ messages, isTyping = false, typingContent = "" }: Cha
             <div
               key={message.id}
               className={`flex ${
-                message.role === "user" ? "justify-end" : "justify-start"
+                message.sender === "user" ? "justify-end" : "justify-start"
               }`}
             >
               <div 
                 className={`relative group ${
-                  message.role === "user" 
+                  message.sender === "user" 
                     ? "user-message-bubble bg-secondary text-secondary-foreground" 
                     : "text-foreground w-full"
-                } px-4 py-3 ${message.role === "user" ? "max-w-[80%]" : ""}`}
+                } px-4 py-3 ${message.sender === "user" ? "max-w-[80%]" : ""}`}
               >
-                {message.role === "assistant" && (
+                {message.sender !== "user" && (
                   <Button
                     variant="ghost"
                     size="icon"
                     className="absolute -top-3 -right-3 h-7 w-7 rounded-full bg-background opacity-0 group-hover:opacity-100 transition-opacity"
-                    onClick={() => copyToClipboard(message.content)}
+                    onClick={() => copyToClipboard(message.text)}
                   >
                     <Copy className="h-4 w-4" />
                   </Button>
@@ -155,7 +155,7 @@ export function ChatArea({ messages, isTyping = false, typingContent = "" }: Cha
                       }
                     }}
                   >
-                    {message.content}
+                    {message.text}
                   </ReactMarkdown>
                 </div>
               </div>
