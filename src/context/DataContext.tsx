@@ -65,7 +65,6 @@ interface DataContextType {
 }
 
 const DataContext = createContext<DataContextType | undefined>(undefined);
-export { DataContext };
 
 const mockContentTypes: ContentType[] = [
   { id: '1', name: 'Post Feed', description: 'Conteúdo para o feed principal', avatar: undefined, createdAt: new Date(), updatedAt: new Date(), userId: 'system'},
@@ -75,6 +74,7 @@ const mockContentTypes: ContentType[] = [
 ];
 
 export function DataProvider({ children }: { children: ReactNode }) {
+  console.log("##### EXECUTANDO src/context/DataContext.tsx REAL! #####"); // Log de Diagnóstico Único
   const { currentUser } = useAuth();
   const [agents, setAgents] = useState<Agent[]>([]);
   const [experts, setExperts] = useState<Expert[]>([]);
@@ -146,10 +146,10 @@ export function DataProvider({ children }: { children: ReactNode }) {
     updatedAt: new Date(dbContentType.updated_at),
   }), []);
 
-  // Declarar getContentTypeById antes de generateCopy
+  // Restaurando getContentTypeById
   const getContentTypeById = useCallback(async (id: string): Promise<ContentType | null> => {
     const localCt = contentTypes.find(ct => ct.id === id);
-    if (localCt && localCt.userId !== 'system') return localCt;
+    if (localCt && localCt.userId !== 'system') return localCt; // Retorna mock/local se for não-sistema e já existir
 
     try {
         const { data, error } = await supabase.from(CONTENT_TYPES_TABLE).select<string, DbContentTypeRow>("*").eq('id', id).single();
@@ -163,7 +163,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
         }
         if (!data) return null;
         const fetchedCt = mapDbContentTypeToContentType(data);
-        if (fetchedCt.userId !== 'system') {
+        // Apenas adiciona/atualiza no estado 'contentTypes' se for um tipo de conteúdo customizado (não 'system')
+        if (fetchedCt.userId !== 'system') { 
              setContentTypes(prev => {
                 const exists = prev.find(c => c.id === fetchedCt.id);
                 if (exists) {
@@ -179,7 +180,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
     }
   }, [supabase, contentTypes, mapDbContentTypeToContentType]);
 
-
+  // Restaurando getAgentById para useCallback
   const getAgentById = useCallback(async (agentId: string): Promise<Agent | null> => {
     try {
       const { data, error } = await supabase
@@ -200,6 +201,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
       const agent = mapDbAgentToAgent(data as DbAgentRow); // Cast para o tipo Row correto
       
+      // Lógica para buscar knowledge files (simplificada por enquanto)
       const { data: chunks, error: chunksError } = await supabase
         .from(AGENT_KNOWLEDGE_CHUNKS_TABLE)
         .select('original_file_name, chunk_text')
@@ -231,6 +233,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
     }
   }, [supabase, mapDbAgentToAgent]);
 
+  // Corrigindo fetchUserChats de volta para useCallback async
   const fetchUserChats = useCallback(async () => {
     if (!currentUser?.id) { setChats([]); return; }
     try {
@@ -316,51 +319,56 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
 
   useEffect(() => {
-    if (!currentUser) {
-      setInitialLoadComplete(false); setAgents([]); setExperts([]); setChats([]);
-      setContentTypes(mockContentTypes); 
-      setActiveChatId(null); // Resetar activeChatId
-      return;
-    }
-    if (initialLoadComplete) return;
+    if (currentUser && !initialLoadComplete) {
+      const fetchInitialData = async () => {
+        setIsLoading(true);
+        try {
+          const [agentsRes, expertsRes, contentTypesRes] = await Promise.all([
+            supabase.from(AGENTS_TABLE).select<string, DbAgentRow>('*').order('created_at', { ascending: false }),
+            supabase.from(EXPERTS_TABLE).select<string, DbExpertRow>('*').eq('user_id', currentUser.id).order('created_at', { ascending: false }),
+            supabase.from(CONTENT_TYPES_TABLE).select<string, DbContentTypeRow>('*').order('name', { ascending: true })
+          ]);
 
-    const fetchInitialData = async () => {
-      setIsLoading(true);
-      try {
-        const [agentsRes, expertsRes, contentTypesRes] = await Promise.all([
-          supabase.from(AGENTS_TABLE).select<string, DbAgentRow>('*').order('created_at', { ascending: false }),
-          supabase.from(EXPERTS_TABLE).select<string, DbExpertRow>('*').eq('user_id', currentUser.id).order('created_at', { ascending: false }),
-          supabase.from(CONTENT_TYPES_TABLE).select<string, DbContentTypeRow>('*').order('name', { ascending: true })
-        ]);
+          if (agentsRes.error) { console.error("Erro ao buscar agents:", agentsRes.error); throw agentsRes.error; }
+          setAgents(agentsRes.data?.map(mapDbAgentToAgent) || []);
 
-        if (agentsRes.error) { console.error("Erro ao buscar agents:", agentsRes.error); throw agentsRes.error; }
-        setAgents(agentsRes.data?.map(mapDbAgentToAgent) || []);
+          if (expertsRes.error) { console.error("Erro ao buscar experts:", expertsRes.error); throw expertsRes.error; }
+          setExperts(expertsRes.data?.map(mapDbExpertToExpert) || []);
+          
+          if (contentTypesRes.error) {
+            console.warn("Erro ao buscar ContentTypes, usando mock:", contentTypesRes.error.message);
+            setContentTypes(mockContentTypes);
+          } else {
+            const dbContentTypes = contentTypesRes.data || [];
+            if (typeof mapDbContentTypeToContentType === 'function') {
+                setContentTypes(dbContentTypes.map(mapDbContentTypeToContentType));
+            } else {
+                console.error("mapDbContentTypeToContentType não é uma função", mapDbContentTypeToContentType)
+                setContentTypes(mockContentTypes); // Fallback para mocks
+            }
+          }
 
-        if (expertsRes.error) { console.error("Erro ao buscar experts:", expertsRes.error); throw expertsRes.error; }
-        setExperts(expertsRes.data?.map(mapDbExpertToExpert) || []);
-        
-        if (contentTypesRes.error) {
-          console.warn("Erro ao buscar ContentTypes, usando mock:", contentTypesRes.error.message);
-          setContentTypes(mockContentTypes);
-        } else {
-          const dbContentTypes = contentTypesRes.data || [];
-          setContentTypes(dbContentTypes.map(mapDbContentTypeToContentType));
+          await fetchUserChats();
+          setInitialLoadComplete(true);
+        } catch (e) { 
+          console.error("[DC] Erro em fetchInitialData:", e); 
+          setAgents([]); setExperts([]); setChats([]); setContentTypes(mockContentTypes);
+          setInitialLoadComplete(false); 
         }
-
-        await fetchUserChats();
-        setInitialLoadComplete(true);
-      } catch (e) { 
-        console.error("[DC] Erro em fetchInitialData:", e); 
-        setAgents([]); setExperts([]); setChats([]); setContentTypes(mockContentTypes);
-        setInitialLoadComplete(false); 
-      }
-      finally { setIsLoading(false); }
-    };
-    
-    if (!initialLoadComplete) {
-        fetchInitialData();
+        finally { setIsLoading(false); }
+      };
+      
+      fetchInitialData();
+    } else if (!currentUser) {
+      setAgents([]);
+      setExperts([]);
+      setChats([]);
+      setActiveChatId(null);
+      setContentTypes(mockContentTypes); 
+      setInitialLoadComplete(false); 
+      setIsLoading(false);
     }
-  }, [currentUser, initialLoadComplete, fetchUserChats, supabase, mapDbAgentToAgent, mapDbExpertToExpert, mapDbContentTypeToContentType]); // fetchUserChats agora depende de activeChatId
+  }, [currentUser, initialLoadComplete]);
 
 
   const createAgent = useCallback(async (agentData: Omit<Agent, "id" | "createdAt" | "updatedAt" | "createdBy" | "knowledgeFiles">): Promise<Agent | null> => {
@@ -938,6 +946,10 @@ export function DataProvider({ children }: { children: ReactNode }) {
   return <DataContext.Provider value={contextValue}>{children}</DataContext.Provider>;
 }
 
+// Exportar DataProvider como default
+export default DataProvider;
+
+// Manter useData como exportação nomeada
 export function useData(): DataContextType {
   const context = useContext(DataContext);
   if (context === undefined) {

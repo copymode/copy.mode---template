@@ -2,18 +2,15 @@
 import { createClient } from '@supabase/supabase-js';
 import { Database } from '@/types/supabase';
 
-// Log para depuração
-console.log("[Supabase Client] Raw import.meta.env:", import.meta.env);
-console.log("[Supabase Client] VITE_SUPABASE_URL:", import.meta.env.VITE_SUPABASE_URL);
-console.log("[Supabase Client] VITE_SUPABASE_ANON_KEY:", import.meta.env.VITE_SUPABASE_ANON_KEY);
-
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+// Removido import.meta.env e adicionado hardcoding
+const supabaseUrl = "https://tprmiyclgmkyujswyotr.supabase.co";
+const supabaseAnonKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRwcm1peWNsZ21reXVqc3d5b3RyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDYwNjczODIsImV4cCI6MjA2MTY0MzM4Mn0.yjzJR2P2Ma_CQ8oqWsNSY8yqpLi6bZnNdsV78lXxL6k";
 
 // Import the supabase client like this:
 // import { supabase } from "@/integrations/supabase/client";
 
 // Tipando o cliente com <Database>
+// Usando as constantes hardcoded
 export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey, {
   auth: {
     persistSession: true,
@@ -21,7 +18,7 @@ export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey, {
   },
   global: {
     fetch: (url, options) => {
-      console.log('Supabase Fetch Request:', url);
+      // console.log('Supabase Fetch Request:', url); // Comentado log fetch para produção
       return fetch(url, options);
     }
   }
@@ -43,3 +40,8 @@ declare module '@supabase/supabase-js' {
     ): any;
   }
 }
+
+// Remover logs de import.meta.env que não são mais relevantes
+// console.log("[Supabase Client] Raw import.meta.env:", import.meta.env);
+// console.log("[Supabase Client] VITE_SUPABASE_URL:", import.meta.env.VITE_SUPABASE_URL);
+// console.log("[Supabase Client] VITE_SUPABASE_ANON_KEY:", import.meta.env.VITE_SUPABASE_ANON_KEY);

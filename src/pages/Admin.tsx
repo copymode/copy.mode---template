@@ -1,5 +1,5 @@
 import { useState, useCallback } from "react";
-import { useData } from "@/hooks/useData";
+import { useData } from "@/context/DataContext";
 import { AgentForm } from "@/components/agents/AgentForm";
 import { AgentCard } from "@/components/agents/AgentCard";
 import { ContentTypeForm } from "@/components/content-types/ContentTypeForm";
