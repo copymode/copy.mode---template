@@ -3,160 +3,76 @@
 // This enables autocomplete, go to definition, etc.
 // Setup type definitions for built-in Supabase Runtime APIs
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { serve } from "std/http/server.ts";
-import { createClient, SupabaseClient } from "@supabase/supabase-js";
-import { OpenAI } from "openai-edge";
-// import { AutoTokenizer } from "@xenova/transformers"; // Temporarily commented out
-// import pdfParse from "pdf-parse"; // Temporarily commented out
-
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders } from "../_shared/cors.ts"; // Assuming shared CORS headers
-
+// Import OpenAI client
+// import { OpenAI } from "https://esm.sh/openai-edge@1.2.0"; // Temporarily commented out
+// Import tokenizer for chunking (using a small model for tokenization)
+import { AutoTokenizer } from "https://esm.sh/@xenova/transformers@2.17.1"; // Temporarily commented out
+// Import pdf-parse
+import pdfParse from "https://esm.sh/pdf-parse@1.1.1"; // Re-enabled
 // --- Constants ---
-const OPENAI_EMBEDDING_MODEL = "text-embedding-3-small";
-const EMBEDDING_DIMENSIONS = 1536;
-// const TOKENIZER_MODEL = "Xenova/all-MiniLM-L6-v2"; 
-// const MAX_CHUNK_TOKENS = 500;
-// const MIN_CHUNK_TOKENS = 50;
-// const OVERLAP_TOKENS = 50;
-
-// Helper function for chunking text (Temporarily commented out)
-/*
-async function chunkTextWithTokenizer(
-  textContent: string,
-  tokenizerModel: string,
-  maxChunkTokens: number,
-  minChunkTokens: number,
-  overlapTokens: number
-): Promise<string[]> {
-  console.log("Loading tokenizer:", tokenizerModel);
-  // const tokenizer = await AutoTokenizer.from_pretrained(tokenizerModel);
-  console.log("Tokenizer loaded.");
-
-  console.log("Encoding text...");
-  // const allTokenIds = tokenizer.encode(textContent, { add_special_tokens: false });
-  const allTokenIds:number[] = []; // Placeholder
-  console.log(`Text encoded into ${allTokenIds.length} tokens.`);
-
-  const textChunks: string[] = [];
-  // ... (rest of chunking logic commented out) ...
-  return textChunks;
-}
-*/
-
-interface RequestPayload {
-  agent_id: string;
-  file_path: string; // Full path in Supabase Storage, e.g., "agent_id/file_name.pdf"
-  original_file_name: string; // e.g., "MyDocument.pdf"
-}
-
-console.log("Function process-knowledge-file starting (SIMPLIFIED VERSION)...");
+const OPENAI_EMBEDDING_MODEL = "text-embedding-3-small"; // Or "text-embedding-ada-002"
+const EMBEDDING_DIMENSIONS = 1536; // Based on the chosen model
+// Chunking parameters (adjust as needed)
+const TOKENIZER_MODEL = "Xenova/all-MiniLM-L6-v2"; // Small model suitable for tokenization
+const MAX_CHUNK_TOKENS = 500; // Max tokens per chunk
+const MIN_CHUNK_TOKENS = 50; // Minimum tokens to form a chunk
+const OVERLAP_TOKENS = 50; // Overlap between chunks
+console.log("Function process-knowledge-file starting (simplified version)...");
 
 serve(async (req) => {
+  // Handle CORS preflight requests
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
   }
 
   try {
-    const supabaseUrl = Deno.env.get("SUPABASE_URL");
-    const supabaseServiceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-    const openaiApiKey = Deno.env.get("OPENAI_API_KEY");
+    // Log request info
+    console.log("Request received", {
+      method: req.method,
+      url: req.url,
+      headers: Object.fromEntries(req.headers.entries())
+    });
 
-    if (!supabaseUrl || !supabaseServiceRoleKey || !openaiApiKey) {
-      console.error("Missing environment variables");
-      return new Response(
-        JSON.stringify({ success: false, error: "Missing environment configuration." }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 500 }
-      );
+    // Simply log the payload for debugging
+    let payload;
+    try {
+      payload = await req.json();
+      console.log("Request payload:", JSON.stringify(payload));
+    } catch (e) {
+      console.log("Failed to parse request body as JSON:", e.message);
+      payload = { note: "Invalid JSON or empty body" };
     }
 
-    // const supabaseAdminClient: SupabaseClient = createClient(supabaseUrl, supabaseServiceRoleKey);
-    // const openai = new OpenAI({ apiKey: openaiApiKey }); // OpenAI client still needed if we were to embed
-
-    const payload: RequestPayload = await req.json();
-    const { agent_id, file_path, original_file_name } = payload;
-
-    if (!agent_id || !file_path || !original_file_name) {
-      return new Response(
-        JSON.stringify({ success: false, error: "Missing agent_id, file_path, or original_file_name in request body." }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 }
-      );
-    }
-
-    console.log(`[SIMPLIFIED] Processing file: ${original_file_name} (path: ${file_path}) for agent ${agent_id}`);
-
-    // 1. Download file from Supabase Storage (Keep this part to test Supabase client)
-    const supabaseAdminClient: SupabaseClient = createClient(supabaseUrl, supabaseServiceRoleKey); // Initialize here for download
-    const bucketName = "agent.files"; 
-    const storagePath = file_path; 
-
-    console.log(`[SIMPLIFIED] Attempting to download from bucket: ${bucketName}, path: ${storagePath}`);
-    const { data: fileData, error: downloadError } = await supabaseAdminClient.storage
-      .from(bucketName)
-      .download(storagePath);
-
-    if (downloadError || !fileData) {
-      console.error("[SIMPLIFIED] Error downloading file:", downloadError);
-      return new Response(
-        JSON.stringify({ success: false, error: `[SIMPLIFIED] Failed to download file: ${downloadError?.message || "Unknown error"}` }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 500 }
-      );
-    }
-    console.log(`[SIMPLIFIED] File ${original_file_name} downloaded successfully.`);
-
-    // 2. Determine file type and extract text (Section Commented Out)
-    /*
-    let textContent = "";
-    const fileExtension = original_file_name.split('.').pop()?.toLowerCase() || file_path.split('.').pop()?.toLowerCase();
-
-    if (fileExtension === "pdf") {
-      // ... pdf parsing logic ...
-    } else if (fileExtension === "txt") {
-      // ... txt reading logic ...
-    } else {
-      // ... unsupported type logic ...
-    }
-    if (!textContent.trim()) {
-      // ... empty content logic ...
-    }
-    console.log(`[SIMPLIFIED] Text content extracted (placeholder if logic was active).`);
-    */
-
-    // 3. Chunk text content (Section Commented Out)
-    /*
-    console.log("[SIMPLIFIED] Starting text content chunking (skipped)...");
-    const textChunks: string[] = ["placeholder_chunk"]; // Dummy chunk
-    */
-
-    // 4. Generate embeddings for each chunk and store (Section Commented Out)
-    /*
-    console.log(`[SIMPLIFIED] Generating embeddings and storing chunks (skipped)...`);
-    */
-    
+    // Return immediate success
     return new Response(
       JSON.stringify({
         success: true,
-        message: "[SIMPLIFIED] File received and download tested. Processing étapes (parsing, chunking, embedding) were SKIPPED.",
-        fileName: original_file_name,
+        message: "Debug mode: Request received",
+        payload_received: !!payload
       }),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 }
+      {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 200
+      }
     );
-
   } catch (error) {
-    console.error("[SIMPLIFIED] Error in function:", error);
-    let errorMessage = "Internal server error";
-    if (error instanceof Error) {
-      errorMessage = error.message;
-    } else if (typeof error === 'string') {
-      errorMessage = error;
-    }
+    console.error("Error in function:", error);
     return new Response(
-      JSON.stringify({ success: false, error: "[SIMPLIFIED] Internal server error", message: errorMessage }),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 500 }
+      JSON.stringify({
+        success: false,
+        error: "Internal server error",
+        message: error.message
+      }),
+      {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 200 // Return 200 instead of 500 to avoid failing the webhook
+      }
     );
   }
-});
-
-/* To invoke locally:
+}); /* To invoke locally:
 
   1. Run `supabase start` (see: https://supabase.com/docs/reference/cli/supabase-start)
   2. Make an HTTP request:
@@ -164,6 +80,6 @@ serve(async (req) => {
   curl -i --location --request POST 'http://127.0.0.1:54321/functions/v1/process-knowledge-file' \
     --header 'Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0' \
     --header 'Content-Type: application/json' \
-    --data '{"agent_id":"test-agent", "file_path":"test-path/test.txt", "original_file_name":"test.txt"}'
+    --data '{"name":"Functions"}'
 
-*/
+*/ 

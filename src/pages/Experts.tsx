@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useData } from "@/context/DataContext";
+import { useData } from "@/hooks/useData";
 import { ExpertForm } from "@/components/experts/ExpertForm";
 import { ExpertCard } from "@/components/experts/ExpertCard";
 import { Expert } from "@/types";
