@@ -321,8 +321,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
             }
             messagesByChatId[msg.chat_id].push({
               id: msg.id,
-              content: msg.content,
-              role: msg.role as "user" | "assistant",
+              text: msg.content,
+              sender: msg.role as "user" | "assistant",
               chatId: msg.chat_id,
               createdAt: new Date(msg.created_at)
             });
@@ -1131,8 +1131,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
     
     const newMessage: Message = {
       id: uuidv4(),
-      content,
-      role,
+      text: content,
+      sender: role,
       chatId,
       createdAt: new Date()
     };
@@ -1171,8 +1171,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
           .from('messages')
           .insert({
             id: newMessage.id,
-            content: newMessage.content,
-            role: newMessage.role,
+            content: newMessage.text,
+            role: newMessage.sender,
             chat_id: newMessage.chatId,
             created_at: newMessage.createdAt.toISOString()
           });
@@ -1323,8 +1323,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
     const expert = expertId ? experts.find(e => e.id === expertId && e.userId === currentUser.id) : null;
     const historyChat = currentChat; 
     const conversationHistory = historyChat?.messages
-       .filter(msg => !msg.content.startsWith("⚠️")) 
-       .map(msg => ({ role: msg.role, content: msg.content })) 
+       .filter(msg => !msg.text.startsWith("⚠️")) 
+       .map(msg => ({ role: msg.sender, content: msg.text })) 
        || [];
     if (!historyChat && conversationHistory.length > 0) { 
         console.warn("[DataContext] generateCopy: Discrepância entre currentChat e histórico existente. Histórico pode ser impreciso.");
@@ -1349,17 +1349,45 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
     // Adicionar Base de Conhecimento do Agente, se houver
     let knowledgeBaseContent = "";
+    const MAX_KNOWLEDGE_CHARS = 15000; // Limite de caracteres para a base de conhecimento (aprox. 3750 tokens)
+    let currentKnowledgeChars = 0;
+
     if (agent.knowledgeFiles && agent.knowledgeFiles.length > 0) {
       console.log("[DataContext] generateCopy - Processando base de conhecimento do agente:", agent.knowledgeFiles);
       knowledgeBaseContent += "\n\n## Base de Conhecimento Relevante do Agente:\n";
-      agent.knowledgeFiles.forEach(file => {
+      
+      for (const file of agent.knowledgeFiles) {
         if (file.content && file.content.trim() !== "") {
-          console.log(`[DataContext] generateCopy - Adicionando conteúdo do arquivo: ${file.name}`);
-          knowledgeBaseContent += `\n### Trecho do arquivo: ${file.name}\n${file.content.trim()}\n---\n`;
+          const fileContentTrimmed = file.content.trim();
+          // Prepara o cabeçalho e o rodapé para cálculo de espaço
+          const header = `\n### Trecho do arquivo: ${file.name}\n`;
+          const footer = `\n---\n`;
+          const partialHeader = `\n### Trecho PARCIAL do arquivo: ${file.name}\n`;
+          const partialFooter = `\n... (conteúdo truncado)\n---\n`;
+
+          const fullContentToAddLength = header.length + fileContentTrimmed.length + footer.length;
+
+          if (currentKnowledgeChars + fullContentToAddLength <= MAX_KNOWLEDGE_CHARS) {
+            knowledgeBaseContent += header + fileContentTrimmed + footer;
+            currentKnowledgeChars += fullContentToAddLength;
+            console.log(`[DataContext] generateCopy - Adicionando conteúdo TOTAL do arquivo: ${file.name} (${fullContentToAddLength} chars). Total KB chars: ${currentKnowledgeChars}`);
+          } else {
+            const remainingCharsForContent = MAX_KNOWLEDGE_CHARS - currentKnowledgeChars - partialHeader.length - partialFooter.length;
+            if (remainingCharsForContent > 100) { // Adicionar apenas se houver espaço razoável para o conteúdo em si
+              const trimmedPartialContent = fileContentTrimmed.substring(0, remainingCharsForContent);
+              const partialContentToAdd = partialHeader + trimmedPartialContent + partialFooter;
+              knowledgeBaseContent += partialContentToAdd;
+              currentKnowledgeChars += partialContentToAdd.length;
+              console.log(`[DataContext] generateCopy - Adicionando conteúdo PARCIAL do arquivo: ${file.name} (${partialContentToAdd.length} chars). Total KB chars: ${currentKnowledgeChars}. LIMITE ATINGIDO.`);
+            } else {
+               console.log(`[DataContext] generateCopy - Arquivo ${file.name} não adicionado (total ou parcial). Limite de ${MAX_KNOWLEDGE_CHARS} caracteres para KB atingido ou espaço insuficiente para parcial. Total atual: ${currentKnowledgeChars}`);
+            }
+            break; // Parar de adicionar mais arquivos
+          }
         } else {
           console.log(`[DataContext] generateCopy - Arquivo ${file.name} sem conteúdo ou conteúdo vazio.`);
         }
-      });
+      }
       // Adicionar ao systemPrompt apenas se houver conteúdo efetivo da base de conhecimento
       if (knowledgeBaseContent.trim() !== "## Base de Conhecimento Relevante do Agente:") { 
         systemPrompt += knowledgeBaseContent;
@@ -1370,6 +1398,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
     // Instruções Gerais Finais
     systemPrompt += `\n\nInstruções Gerais: Gere o conteúdo exclusivamente no idioma Português do Brasil. Seja criativo e siga o tom de voz implícito no prompt do agente e no contexto do expert (se fornecido). Adapte o formato ao Tipo de Conteúdo solicitado: ${contentType}.`;
+
     console.log("[DataContext] generateCopy - System Prompt Final Construído:", systemPrompt);
 
     // --- 4. Preparar Corpo da Requisição para API --- 
@@ -1673,4 +1702,13 @@ export function DataProvider({ children }: { children: ReactNode }) {
   ]);
 
   return <DataContext.Provider value={value}>{children}</DataContext.Provider>;
+}
+
+// Add useData function to export
+export function useData() {
+  const context = useContext(DataContext);
+  if (context === undefined) {
+    throw new Error("useData deve ser usado dentro de um DataProvider");
+  }
+  return context;
 }

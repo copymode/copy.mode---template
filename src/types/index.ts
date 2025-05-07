@@ -18,6 +18,7 @@ export interface Agent {
   updatedAt: Date;
   createdBy: string;
   knowledgeFiles?: KnowledgeFile[];
+  model?: string;
 }
 
 export interface KnowledgeFile {
@@ -47,6 +48,7 @@ export interface Chat {
   expertId?: string;
   agentId: string;
   contentType: string;
+  contentTypeId?: string;
   userId: string;
   createdAt: Date;
   updatedAt: Date;
@@ -54,17 +56,20 @@ export interface Chat {
 
 export interface Message {
   id: string;
-  content: string;
-  role: "user" | "assistant";
+  text: string;
+  sender: 'user' | 'agent' | 'assistant' | 'expert';
   chatId: string;
   createdAt: Date;
+  agentId?: string;
 }
 
 export interface CopyRequest {
   expertId?: string;
   agentId: string;
   contentType: string;
+  contentTypeId?: string;
   additionalInfo: string;
+  userInput?: string;
 }
 
 export interface ContentType {
@@ -80,6 +85,6 @@ export interface ContentType {
 // This helps TypeScript recognize the available RPC functions in Supabase
 declare global {
   namespace SupabaseRPC {
-    type AvailableFunctions = "is_owner_of_profile" | "update_user_api_key" | "update_user_name";
+    type AvailableFunctions = "is_owner_of_profile" | "update_user_api_key" | "update_user_name" | "match_knowledge_chunks";
   }
 }
