@@ -23,6 +23,7 @@ export interface Agent {
 export interface KnowledgeFile {
   name: string;
   path: string;
+  content?: string;
 }
 
 export interface Expert {

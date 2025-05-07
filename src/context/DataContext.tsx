@@ -421,34 +421,81 @@ export function DataProvider({ children }: { children: ReactNode }) {
        throw new Error("Apenas administradores podem atualizar agentes.");
     }
 
-    const dataToUpdate: AgentUpdateData = { 
-        // Spread core fields (name, description, prompt, temperature, avatar)
+    console.log("[DataContext] updateAgent - Recebido para ID:", id, "Dados:", agentData);
+
+    // 1. Lidar com knowledgeFiles: salvar conteúdo em agent_knowledge_chunks
+    if (agentData.knowledgeFiles && agentData.knowledgeFiles.length > 0) {
+      console.log("[DataContext] updateAgent - Processando knowledgeFiles:", agentData.knowledgeFiles);
+      for (const file of agentData.knowledgeFiles) {
+        if (file.content && file.path) { // Processar apenas se houver conteúdo e path
+          console.log(`[DataContext] updateAgent - Processando arquivo: ${file.name} com conteúdo.`);
+          try {
+            // Excluir chunks antigos para este arquivo e agente
+            const { error: deleteError } = await supabase
+              .from('agent_knowledge_chunks' as any)
+              .delete()
+              .eq('agent_id', id)
+              .eq('file_path', file.path);
+            if (deleteError) {
+              console.error(`[DataContext] updateAgent - Erro ao deletar chunks antigos para ${file.path}:`, deleteError);
+              // Considerar se deve logar e continuar ou lançar erro
+            }
+
+            // Inserir novo chunk (texto completo do arquivo)
+            const { error: insertError } = await supabase
+              .from('agent_knowledge_chunks' as any)
+              .insert({
+                agent_id: id,
+                file_path: file.path, 
+                chunk_text: file.content,
+              } as any);
+            if (insertError) {
+              console.error(`[DataContext] updateAgent - Erro ao inserir novo chunk para ${file.path}:`, insertError);
+              throw new Error(`Falha ao salvar conteúdo do arquivo ${file.name} na base de conhecimento.`);
+            }
+            console.log(`[DataContext] updateAgent - Conteúdo do arquivo ${file.name} salvo em agent_knowledge_chunks.`);
+          } catch (e) {
+            console.error(`[DataContext] updateAgent - Exceção ao processar chunks para ${file.path}:`, e);
+            // Considerar se deve lançar o erro ou apenas logar e continuar
+          }
+        }
+      }
+    }
+
+    // 2. Preparar dados para a tabela 'agents' (sem o 'content' em knowledges_files)
+    const agentTableData: AgentUpdateData = { 
         ...(agentData.name && { name: agentData.name }),
         ...(agentData.description !== undefined && { description: agentData.description }),
         ...(agentData.prompt && { prompt: agentData.prompt }),
         ...(agentData.temperature !== undefined && { temperature: agentData.temperature }),
         ...(agentData.avatar && { avatar: agentData.avatar }),
-        // Corrected: Use knowledges_files for DB update
-        ...(agentData.knowledgeFiles && { knowledges_files: agentData.knowledgeFiles }),
+        ...(agentData.knowledgeFiles && { 
+          knowledges_files: agentData.knowledgeFiles.map(f => ({ name: f.name, path: f.path })) 
+        }),
         updated_at: new Date().toISOString(),
     };
+    
+    console.log("[DataContext] updateAgent - Dados para salvar na tabela agents:", agentTableData);
 
+    // 3. Atualizar a tabela 'agents'
     const { data, error } = await supabase
       .from(AGENTS_TABLE)
-      .update(dataToUpdate) 
+      .update(agentTableData) 
       .eq('id', id)
-      .select('*') // Garante que retorna todas as colunas
+      .select('*')
       .single();
 
     if (error) {
-      console.error("Error updating agent:", error);
+      console.error("[DataContext] updateAgent - Erro ao atualizar tabela agents:", error);
       throw new Error(`Falha ao atualizar agente: ${error.message}`);
     }
-     if (!data) {
+    if (!data) {
+      console.error("[DataContext] updateAgent - Nenhum dado retornado após atualizar tabela agents.");
       throw new Error("Falha ao atualizar agente: Nenhum dado retornado.");
     }
 
-    const dbData = data as DbAgent; // Cast seguro
+    // 4. Atualizar estado local
+    const dbData = data as DbAgent;
     const updatedAgent: Agent = {
         id: dbData.id,
         name: dbData.name,
@@ -459,17 +506,14 @@ export function DataProvider({ children }: { children: ReactNode }) {
         createdAt: new Date(dbData.created_at),
         updatedAt: new Date(dbData.updated_at),
         createdBy: dbData.created_by,
-        // Usa knowledgeS_files with fallback safe
-        knowledgeFiles: Array.isArray(dbData.knowledges_files) ? dbData.knowledges_files.filter(
-             (file): file is KnowledgeFile => 
-               file && typeof file.name === 'string' && typeof file.path === 'string'
-           ) : [], 
+        knowledgeFiles: dbData.knowledges_files?.map(f => ({ name: f.name, path: f.path })) || [],
     };
     setAgents(prevAgents =>
       prevAgents.map(agent => (agent.id === id ? updatedAgent : agent))
     );
+    console.log("[DataContext] updateAgent - Agente atualizado no estado local:", updatedAgent);
 
-  }, [currentUser]);
+  }, [currentUser, supabase]);
   
   const deleteAgent = useCallback(async (id: string) => {
     if (!currentUser || currentUser.role !== "admin") {
@@ -593,132 +637,94 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
   // --- NOVA getAgentById (Busca agente e nomes de arquivos da tabela de chunks) ---
   const getAgentById = useCallback(async (agentId: string): Promise<Agent | null> => {
-    console.log(`[DataContext] Buscando agente: ${agentId}`);
+    console.log(`[DataContext] getAgentById - Buscando agente completo: ${agentId}`);
     
-    // 1. Verificar se o agente já está no estado com dados completos
-    const cachedAgent = agents.find(a => a.id === agentId && a.knowledgeFiles.length > 0);
-    if (cachedAgent) {
-      console.log(`[DataContext] Agente ${agentId} encontrado no cache com ${cachedAgent.knowledgeFiles.length} arquivos`);
-      return cachedAgent;
-    }
-    
-    // 2. Buscar dados básicos do agente (otimizado - menos campos)
-    try {
-      const { data: agentData, error } = await supabase
-        .from(AGENTS_TABLE)
-        .select('id, name, avatar, prompt, description, temperature, created_at, updated_at, created_by, knowledges_files')
-        .eq('id', agentId)
-        .single();
+    // 1. Buscar dados básicos do agente, incluindo a lista de knowledges_files (metadados)
+    const { data: agentBaseData, error: agentError } = await supabase
+      .from(AGENTS_TABLE)
+      .select('id, name, avatar, prompt, description, temperature, created_at, updated_at, created_by, knowledges_files')
+      .eq('id', agentId)
+      .single();
 
-      if (error || !agentData) {
-        console.error(`Erro ao buscar dados do agente ${agentId}:`, error);
-        return null;
-      }
-
-      // 3. Definir interface para o objeto retornado pelo Supabase
-      interface AgentDataFromDB {
-        id: string;
-        name: string;
-        avatar: string;
-        prompt: string;
-        description: string;
-        temperature: number;
-        created_at: string;
-        updated_at: string;
-        created_by: string;
-        knowledges_files?: KnowledgeFile[];
-      }
-
-      // 4. Fazer cast para o tipo apropriado e extrair arquivos
-      const typedAgentData = agentData as unknown as AgentDataFromDB;
-      const knowledgeFiles = typedAgentData.knowledges_files 
-        ? (typedAgentData.knowledges_files as KnowledgeFile[]).filter(
-            file => file && typeof file.name === 'string' && typeof file.path === 'string'
-          )
-        : [];
-
-      // 5. Se não há arquivos no knowledges_files, buscar na tabela de chunks como fallback
-      // Esta é uma consulta sob demanda que só acontece quando necessário
-      if (knowledgeFiles.length === 0) {
-        console.log(`[DataContext] Nenhum arquivo encontrado no campo knowledges_files, verificando na tabela de chunks...`);
-        
-        try {
-          // Otimização: consulta com DISTINCT para reduzir registros duplicados
-          const { data: chunksData, error: chunksError } = await supabase
-            .from('agent_knowledge_chunks' as any)
-            .select('file_path' as any)
-            .eq('agent_id', agentId)
-            .is('file_path', 'not.null')
-            // Adicionando um limite para evitar carregar muitos registros
-            .limit(100);
-
-          if (!chunksError && chunksData && chunksData.length > 0) {
-            // Extrair nomes de arquivos únicos usando Set para deduplicação
-            const uniqueFileNames = [...new Set(chunksData.map(chunk => (chunk as any).file_path))];
-            
-            // Criar objetos KnowledgeFile para cada nome de arquivo
-            const filesFromChunks = uniqueFileNames.map(name => ({
-              name,
-              path: name // Caminho é o próprio nome, já que estamos reconstruindo
-            }));
-            
-            console.log(`[DataContext] Encontrados ${filesFromChunks.length} arquivos únicos nos chunks.`);
-            
-            // Atualizar o agente com os arquivos encontrados em background
-            // para não bloquear o retorno da função
-            if (filesFromChunks.length > 0) {
-              (async () => {
-                const updateData: AgentUpdateData = { knowledges_files: filesFromChunks };
-                try {
-                  await supabase
-                    .from(AGENTS_TABLE)
-                    .update(updateData)
-                    .eq('id', agentId);
-                  console.log(`[DataContext] Agente ${agentId} atualizado com arquivos dos chunks`); 
-                } catch (e) {
-                  // Falha silenciosa - não impede o funcionamento principal
-                  console.error(`[DataContext] Erro ao atualizar agente com arquivos:`, e);
-                }
-              })();
-            }
-              
-            // Usar os arquivos encontrados
-            knowledgeFiles.push(...filesFromChunks);
-          }
-        } catch (chunksError) {
-          console.error(`[DataContext] Erro ao buscar dados de chunks:`, chunksError);
-          // Continuar mesmo com erro
-        }
-      }
-
-      // 6. Construir o objeto de resposta
-      const agent: Agent = {
-        id: typedAgentData.id,
-        name: typedAgentData.name,
-        avatar: typedAgentData.avatar,
-        prompt: typedAgentData.prompt,
-        description: typedAgentData.description || '',
-        temperature: typedAgentData.temperature,
-        createdAt: new Date(typedAgentData.created_at),
-        updatedAt: new Date(typedAgentData.updated_at),
-        createdBy: typedAgentData.created_by,
-        knowledgeFiles: knowledgeFiles
-      };
-
-      console.log(`[DataContext] Agente carregado com ${knowledgeFiles.length} arquivos`);
-      
-      // 7. Atualizar o cache local para garantir consistência
-      // Usando spread operator para evitar mutação direta do estado
-      setAgents(prevAgents => 
-        prevAgents.map(a => a.id === agentId ? {...agent} : a)
-      );
-
-      return agent;
-    } catch (error) {
-      console.error(`[DataContext] Erro ao buscar agente ${agentId}:`, error);
+    if (agentError || !agentBaseData) {
+      console.error(`[DataContext] getAgentById - Erro ao buscar dados base do agente ${agentId}:`, agentError);
       return null;
     }
-  }, [agents]);
+
+    const typedAgentBaseData = agentBaseData as unknown as DbAgent; // DbAgent já inclui knowledges_files como KnowledgeFile[] opcional
+
+    let populatedKnowledgeFiles: KnowledgeFile[] = [];
+
+    // 2. Se houver knowledges_files (metadados), buscar seu conteúdo em agent_knowledge_chunks
+    if (typedAgentBaseData.knowledges_files && typedAgentBaseData.knowledges_files.length > 0) {
+      console.log(`[DataContext] getAgentById - Metadados de arquivos encontrados para ${agentId}:`, typedAgentBaseData.knowledges_files);
+      const contentPromises = typedAgentBaseData.knowledges_files.map(async (fileMeta) => {
+        if (!fileMeta || !fileMeta.path) {
+          console.warn("[DataContext] getAgentById - Metadado de arquivo inválido ou sem path:", fileMeta);
+          return { ...fileMeta, content: "" }; // Retorna metadado com conteúdo vazio se inválido
+        }
+        try {
+          const { data: chunksData, error: chunksError } = await supabase
+            .from('agent_knowledge_chunks' as any)
+            .select('chunk_text')
+            .eq('agent_id', agentId)
+            .eq('file_path', fileMeta.path); // fileMeta.path deve ser o identificador
+
+          if (chunksError) {
+            console.error(`[DataContext] getAgentById - Erro ao buscar chunks para ${fileMeta.path}:`, chunksError);
+            return { ...fileMeta, content: "" }; // Conteúdo vazio em caso de erro
+          }
+
+          let fullContent = "";
+          // Garantir que chunksData existe e é um array antes de mapear
+          if (Array.isArray(chunksData)) {
+            fullContent = chunksData
+              .map(chunk => (chunk as { chunk_text?: string })?.chunk_text || "") // Acesso seguro e fallback para string vazia
+              .join('\n');
+          } else if (chunksData) {
+            // Se chunksData não for array mas existir, pode ser um único objeto (pouco provável com .select() sem .single())
+            // ou um objeto de erro que não foi pego por chunksError (também pouco provável)
+            console.warn("[DataContext] getAgentById - chunksData não é um array para", fileMeta.path, chunksData);
+          }
+          
+          console.log(`[DataContext] getAgentById - Conteúdo carregado para ${fileMeta.name} (path: ${fileMeta.path}): ${fullContent.substring(0,100)}...`);
+          return { ...fileMeta, content: fullContent };
+        } catch (e) {
+          console.error(`[DataContext] getAgentById - Exceção ao buscar chunks para ${fileMeta.path}:`, e);
+          return { ...fileMeta, content: "" }; // Conteúdo vazio em caso de exceção
+        }
+      });
+      populatedKnowledgeFiles = await Promise.all(contentPromises);
+    } else {
+      console.log(`[DataContext] getAgentById - Nenhum metadado de arquivo (knowledges_files) encontrado para o agente ${agentId}.`);
+      // A lógica de fallback para buscar de agent_knowledge_chunks se knowledges_files estiver vazio foi removida
+      // pois agora esperamos que knowledges_files (na tabela agents) seja a fonte da verdade para quais arquivos existem.
+      // O conteúdo é então buscado de agent_knowledge_chunks com base nesses metadados.
+    }
+
+    // 3. Construir o objeto Agent completo
+    const agent: Agent = {
+      id: typedAgentBaseData.id,
+      name: typedAgentBaseData.name,
+      avatar: typedAgentBaseData.avatar,
+      prompt: typedAgentBaseData.prompt,
+      description: typedAgentBaseData.description || '',
+      temperature: typedAgentBaseData.temperature,
+      createdAt: new Date(typedAgentBaseData.created_at),
+      updatedAt: new Date(typedAgentBaseData.updated_at),
+      createdBy: typedAgentBaseData.created_by,
+      knowledgeFiles: populatedKnowledgeFiles, // Agora com o campo 'content' populado
+    };
+
+    console.log(`[DataContext] getAgentById - Agente completo carregado para ${agentId}:`, agent);
+    
+    // 4. Atualizar o cache local (estado 'agents') para consistência
+    setAgents(prevAgents => 
+      prevAgents.map(a => (a.id === agentId ? { ...agent } : a))
+    );
+
+    return agent;
+  }, [agents, supabase, setAgents]); // Adicionado supabase e setAgents às dependências
 
   // --- Método para atualizar apenas os arquivos de um agente ---
   const updateAgentFiles = useCallback(async (
@@ -1295,8 +1301,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
   // Copy Generation (Keep as is)
   const generateCopy = useCallback(async (request: CopyRequest): Promise<string> => {
-     // ... implementation using Groq ...
-    console.log("Generating copy with request:", request);
+    console.log("[DataContext] generateCopy - Request:", request);
     if (!currentUser) {
       throw new Error("Usuário não autenticado.");
     }
@@ -1306,11 +1311,15 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
     const { expertId, agentId, contentType, additionalInfo } = request;
 
-    // --- 1. Find Agent, Expert, and Current Chat History --- 
-    const agent = agents.find(a => a.id === agentId);
+    // --- 1. Obter Agente completo com base de conhecimento --- 
+    const agent = await getAgentById(agentId); // Chama o getAgentById modificado
     if (!agent) {
-      throw new Error(`Agente com ID ${agentId} não encontrado.`);
+      console.error(`[DataContext] generateCopy - Agente com ID ${agentId} não encontrado ou falha ao carregar.`);
+      throw new Error(`Agente com ID ${agentId} não encontrado ou falha ao carregar sua base de conhecimento.`);
     }
+    console.log("[DataContext] generateCopy - Agente carregado:", agent);
+
+    // --- 2. Obter Expert e Histórico de Conversa --- 
     const expert = expertId ? experts.find(e => e.id === expertId && e.userId === currentUser.id) : null;
     const historyChat = currentChat; 
     const conversationHistory = historyChat?.messages
@@ -1318,27 +1327,52 @@ export function DataProvider({ children }: { children: ReactNode }) {
        .map(msg => ({ role: msg.role, content: msg.content })) 
        || [];
     if (!historyChat && conversationHistory.length > 0) { 
-        console.warn("generateCopy: Mismatch between currentChat and existing history. History might be inaccurate.");
+        console.warn("[DataContext] generateCopy: Discrepância entre currentChat e histórico existente. Histórico pode ser impreciso.");
     }
 
-    // --- 2. Construct System Prompt --- 
-    let systemPrompt = agent.prompt;
+    // --- 3. Construir Prompt do Sistema --- 
+    let systemPrompt = agent.prompt; // Prompt base do agente
+
+    // Adicionar contexto do Expert, se houver
     if (expert) {
-      console.log("Appending context for expert:", expert.name);
-      systemPrompt += `\n\nContexto Adicional (Sobre o Negócio/Produto do Usuário - Expert: ${expert.name}):
-Use estas informações como base para dar mais relevância e especificidade à copy, mas priorize sempre a solicitação específica feita pelo usuário no prompt atual.\n`;
+      console.log("[DataContext] generateCopy - Adicionando contexto do expert:", expert.name);
+      systemPrompt += `\n\n## Contexto Adicional (Sobre o Negócio/Produto do Usuário - Expert: ${expert.name}):\nUse estas informações como base para dar mais relevância e especificidade à copy, mas priorize sempre a solicitação específica feita pelo usuário no prompt atual.\n`;
       systemPrompt += `- Nicho Principal: ${expert.niche || "Não definido"}\n`;
       systemPrompt += `- Público-alvo: ${expert.targetAudience || "Não definido"}\n`;
       systemPrompt += `- Principais Entregáveis/Produtos/Serviços: ${expert.deliverables || "Não definido"}\n`;
       systemPrompt += `- Maiores Benefícios: ${expert.benefits || "Não definido"}\n`;
       systemPrompt += `- Objeções/Dúvidas Comuns: ${expert.objections || "Não definido"}\n`;
     } else if (expertId) {
-        console.warn(`Expert com ID ${expertId} foi selecionado, mas não encontrado nos dados do usuário.`);
+        console.warn(`[DataContext] generateCopy - Expert com ID ${expertId} selecionado, mas não encontrado.`);
         systemPrompt += `\n\nNota: Um perfil de Expert foi selecionado, mas seus detalhes não estão disponíveis no momento.`;
     }
-    systemPrompt += `\n\nInstruções Gerais: Gere o conteúdo exclusivamente no idioma Português do Brasil. Seja criativo e siga o tom de voz implícito no prompt do agente e no contexto do expert (se fornecido). Adapte o formato ao Tipo de Conteúdo solicitado: ${contentType}.`;
 
-    // --- 3. Prepare API Request Body --- 
+    // Adicionar Base de Conhecimento do Agente, se houver
+    let knowledgeBaseContent = "";
+    if (agent.knowledgeFiles && agent.knowledgeFiles.length > 0) {
+      console.log("[DataContext] generateCopy - Processando base de conhecimento do agente:", agent.knowledgeFiles);
+      knowledgeBaseContent += "\n\n## Base de Conhecimento Relevante do Agente:\n";
+      agent.knowledgeFiles.forEach(file => {
+        if (file.content && file.content.trim() !== "") {
+          console.log(`[DataContext] generateCopy - Adicionando conteúdo do arquivo: ${file.name}`);
+          knowledgeBaseContent += `\n### Trecho do arquivo: ${file.name}\n${file.content.trim()}\n---\n`;
+        } else {
+          console.log(`[DataContext] generateCopy - Arquivo ${file.name} sem conteúdo ou conteúdo vazio.`);
+        }
+      });
+      // Adicionar ao systemPrompt apenas se houver conteúdo efetivo da base de conhecimento
+      if (knowledgeBaseContent.trim() !== "## Base de Conhecimento Relevante do Agente:") { 
+        systemPrompt += knowledgeBaseContent;
+      }
+    } else {
+      console.log("[DataContext] generateCopy - Agente não possui arquivos de conhecimento ou estão vazios.");
+    }
+
+    // Instruções Gerais Finais
+    systemPrompt += `\n\nInstruções Gerais: Gere o conteúdo exclusivamente no idioma Português do Brasil. Seja criativo e siga o tom de voz implícito no prompt do agente e no contexto do expert (se fornecido). Adapte o formato ao Tipo de Conteúdo solicitado: ${contentType}.`;
+    console.log("[DataContext] generateCopy - System Prompt Final Construído:", systemPrompt);
+
+    // --- 4. Preparar Corpo da Requisição para API --- 
     const GROQ_API_ENDPOINT = "https://api.groq.com/openai/v1/chat/completions";
     const DEFAULT_TEMPERATURE = 0.7;
     const GROQ_MODEL = "meta-llama/llama-4-maverick-17b-128e-instruct"; // Llama4 Maverick para geração superior de copys
@@ -1355,7 +1389,7 @@ Use estas informações como base para dar mais relevância e especificidade à 
     console.log(`Usando modelo avançado: ${GROQ_MODEL} para geração de copy`);
     console.log("Sending messages to Groq:", JSON.stringify(requestBody.messages, null, 2)); 
 
-    // --- 4. Make API Call --- 
+    // --- 5. Fazer Chamada à API --- 
     try {
       const response = await fetch(GROQ_API_ENDPOINT, {
         method: "POST",

@@ -238,7 +238,7 @@ export function AgentForm({ onCancel, agentToEdit }: AgentFormProps) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (isSubmitting || isFileLoading) return; 
+    if (isSubmitting || isFileLoading) return;
     setIsSubmitting(true);
     
     let currentAgentId = agentToEdit?.id;
@@ -249,142 +249,100 @@ export function AgentForm({ onCancel, agentToEdit }: AgentFormProps) {
         setIsSubmitting(false);
         return;
       }
+
+      // Start with existing files from formData
+      let agentKnowledgeFilesToUpdate: KnowledgeFile[] = formData.knowledgeFiles || [];
+
+      if (!isEditMode) {
+        const newAgentData = {
+          name: formData.name,
+          description: formData.description,
+          prompt: formData.prompt,
+          temperature: formData.temperature,
+          avatar: formData.avatar,
+          // knowledgeFiles will be associated in the update step after creation and file processing
+        };
+        const newAgent = await createAgent(newAgentData); // createAgent from useData
+        currentAgentId = newAgent.id;
+        // Toast for agent creation will be shown after files are potentially processed and agent is fully updated
+      }
       
-      // 1. Salvar/Atualizar dados básicos do agente
-      const agentCoreSubmitData = {
+      // Ensure currentAgentId is available for file operations
+      if (!currentAgentId) {
+        toast({ title: "Erro Crítico", description: "ID do Agente não está disponível para salvar arquivos.", variant: "destructive" });
+        setIsSubmitting(false);
+        return;
+      }
+
+      // Process newly selected files
+      let processedNewFiles: KnowledgeFile[] = [];
+      if (selectedFiles.length > 0) {
+        console.log("AgentForm: Iniciando processamento de novos arquivos selecionados", selectedFiles);
+        // 1. Upload files to storage (gets name and path)
+        const uploadedFilesMeta = await uploadFiles(currentAgentId);
+        console.log("AgentForm: Metadados dos arquivos upados", uploadedFilesMeta);
+
+        // 2. Extract text and combine with upload metadata
+        const extractionPromises = selectedFiles.map(async (fileObject) => {
+          const uploadedMeta = uploadedFilesMeta.find(meta => meta.name === fileObject.name);
+          if (!uploadedMeta) {
+            console.warn(`AgentForm: Metadados de upload não encontrados para ${fileObject.name}`);
+            return null; // Skip this file if metadata is missing
+          }
+          const textContent = await extractTextFromFile(fileObject);
+          return {
+            name: uploadedMeta.name,
+            path: uploadedMeta.path,
+            content: textContent || "", // Add content, or empty string if null
+          };
+        });
+
+        const results = await Promise.all(extractionPromises);
+        processedNewFiles = results.filter(r => r !== null) as KnowledgeFile[];
+        console.log("AgentForm: Arquivos novos processados com conteúdo:", processedNewFiles);
+      }
+
+      // Combine existing files (possibly without content) with newly processed files (with content)
+      agentKnowledgeFilesToUpdate = [
+        ...(formData.knowledgeFiles || []).map(f => ({ name: f.name, path: f.path, content: f.content || undefined })),
+        ...processedNewFiles
+      ];
+
+      // Deduplicate by path, keeping the last occurrence (newly processed or re-uploaded file takes precedence)
+      const uniqueKnowledgeFiles = agentKnowledgeFilesToUpdate.reduceRight((acc, current) => {
+        if (current && typeof current.path === 'string' && !acc.find(item => item.path === current.path)) {
+          acc.unshift(current);
+        }
+        return acc;
+      }, [] as KnowledgeFile[]);
+      
+      console.log("AgentForm: Lista final de arquivos de conhecimento únicos para salvar:", uniqueKnowledgeFiles);
+
+      // Update the agent (either existing or the new one) with all data including processed files
+      const agentDataToSave: Partial<Agent> = {
         name: formData.name,
         description: formData.description,
         prompt: formData.prompt,
         temperature: formData.temperature,
-        avatar: formData.avatar || "/placeholder.svg",
+        avatar: formData.avatar,
+        knowledgeFiles: uniqueKnowledgeFiles,
       };
 
-      let agentDataForProcessing: Agent;
+      await updateAgent(currentAgentId, agentDataToSave);
+      console.log("AgentForm: Agente atualizado/criado com arquivos via updateAgent.");
 
-      if (isEditMode && currentAgentId) {
-        await updateAgent(currentAgentId, agentCoreSubmitData); 
-        agentDataForProcessing = { ...agentToEdit, ...agentCoreSubmitData }; 
-        toast({ title: "Dados Salvos", description: "Dados do agente atualizados." });
+      if (isEditMode) {
+        toast({ title: "Agente Atualizado", description: "O agente foi atualizado com sucesso." });
       } else {
-        const newAgent = await createAgent(agentCoreSubmitData); 
-        currentAgentId = newAgent.id;
-        if (!currentAgentId) throw new Error("Falha ao obter ID do novo agente.");
-        agentDataForProcessing = newAgent;
-        toast({ title: "Agente Criado", description: "Agente criado com sucesso." });
+        toast({ title: "Agente Criado", description: "O novo agente e seus arquivos de conhecimento foram salvos." });
       }
 
-      // 2. Fazer upload dos novos arquivos selecionados para o Storage
-      if (selectedFiles.length > 0 && currentAgentId) {
-        setIsFileLoading(true);
-        
-        // Lista de arquivos para atualização
-        const uploadedFiles = [...formData.knowledgeFiles];
-        
-        // Upload dos arquivos para o Storage
-        const uploadPromises = selectedFiles.map(async file => {
-          try {
-            const fileExt = file.name.split('.').pop();
-            const uniqueFileName = `${uuidv4()}.${fileExt}`;
-            const filePath = `${currentAgentId}/${uniqueFileName}`;
-            
-            const { data, error } = await supabase.storage
-              .from(BUCKET_NAME)
-              .upload(filePath, file);
-            
-            if (error) {
-              console.error(`Erro ao fazer upload de ${file.name}:`, error);
-              toast({
-                title: `Erro ao fazer upload de ${file.name}`,
-                description: error.message,
-                variant: "destructive"
-              });
-              return null;
-            }
-            
-            // Adicionar arquivo à lista de arquivos carregados
-            const newFile = { name: file.name, path: data.path };
-            uploadedFiles.push(newFile);
-            
-            // Atualizar o estado local imediatamente
-            setFormData(prev => ({
-              ...prev,
-              knowledgeFiles: [...prev.knowledgeFiles, newFile]
-            }));
-            
-            toast({
-              title: `Arquivo carregado: ${file.name}`,
-              description: "O arquivo foi carregado com sucesso."
-            });
-            
-            return newFile;
-          } catch (error) {
-            console.error(`Erro ao fazer upload de ${file.name}:`, error);
-            return null;
-          }
-        });
-        
-        const results = await Promise.all(uploadPromises);
-        const successfulUploads = results.filter(Boolean) as KnowledgeFile[];
-        
-        // Atualizar a lista de arquivos no banco de dados
-        if (successfulUploads.length > 0) {
-          try {
-            await updateAgentFiles(currentAgentId, uploadedFiles);
-            
-            // Enviar arquivos para processamento em segundo plano
-            setIsFileLoading(false);
-            
-            // Iniciar processamento de texto em segundo plano
-            for (const file of selectedFiles) {
-              const textContent = await extractTextFromFile(file);
-              if (textContent) {
-                supabase.functions.invoke(
-                  'process-extracted-text',
-                  {
-                    body: { 
-                      agentId: currentAgentId, 
-                      textContent: textContent, 
-                      fileName: file.name 
-                    },
-                  }
-                ).then(({ data, error }) => {
-                  if (error) {
-                    console.error(`Erro ao processar arquivo ${file.name}:`, error);
-                  } else {
-                    console.log(`Arquivo ${file.name} processado com sucesso:`, data);
-                  }
-                });
-              }
-            }
-            
-            // Limpar a lista de arquivos selecionados
-            setSelectedFiles([]);
-            
-          } catch (error) {
-            console.error("Erro ao atualizar arquivos do agente:", error);
-            toast({
-              title: "Erro ao salvar arquivos",
-              description: "Os arquivos foram carregados, mas houve um erro ao salvar a lista no banco de dados.",
-              variant: "destructive"
-            });
-          }
-        }
-        
-        setIsFileLoading(false);
-      }
-
-      onCancel(); // Fechar o formulário após salvar
-
-    } catch (error: any) {
-      console.error("Erro geral ao salvar/processar agente:", error);
-      toast({
-        title: "Erro Geral",
-        description: `Não foi possível ${isEditMode ? 'atualizar' : 'criar'} o agente ou processar arquivos. ${error.message || ''}`,
-        variant: "destructive",
-      });
+      onCancel(); // Close form
+    } catch (error) {
+      console.error("AgentForm: Erro ao salvar agente:", error);
+      toast({ title: "Erro ao Salvar Agente", description: (error as Error).message, variant: "destructive" });
     } finally {
       setIsSubmitting(false);
-      setIsFileLoading(false); 
     }
   };
 

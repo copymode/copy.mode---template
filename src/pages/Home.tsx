@@ -652,7 +652,7 @@ export default function Home() {
             
               {/* Seletores em grid */}
               <div className="w-full grid grid-cols-1 sm:grid-cols-3 gap-2 md:gap-4 mb-3 md:mb-6">
-                <Select value={selectedExpert} onValueChange={setSelectedExpert}>
+                <Select value={selectedExpert || ""} onValueChange={setSelectedExpert}>
                   <SelectTriggerWithAvatar
                     avatarSrc={selectedExpert ? experts.find(e => e.id === selectedExpert)?.avatar : null}
                     selectedName={selectedExpert ? experts.find(e => e.id === selectedExpert)?.name : null}
@@ -677,7 +677,7 @@ export default function Home() {
                   </SelectContent>
                 </Select>
 
-                <Select value={selectedAgent} onValueChange={setSelectedAgent}>
+                <Select value={selectedAgent || ""} onValueChange={setSelectedAgent}>
                   <SelectTriggerWithAvatar
                     avatarSrc={selectedAgent ? agents.find(a => a.id === selectedAgent)?.avatar : null}
                     selectedName={selectedAgent ? agents.find(a => a.id === selectedAgent)?.name : null}
@@ -702,7 +702,7 @@ export default function Home() {
                   </SelectContent>
                 </Select>
 
-                <Select value={selectedContentType} onValueChange={setSelectedContentType}>
+                <Select value={selectedContentType || ""} onValueChange={setSelectedContentType}>
                   <SelectTriggerWithAvatar
                     avatarSrc={selectedContentType 
                       ? contentTypes.find(ct => ct.name === selectedContentType)?.avatar || null 
