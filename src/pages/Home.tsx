@@ -1,5 +1,5 @@
-import { useState, useEffect, useRef, useMemo } from "react";
-import { useData } from "@/context/DataContext";
+import { useState, useEffect, useRef } from "react";
+import { useData } from "@/hooks/useData";
 import { ChatArea } from "@/components/chat/ChatArea";
 import { ChatInput } from "@/components/chat/ChatInput";
 import { ChatSidebar } from "@/components/chat/ChatSidebar";
@@ -26,24 +26,24 @@ import { useTheme } from "@/context/ThemeContext";
 interface ChatConversationHeaderProps {
   expertId?: string;
   agentId?: string;
-  contentTypeId?: string;
+  contentType?: string;
   experts: Expert[];
   agents: Agent[];
-  contentTypes: any[];
+  contentTypes: any[]; // Usando 'any' pois o tipo exato pode variar
 }
 
 // Componente de cabeçalho de conversa simplificado
 function ChatConversationHeader({ 
   expertId, 
   agentId, 
-  contentTypeId,
+  contentType, 
   experts, 
   agents, 
   contentTypes 
 }: ChatConversationHeaderProps) {
   const expert = expertId ? experts.find(e => e.id === expertId) : undefined;
   const agent = agentId ? agents.find(a => a.id === agentId) : undefined;
-  const contentTypeObj = contentTypeId ? contentTypes.find(ct => ct.id === contentTypeId) : undefined;
+  const contentTypeObj = contentType ? contentTypes.find(ct => ct.name === contentType) : undefined;
 
   return (
     <div className="chat-conversation-header w-full max-w-full">
@@ -55,7 +55,7 @@ function ChatConversationHeader({
             <AvatarFallback>{expertId ? (expert?.name?.[0] || "E").toUpperCase() : "E"}</AvatarFallback>
           )}
         </Avatar>
-        <span className="text-sm font-medium truncate text-muted-foreground">{expert?.name || "Expert"}</span>
+        <span className="text-sm font-medium truncate">{expert?.name || "Expert"}</span>
       </div>
       
       <div className="header-item">
@@ -66,18 +66,18 @@ function ChatConversationHeader({
             <AvatarFallback>{agentId ? (agent?.name?.[0] || "A").toUpperCase() : "A"}</AvatarFallback>
           )}
         </Avatar>
-        <span className="text-sm font-medium truncate text-muted-foreground">{agent?.name || "Agente"}</span>
+        <span className="text-sm font-medium truncate">{agent?.name || "Agente"}</span>
       </div>
       
       <div className="header-item">
         <Avatar className="h-8 w-8">
           {contentTypeObj?.avatar ? (
-            <AvatarImage src={contentTypeObj.avatar} alt={contentTypeObj.name || "Tipo"} />
+            <AvatarImage src={contentTypeObj.avatar} alt={contentType || "Tipo"} />
           ) : (
-            <AvatarFallback>{contentTypeObj?.name ? contentTypeObj.name[0].toUpperCase() : "T"}</AvatarFallback>
+            <AvatarFallback>{contentType ? contentType[0].toUpperCase() : "T"}</AvatarFallback>
           )}
         </Avatar>
-        <span className="text-sm font-medium truncate text-muted-foreground">{contentTypeObj?.name || "Tipo de Conteúdo"}</span>
+        <span className="text-sm font-medium truncate">{contentType || "Tipo de Conteúdo"}</span>
       </div>
     </div>
   );
@@ -139,14 +139,14 @@ export default function Home() {
     experts,
     agents,
     contentTypes,
-    chats,
-    activeChatId,
+    currentChat, 
     setCurrentChat,
     createChat, 
     addMessageToChat, 
     generateCopy,
     deleteChat,
     deleteMessageFromChat,
+    chats
   } = useData();
   const { currentUser } = useAuth();
   const { toast } = useToast();
@@ -154,7 +154,7 @@ export default function Home() {
   const { theme } = useTheme();
   const isKeyboardVisible = useKeyboardVisible();
   
-  // Initialize state with undefined
+  // Initialize state with undefined, not depending on currentChat which might be null initially
   const [selectedExpert, setSelectedExpert] = useState<string | undefined>(undefined);
   const [selectedAgent, setSelectedAgent] = useState<string | undefined>(undefined);
   const [selectedContentType, setSelectedContentType] = useState<string | undefined>(undefined);
@@ -171,16 +171,8 @@ export default function Home() {
   
   const [chatToDelete, setChatToDelete] = useState<string | null>(null);
 
-  // DERIVAR currentChat a partir de chats e activeChatId
-  const currentChat = useMemo(() => {
-    if (!activeChatId) return null;
-    const chat = chats.find(c => c.id === activeChatId);
-    console.log(`[Home Memo] Derivando currentChat. ID Ativo: ${activeChatId}, Chat encontrado:`, chat); // Log para depuração
-    return chat ?? null; // Retorna o chat encontrado ou null se não existir na lista
-  }, [chats, activeChatId]);
-
   const messages = currentChat?.messages || [];
-  const isInitialState = !currentChat; // Ou !activeChatId
+  const isInitialState = !currentChat;
 
   // Efeito para monitorar alterações de rota e garantir que o estado seja limpo ao navegar para Home
   useEffect(() => {
@@ -212,160 +204,172 @@ export default function Home() {
 
   // Log para depuração
   useEffect(() => {
-    console.log("Current chat state (derivado):", { 
+    console.log("Current chat state:", { 
       currentChatId: currentChat?.id,
-      activeChatIdFromContext: activeChatId, // Logar o ID vindo do contexto
       messageCount: messages.length,
       messages,
-      allChatsCount: chats.length // Usar chats.length
+      allChats: chats
     });
-  }, [currentChat, activeChatId, messages, chats]); // Adicionar activeChatId e chats às deps
+  }, [currentChat, messages, chats]);
 
-  // ADICIONAR useEffect que reage ao currentChat DERIVADO
+  // Only update state from currentChat when it exists
   useEffect(() => {
     if (currentChat) {
-      console.log("[Home Effect] Sincronizando seletores com currentChat DERIVADO:", currentChat);
+      console.log("Atualizando seletores do chat:", currentChat);
+      sessionStorage.removeItem('fromNavigation'); // Limpar flag de navegação
       setSelectedExpert(currentChat.expertId);
       setSelectedAgent(currentChat.agentId);
-      setSelectedContentType(currentChat.contentTypeId); 
-      // Não resetar promptInput aqui, pois pode limpar enquanto usuário digita se chat atualizar
-      // setPromptInput(""); 
-      // Não resetar isGenerating ou typingContent aqui
-    } else {
-      // Se não há chat ativo, talvez resetar os seletores?
-      // console.log("[Home Effect] Sem chat ativo, resetando seletores?");
-      // setSelectedExpert(undefined);
-      // setSelectedAgent(undefined);
-      // setSelectedContentType(undefined);
+      setSelectedContentType(currentChat.contentType);
+      setPromptInput("");
+      setIsGenerating(false);
+      setTypingContent("");
     }
-    // Adicionar dependências corretas
-  }, [currentChat?.id, currentChat?.expertId, currentChat?.agentId, currentChat?.contentTypeId]); 
+  }, [currentChat]);
 
   useEffect(() => {
     if (scrollAreaRef.current) {
       scrollAreaRef.current.scrollTop = scrollAreaRef.current.scrollHeight;
     }
-    // currentChat foi derivado, usar ele como dep ou suas propriedades
-  }, [messages, isGenerating]); // messages deve ser suficiente
+  }, [currentChat?.messages, isGenerating]);
 
   const handleSendMessage = async (message: string) => {
-    console.log("[Home SendMsg] Start", { activeChatId, currentChatExists: !!currentChat, prompt: message });
+    console.log("handleSendMessage: Start", { currentChat, prompt: message });
     // Validations
     if (!message.trim() || isGenerating) return;
     if (!selectedAgent) { toast({ title: "Agente não selecionado", description: "Por favor, selecione um agente para continuar.", variant: "destructive" }); return; }
     if (!selectedContentType) { toast({ title: "Tipo de conteúdo não selecionado", description: "Por favor, selecione um tipo de conteúdo.", variant: "destructive" }); return; }
-    
+    if (!currentUser?.apiKey) { setShowApiKeyAlert(true); return; }
+
+    // Bloqueamos a UI e limpamos qualquer conteúdo de digitação anterior
     setIsGenerating(true);
-    setTypingContent(""); 
+    setTypingContent("");
 
     try {
-      let chatToUseId = activeChatId;
-      let agentIdForRequest = selectedAgent!; // Inicializa com o seletor
-      let contentTypeIdForRequest = selectedContentType!; // Inicializa com o seletor
-      let expertIdForRequest = selectedExpert; // Inicializa com o seletor (pode ser undefined)
-      let messagesForGeneration = messages; // Usa as mensagens do currentChat derivado
-
-      if (!chatToUseId) { 
-        console.log("[Home SendMsg] Criando novo chat...");
-        const copyRequestForNewChat: CopyRequest = {
-          userInput: message,
-          expertId: selectedExpert, // AJUSTADO AQUI (passa undefined se não selecionado)
-          agentId: selectedAgent!,
-          contentTypeId: selectedContentType, 
-        };
-        
-        const newChatResult = await createChat(copyRequestForNewChat); 
-        
-        if (newChatResult) {
-          chatToUseId = newChatResult.id; 
-          // Para um novo chat, os IDs de expert, agent e contentType são os dos seletores
-          // messagesForGeneration será vazio, pois é um novo chat (já é o default de `messages` se currentChat é null)
-          console.log("[Home SendMsg] Novo chat criado, ID ativo definido:", newChatResult.id);
-        } else {
-          console.error("Falha ao criar novo chat. createChat retornou null.");
-          toast({ title: "Erro", description: "Não foi possível iniciar uma nova conversa.", variant: "destructive" });
-          setIsGenerating(false);
-          return;
-        }
-      } else {
-        // Se já existe um chat (chatToUseId não era nulo), usar os IDs do currentChat para consistência
-        // currentChat é derivado de activeChatId, então deve estar atualizado
-        if (currentChat) {
-            agentIdForRequest = currentChat.agentId;
-            contentTypeIdForRequest = currentChat.contentTypeId!;
-            expertIdForRequest = currentChat.expertId; // Pode ser undefined se não estiver no chat
-            messagesForGeneration = currentChat.messages; // Pega o histórico completo do chat atual
-        }
-      }
-
-      if (!chatToUseId) { 
-        console.error("Erro crítico: Chat ID não está disponível após tentativa de criação/seleção.");
-        toast({ title: "Erro", description: "Ocorreu um problema com a conversa.", variant: "destructive" });
-        setIsGenerating(false);
-        return;
-      }
-
-      console.log(`[Home SendMsg] Adicionando mensagem do usuário ao chat ${chatToUseId}`);
+      // --- FASE 1: Criar chat se necessário ---
+      // Primeiro verificamos se já temos um chat ou precisamos criar um
+      let chatId = currentChat?.id;
+      let activeChat = currentChat;
       
-      await addMessageToChat(chatToUseId, {
-        text: message,
-        sender: "user",
-        agentId: agentIdForRequest, // Usa o agentId determinado para a requisição
-      });
-
-      setPromptInput(""); 
-
-      console.log(`[Home SendMsg] Gerando resposta para o chat ${chatToUseId}`);
-      // AJUSTADO: Usar os IDs determinados (agentIdForRequest, etc.)
-      const copyRequestForGeneration: CopyRequest = {
-        userInput: message,
-        expertId: expertIdForRequest, 
-        agentId: agentIdForRequest, 
-        contentTypeId: contentTypeIdForRequest,
-        chatId: chatToUseId,
-      };
-
-      // Passar `messagesForGeneration` que contém o histórico correto do chat atual
-      const agentResponseText = await generateCopy(copyRequestForGeneration, messagesForGeneration);
-      setTypingContent(""); 
-
-      console.log("[Home SendMsg] agentResponseText OBTIDO:", agentResponseText);
-
-      if (agentResponseText && typeof agentResponseText === 'string' && agentResponseText.trim() !== "") { 
-        console.log(`[Home SendMsg] CONDIÇÃO IF VERDADEIRA. Resposta do agente recebida: "${agentResponseText}"`); 
-        
-        const agentMessageData: Omit<Message, "id" | "createdAt" | "chatId"> = {
-          text: agentResponseText,
-          sender: 'agent',
-          agentId: agentIdForRequest, // Usa o agentId determinado para a requisição
-        };
-        console.log("[Home SendMsg] Dados da mensagem do agente para addMessageToChat:", JSON.stringify(agentMessageData)); 
-
-        const addedAgentMessage = await addMessageToChat(chatToUseId, agentMessageData);
-        
-        if (addedAgentMessage) {
-          console.log("[Home SendMsg] Mensagem do agente ADICIONADA via addMessageToChat. Resposta:", JSON.stringify(addedAgentMessage));
-        } else {
-          console.error("[Home SendMsg] FALHA ao adicionar mensagem do agente via addMessageToChat. Retorno foi null.");
-        }
-      } else {
-        console.warn("[Home SendMsg] CONDIÇÃO IF FALSA. Resposta do agente vazia, nula ou não é string válida:", agentResponseText);
-        toast({
-          title: "Falha na Geração",
-          description: "O agente não conseguiu gerar uma resposta.",
-          variant: "destructive",
+      if (!chatId) {
+        console.log("Criando novo chat...");
+        const newChat = createChat({
+          expertId: selectedExpert,
+          agentId: selectedAgent,
+          contentType: selectedContentType,
+          additionalInfo: "",
         });
+        
+        chatId = newChat.id;
+        activeChat = newChat;
+        console.log(`Chat criado: ${chatId}`);
+        
+        // Aguardar um pouco para garantir que o chat foi criado no banco
+        await new Promise(resolve => setTimeout(resolve, 500));
+        
+        // Atualizar o estado do chat atual
+        setCurrentChat(newChat);
       }
-
-    } catch (error: any) {
-      console.error("Erro em handleSendMessage:", error);
-      toast({ title: "Erro Inesperado", description: error.message || "Ocorreu um problema ao enviar sua mensagem.", variant: "destructive" });
-    } finally {
+      
+      // --- FASE 2: Adicionar mensagem do usuário ---
+      console.log(`Adicionando mensagem do usuário ao chat ${chatId}`);
+      
+      // Criar a mensagem do usuário
+      const userMessage: Message = {
+        id: uuidv4(),
+        content: message,
+        role: 'user',
+        chatId: chatId,
+        createdAt: new Date()
+      };
+      
+      // Atualizar localmente antes de salvar no banco
+      if (activeChat) {
+        const updatedChat = {
+          ...activeChat,
+          messages: [...activeChat.messages, userMessage],
+          updatedAt: new Date()
+        };
+        setCurrentChat(updatedChat);
+        activeChat = updatedChat;
+      }
+      
+      // Salvar no banco de dados sem atualizar o estado local novamente
+      await addMessageToChat(chatId, message, 'user', false);
+      
+      // Pequeno delay para garantir que a mensagem foi salva
+      await new Promise(resolve => setTimeout(resolve, 300));
+      
+      // --- FASE 3: Gerar resposta ---
+      console.log(`Gerando resposta via API para chat ${chatId}`);
+      const response = await generateCopy({
+        expertId: selectedExpert, 
+        agentId: selectedAgent, 
+        contentType: selectedContentType,
+        additionalInfo: message,
+      });
+      
+      console.log(`Resposta recebida: ${response.length} caracteres`);
+      
+      // --- FASE 4: Mostrar resposta com efeito typewriter ---
+      console.log("Iniciando animação typewriter");
+      
+      // IMPORTANTE: Definir o conteúdo e forçar o estado de digitação
+      setTypingContent(response);
+      setIsGenerating(true);
+      
+      // Garantir tempo para que a animação typewriter seja visível
+      // (não mais que 20 segundos, mesmo para respostas longas)
+      const typewriterDuration = Math.min(response.length * 20, 20000);
+      console.log(`Aguardando ${typewriterDuration}ms para animação typewriter`);
+      
+      await new Promise(resolve => setTimeout(resolve, typewriterDuration));
+      
+      // --- FASE 5: Adicionar resposta ao banco ---
+      console.log(`Salvando resposta no banco para chat ${chatId}`);
+      
+      // Criar a mensagem do assistente
+      const assistantMessage: Message = {
+        id: uuidv4(),
+        content: response,
+        role: 'assistant',
+        chatId: chatId,
+        createdAt: new Date()
+      };
+      
+      // Atualizar localmente antes de salvar no banco
+      if (activeChat) {
+        const finalChat = {
+          ...activeChat,
+          messages: [...activeChat.messages, assistantMessage],
+          updatedAt: new Date()
+        };
+        setCurrentChat(finalChat);
+      }
+      
+      // Salvar no banco de dados sem atualizar o estado local novamente
+      await addMessageToChat(chatId, response, 'assistant', false);
+      
+      // --- FASE 6: Finalizar UI ---
+      console.log("Atualizando UI com nova mensagem");
+      
+      // IMPORTANTE: Limpar estado typewriter
+      setTypingContent("");
       setIsGenerating(false);
+      
+    } catch (error) {
+      console.error("Erro durante o processo:", error);
+      const errorMessage = error instanceof Error ? error.message : "Erro desconhecido";
+      toast({ 
+        title: "Erro na Geração", 
+        description: errorMessage, 
+        variant: "destructive" 
+      });
+      
+      setIsGenerating(false);
+      setTypingContent("");
     }
   };
   
-  /* // Comentando handleCopyGeneration temporariamente para focar nos erros principais
   const handleCopyGeneration = async (
     expertId: string | undefined,
     agentId: string,
@@ -388,34 +392,28 @@ export default function Home() {
     try {
       // --- FASE 1: Criar novo chat ---
       console.log("Criando novo chat para copy generation");
-      const chat = await createChat({ // Adicionado await e corrigido para contentTypeId
+      const chat = createChat({
         expertId,
         agentId,
-        contentTypeId: contentType, // Assumindo que 'contentType' aqui é o ID, precisa verificar
+        contentType,
         additionalInfo: info,
       });
-
-      if (!chat) {
-        toast({ title: "Erro", description: "Não foi possível criar o chat para copy.", variant: "destructive" });
-        setIsGenerating(false);
-        return;
-      }
       
       const chatId = chat.id;
-      let activeChat: Chat | null = chat; // Tipo explícito
+      let activeChat = chat;
       console.log(`Chat criado: ${chatId}`);
       
-      // Aguardar criação do chat - Removido, já que createChat é awaited
-      // await new Promise(resolve => setTimeout(resolve, 500));
+      // Aguardar criação do chat
+      await new Promise(resolve => setTimeout(resolve, 500));
       
       // --- FASE 2: Adicionar mensagem do usuário ---
       console.log(`Adicionando mensagem do usuário ao chat ${chatId}`);
       
-      // Criar a mensagem do usuário (corrigindo para usar text e sender)
+      // Criar a mensagem do usuário
       const userMessage: Message = {
         id: uuidv4(),
-        text: `Crie uma copy para ${contentType} com as seguintes informações:\n\n${info}`,
-        sender: 'user',
+        content: `Crie uma copy para ${contentType} com as seguintes informações:\n\n${info}`,
+        role: 'user',
         chatId: chatId,
         createdAt: new Date()
       };
@@ -431,51 +429,49 @@ export default function Home() {
         activeChat = updatedChat;
       }
       
-      // Salvar no banco de dados
-      await addMessageToChat(chatId, {
-        text: `Crie uma copy para ${contentType} com as seguintes informações:\n\n${info}`,
-        sender: "user",
-        // agentId: agentId, // Adicionar se necessário
-      });
+      // Salvar no banco de dados sem atualizar o estado local novamente
+      await addMessageToChat(
+        chatId,
+        `Crie uma copy para ${contentType} com as seguintes informações:\n\n${info}`,
+        "user",
+        false
+      );
       
-      // Aguardar persistência da mensagem - Removido, addMessageToChat é awaited
-      // await new Promise(resolve => setTimeout(resolve, 300));
+      // Aguardar persistência da mensagem
+      await new Promise(resolve => setTimeout(resolve, 300));
       
       // --- FASE 3: Gerar resposta ---
       console.log(`Gerando resposta via API para chat ${chatId}`);
       const response = await generateCopy({
         expertId,
         agentId,
-        contentTypeId: contentType, // Assumindo que 'contentType' aqui é o ID
+        contentType,
         additionalInfo: info,
-        chatId: chatId, // Adicionar chatId para que generateCopy possa salvar as mensagens
       });
       
       console.log(`Resposta recebida: ${response.length} caracteres`);
       
       // --- FASE 4: Mostrar resposta com efeito typewriter ---
-      // console.log("Iniciando animação typewriter");
-      // setTypingContent(response);
-      // setIsGenerating(true); // Já está true
+      console.log("Iniciando animação typewriter");
+      setTypingContent(response);
+      setIsGenerating(true);
       
       // Tempo para animação (máximo 20 segundos)
-      // const typewriterDuration = Math.min(response.length * 20, 20000);
-      // console.log(`Aguardando ${typewriterDuration}ms para animação typewriter`);
+      const typewriterDuration = Math.min(response.length * 20, 20000);
+      console.log(`Aguardando ${typewriterDuration}ms para animação typewriter`);
       
-      // await new Promise(resolve => setTimeout(resolve, typewriterDuration));
+      await new Promise(resolve => setTimeout(resolve, typewriterDuration));
       
       // --- FASE 5: Adicionar resposta ao banco ---
-      // generateCopy já deve estar salvando a resposta do agente se chatId for fornecido
-      // console.log(`Salvando resposta no banco para chat ${chatId}`);
+      console.log(`Salvando resposta no banco para chat ${chatId}`);
       
-      // Criar a mensagem do assistente (corrigindo para usar text e sender)
+      // Criar a mensagem do assistente
       const assistantMessage: Message = {
         id: uuidv4(),
-        text: response,
-        sender: 'agent', // ou 'assistant' dependendo da sua definição de Message['sender']
+        content: response,
+        role: 'assistant',
         chatId: chatId,
-        createdAt: new Date(),
-        agentId: agentId, // Adicionar agentId
+        createdAt: new Date()
       };
       
       // Atualizar localmente antes de salvar no banco
@@ -488,8 +484,8 @@ export default function Home() {
         setCurrentChat(finalChat);
       }
       
-      // Salvar no banco de dados (generateCopy já deve fazer isso se o fluxo for unificado)
-      // await addMessageToChat(chatId, { text: response, sender: 'agent', agentId: agentId });
+      // Salvar no banco de dados sem atualizar o estado local novamente
+      await addMessageToChat(chatId, response, 'assistant', false);
       
       // Limpar estado typewriter
       setTypingContent("");
@@ -513,7 +509,6 @@ export default function Home() {
       setTypingContent("");
     }
   };
-  */
   
   const confirmDeleteChat = () => {
     if (chatToDelete) {
@@ -561,9 +556,9 @@ export default function Home() {
             >
               <div className="max-w-3xl mx-auto">
                 <ChatConversationHeader 
-                  expertId={currentChat?.expertId}
-                  agentId={currentChat?.agentId}
-                  contentTypeId={currentChat?.contentTypeId}
+                  expertId={selectedExpert}
+                  agentId={selectedAgent}
+                  contentType={selectedContentType}
                   experts={experts}
                   agents={agents}
                   contentTypes={contentTypes}
@@ -710,10 +705,10 @@ export default function Home() {
                 <Select value={selectedContentType || ""} onValueChange={setSelectedContentType}>
                   <SelectTriggerWithAvatar
                     avatarSrc={selectedContentType 
-                      ? contentTypes.find(ct => ct.id === selectedContentType)?.avatar || null 
+                      ? contentTypes.find(ct => ct.name === selectedContentType)?.avatar || null 
                       : null}
                     selectedName={selectedContentType 
-                      ? contentTypes.find(ct => ct.id === selectedContentType)?.name || null 
+                      ? contentTypes.find(ct => ct.name === selectedContentType)?.name || null 
                       : null}
                     className="h-10 md:h-auto"
                   >
@@ -726,7 +721,7 @@ export default function Home() {
                     {contentTypes.map((contentType) => (
                       <SelectItemWithAvatar
                         key={contentType.id} 
-                        value={contentType.id} 
+                        value={contentType.name}
                         avatarSrc={contentType.avatar || null}
                         name={contentType.name}
                       >

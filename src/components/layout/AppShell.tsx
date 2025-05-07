@@ -1,7 +1,7 @@
 import { useState, ReactNode, useEffect, useRef } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { useTheme } from "@/context/ThemeContext";
-import { useData } from "@/context/DataContext";
+import { useData } from "@/hooks/useData";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Menu, X, Home, Users, Settings, ChevronRight, Moon, Sun, LogOut, ChevronsLeft, ChevronsRight, Trash2, Pencil, Plus, Bot, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -19,8 +19,6 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { ChatSidebar } from "@/components/chat/ChatSidebar";
-import { ScrollArea } from "@/components/ui/scroll-area";
 
 interface AppShellProps {
   children: ReactNode;
@@ -29,7 +27,9 @@ interface AppShellProps {
 export function AppShell({ children }: AppShellProps) {
   const { currentUser, logout } = useAuth();
   const { theme, toggleTheme } = useTheme();
-  const { activeChatId, chats, setCurrentChat, deleteChat } = useData();
+  const { setCurrentChat, deleteChat } = useData();
+  const { chats } = useData();
+  const { currentChat } = useData();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [chatToDelete, setChatToDelete] = useState<string | null>(null);
@@ -112,7 +112,7 @@ export function AppShell({ children }: AppShellProps) {
     
     const filtered = chatHistory.filter(chat => {
       const hasTermInMessages = chat.messages.some(msg => 
-        msg.text.toLowerCase().includes(lowerSearchTerm)
+        msg.content.toLowerCase().includes(lowerSearchTerm)
       );
       
       const chatDate = new Date(chat.createdAt);
@@ -354,7 +354,7 @@ export function AppShell({ children }: AppShellProps) {
              
              <ul className="space-y-1 mt-1">
                {(searchTerm ? filteredChats : chatHistory).map((chat) => {
-                   const subtitle = generateChatSubtitle(chat.messages[0]?.text);
+                   const subtitle = generateChatSubtitle(chat.messages[0]?.content);
                    return (
                      <li key={chat.id}>
                        {sidebarCollapsed ? (
@@ -362,7 +362,7 @@ export function AppShell({ children }: AppShellProps) {
                            <TooltipTrigger asChild>
                              <button
                                className={`flex items-center w-full p-3 rounded-lg text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors duration-150 text-left 
-                                          ${activeChatId === chat.id ? 'bg-sidebar-accent font-medium' : ''} 
+                                          ${currentChat?.id === chat.id ? 'bg-sidebar-accent font-medium' : ''} 
                                           justify-center`}
                                onClick={(e) => {
                                  e.preventDefault();
@@ -391,7 +391,7 @@ export function AppShell({ children }: AppShellProps) {
                          <div className="relative group">
                            <button
                              className={`flex items-center w-full p-3 rounded-lg text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors duration-150 text-left 
-                                        ${activeChatId === chat.id ? 'bg-sidebar-accent font-medium' : ''}`}
+                                        ${currentChat?.id === chat.id ? 'bg-sidebar-accent font-medium' : ''}`}
                              onClick={(e) => {
                                e.preventDefault();
                                e.stopPropagation();

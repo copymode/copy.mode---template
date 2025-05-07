@@ -10,15 +10,14 @@ export interface User {
 export interface Agent {
   id: string;
   name: string;
-  avatar: string;
-  description: string;
+  avatar?: string;
   prompt: string;
-  knowledgeFiles?: KnowledgeFile[];
-  model?: string;
+  description: string;
   temperature?: number;
-  createdBy?: string;
-  createdAt?: string;
-  updatedAt?: string;
+  createdAt: Date;
+  updatedAt: Date;
+  createdBy: string;
+  knowledgeFiles?: KnowledgeFile[];
 }
 
 export interface KnowledgeFile {
@@ -45,10 +44,9 @@ export interface Chat {
   id: string;
   title: string;
   messages: Message[];
-  expertId: string;
+  expertId?: string;
   agentId: string;
-  contentTypeId?: string;
-  contentType?: ContentType;
+  contentType: string;
   userId: string;
   createdAt: Date;
   updatedAt: Date;
@@ -56,24 +54,17 @@ export interface Chat {
 
 export interface Message {
   id: string;
-  text: string;
-  sender: "user" | "expert" | "agent";
+  content: string;
+  role: "user" | "assistant";
   chatId: string;
-  agentId?: string;
   createdAt: Date;
-  isLoading?: boolean;
 }
 
 export interface CopyRequest {
-  userInput: string;
-  expertId: string;
+  expertId?: string;
   agentId: string;
-  contentTypeId?: string;
-  chatId?: string;
-  language?: string;
-  tone?: string;
-  style?: string;
-  format?: string;
+  contentType: string;
+  additionalInfo: string;
 }
 
 export interface ContentType {
