@@ -1,101 +1,63 @@
 import { createContext, useContext, useState, useEffect, ReactNode, useMemo, useCallback } from "react";
-import { Agent, Expert, Chat, Message, CopyRequest, User, KnowledgeFile, ContentType } from "@/types";
+import { Agent, Expert, Chat, Message, CopyRequest, User, KnowledgeFile, ContentType } from "@/types"; // Seus tipos centrais
 import { useAuth } from "./AuthContext";
-import { v4 as uuidv4 } from "uuid";
-// Import Supabase client
+// import { v4 as uuidv4 } from "uuid"; // uuidv4 não está sendo usado
 import { supabase } from "@/integrations/supabase/client";
+import { OpenAI } from "openai";
+import { Database } from "@/types/supabase";
+import Groq from 'groq-sdk';
 
-// Define table and bucket names as constants
+// --- Tipos do Supabase (gerados) ---
+type DbAgentRow = Database['public']['Tables']['agents']['Row'];
+type DbAgentInsert = Database['public']['Tables']['agents']['Insert'];
+
+type DbExpertRow = Database['public']['Tables']['experts']['Row'];
+type DbExpertInsert = Database['public']['Tables']['experts']['Insert'];
+
+type DbChatRow = Database['public']['Tables']['chats']['Row'];
+type DbChatInsert = Database['public']['Tables']['chats']['Insert'];
+
+type DbMessageRow = Database['public']['Tables']['messages']['Row'];
+type DbMessageInsert = Database['public']['Tables']['messages']['Insert'];
+
+type DbContentTypeRow = Database['public']['Tables']['content_types']['Row'];
+type DbContentTypeInsert = Database['public']['Tables']['content_types']['Insert'];
+
+// --- Constantes ---
 const AGENTS_TABLE = 'agents';
-const EXPERTS_TABLE = 'experts'; // Assuming experts table name
-const CHATS_TABLE = 'chats';     // Assuming chats table name
-const CONTENT_TYPES_TABLE = 'content_types'; // Table for content types
-const KNOWLEDGE_BUCKET = 'agent.files';
-const CONTENT_TYPE_BUCKET = 'content.type.avatars'; // Bucket for content type avatars
-
-// Define the shape of the Agent data returned from Supabase
-// (assuming snake_case for column names like created_by, knowledge_files)
-interface DbAgent {
-  id: string;
-  name: string;
-  avatar?: string;
-  prompt: string;
-  description?: string; // Made optional to match DB
-  temperature?: number;
-  created_at: string; // DB returns ISO string
-  updated_at: string; // DB returns ISO string
-  created_by: string;
-  knowledges_files?: KnowledgeFile[]; // Corrected: Use knowledges_files
-}
-
-// Interface para o objeto usado para atualizar o agente no banco de dados
-interface AgentUpdateData {
-  name?: string;
-  description?: string;
-  prompt?: string;
-  temperature?: number;
-  avatar?: string;
-  knowledges_files?: KnowledgeFile[];
-  updated_at?: string;
-}
-
-// Define interface para mapear o expert do banco para nosso tipo
-interface DbExpert {
-  id: string;
-  name: string;
-  niche: string;
-  target_audience: string;
-  deliverables: string;
-  benefits: string;
-  objections: string;
-  avatar?: string;
-  created_at: string;
-  updated_at: string;
-  user_id: string;
-}
-
-// Interface para ContentType no banco de dados
-interface DbContentType {
-  id: string;
-  name: string;
-  avatar?: string;
-  description?: string;
-  created_at: string;
-  updated_at: string;
-  user_id: string;
-}
+const EXPERTS_TABLE = 'experts';
+const CHATS_TABLE = 'chats';
+const MESSAGES_TABLE = 'messages';
+const CONTENT_TYPES_TABLE = 'content_types';
+const AGENT_KNOWLEDGE_CHUNKS_TABLE = 'agent_knowledge_chunks';
 
 interface DataContextType {
   agents: Agent[];
-  // Modify createAgent to return the created Agent or its ID
-  createAgent: (agentData: Omit<Agent, "id" | "createdAt" | "updatedAt" | "createdBy" | "knowledgeFiles">) => Promise<Agent>; 
-  updateAgent: (id: string, agentData: Partial<Omit<Agent, "id" | "createdAt" | "updatedAt" | "createdBy">>) => Promise<void>; 
-  deleteAgent: (id: string) => Promise<void>; 
-  getAgentById: (agentId: string) => Promise<Agent | null>; 
+  createAgent: (agentData: Omit<Agent, "id" | "createdAt" | "updatedAt" | "createdBy" | "knowledgeFiles">) => Promise<Agent | null>;
+  updateAgent: (id: string, agentData: Partial<Omit<Agent, "id" | "createdAt" | "updatedAt" | "createdBy" | "knowledgeFiles">>) => Promise<Agent | null>;
+  deleteAgent: (id: string) => Promise<void>;
+  getAgentById: (agentId: string) => Promise<Agent | null>;
   updateAgentFiles: (agentId: string, files: KnowledgeFile[]) => Promise<void>;
-  
-  // Experts (métodos atualizados para Promises)
-  experts: Expert[];
-  addExpert: (expert: Omit<Expert, "id" | "createdAt" | "updatedAt" | "userId">) => Promise<Expert>;
-  updateExpert: (id: string, expert: Partial<Omit<Expert, "id" | "createdAt" | "updatedAt" | "userId">>) => Promise<Expert>;
-  deleteExpert: (id: string) => Promise<void>;
-  
-  // Chats (Keep mocks for now or update similarly if needed)
-  chats: Chat[];
-  currentChat: Chat | null;
-  setCurrentChat: (chat: Chat | null) => void;
-  createChat: (copyRequest: CopyRequest) => Chat;
-  addMessageToChat: (chatId: string, content: string, role: "user" | "assistant", updateState?: boolean) => void;
-  deleteChat: (id: string) => void;
-  deleteMessageFromChat: (chatId: string, messageId: string) => void;
-  
-  // Copy Generation (Keep as is)
-  generateCopy: (request: CopyRequest) => Promise<string>;
+  refetchAgentData: (agentId: string) => Promise<void>;
 
-  // ContentTypes
+  experts: Expert[];
+  addExpert: (expertData: Omit<Expert, "id" | "createdAt" | "updatedAt" | "userId">) => Promise<Expert | null>;
+  updateExpert: (id: string, expertData: Partial<Omit<Expert, "id" | "createdAt" | "updatedAt" | "userId">>) => Promise<Expert | null>;
+  deleteExpert: (id: string) => Promise<void>;
+
+  chats: Chat[];
+  setCurrentChat: (chat: Chat | null) => void;
+  activeChatId: string | null;
+  createChat: (copyRequest: CopyRequest) => Promise<Chat | null>;
+  addMessageToChat: (chatId: string, messageData: Omit<Message, "id" | "createdAt" | "chatId">) => Promise<Message | null>;
+  deleteChat: (id: string) => Promise<void>;
+  deleteMessageFromChat: (chatId: string, messageId: string) => Promise<void>;
+
+  generateCopy: (request: CopyRequest, chatHistory?: Message[]) => Promise<string>;
+
   contentTypes: ContentType[];
-  createContentType: (contentTypeData: Omit<ContentType, "id" | "createdAt" | "updatedAt" | "userId">) => Promise<ContentType>;
-  updateContentType: (id: string, contentTypeData: Partial<Omit<ContentType, "id" | "createdAt" | "updatedAt" | "userId">>) => Promise<ContentType>;
+  createContentType: (contentTypeData: Omit<ContentType, "id" | "createdAt" | "updatedAt" | "userId">) => Promise<ContentType | null>;
+  updateContentType: (id: string, contentTypeData: Partial<Omit<ContentType, "id" | "createdAt" | "updatedAt" | "userId">>) => Promise<ContentType | null>;
   deleteContentType: (id: string) => Promise<void>;
   getContentTypeById: (id: string) => Promise<ContentType | null>;
 
@@ -103,731 +65,482 @@ interface DataContextType {
 }
 
 const DataContext = createContext<DataContextType | undefined>(undefined);
-
-// Exportando o DataContext para ser usado pelo hook useData em um arquivo separado
 export { DataContext };
 
-// REMOVE MOCK DATA FOR AGENTS
-/*
-const mockAgents: Agent[] = [ ... ];
-*/
-// Keep mocks for Experts and Chats for now
-const mockExperts: Expert[] = [/* ... */];
-const mockChats: Chat[] = [/* ... */];
-
-// Mocks para ContentTypes
 const mockContentTypes: ContentType[] = [
-  {
-    id: '1',
-    name: 'Post Feed',
-    description: 'Conteúdo para o feed principal',
-    avatar: null,
-    createdAt: new Date(),
-    updatedAt: new Date(),
-    userId: 'system'
-  },
-  {
-    id: '2',
-    name: 'Story',
-    description: 'Conteúdo para stories',
-    avatar: null,
-    createdAt: new Date(),
-    updatedAt: new Date(),
-    userId: 'system'
-  },
-  {
-    id: '3',
-    name: 'Reels',
-    description: 'Conteúdo para reels/vídeos curtos',
-    avatar: null,
-    createdAt: new Date(),
-    updatedAt: new Date(),
-    userId: 'system'
-  },
-  {
-    id: '4',
-    name: 'Anúncio',
-    description: 'Conteúdo para anúncios pagos',
-    avatar: null,
-    createdAt: new Date(),
-    updatedAt: new Date(),
-    userId: 'system'
-  }
+  { id: '1', name: 'Post Feed', description: 'Conteúdo para o feed principal', avatar: undefined, createdAt: new Date(), updatedAt: new Date(), userId: 'system'},
+  { id: '2', name: 'Story', description: 'Conteúdo para stories', avatar: undefined, createdAt: new Date(), updatedAt: new Date(), userId: 'system'},
+  { id: '3', name: 'Reels', description: 'Conteúdo para reels/vídeos curtos', avatar: undefined, createdAt: new Date(), updatedAt: new Date(), userId: 'system'},
+  { id: '4', name: 'Anúncio', description: 'Conteúdo para anúncios pagos', avatar: undefined, createdAt: new Date(), updatedAt: new Date(), userId: 'system'}
 ];
 
 export function DataProvider({ children }: { children: ReactNode }) {
   const { currentUser } = useAuth();
-  const [agents, setAgents] = useState<Agent[]>([]); 
-  const [experts, setExperts] = useState<Expert[]>([]); 
-  const [chats, setChats] = useState<Chat[]>([]);  // Iniciar com array vazio em vez de mocks
-  const [currentChat, setCurrentChat] = useState<Chat | null>(null);
-  const [contentTypes, setContentTypes] = useState<ContentType[]>(mockContentTypes); 
+  const [agents, setAgents] = useState<Agent[]>([]);
+  const [experts, setExperts] = useState<Expert[]>([]);
+  const [chats, setChats] = useState<Chat[]>([]);
+  const [activeChatId, setActiveChatId] = useState<string | null>(null);
+  const [contentTypes, setContentTypes] = useState<ContentType[]>(mockContentTypes);
   const [isLoading, setIsLoading] = useState(true);
   const [initialLoadComplete, setInitialLoadComplete] = useState(false);
 
-  // Load initial data from Supabase
+  const openaiApiKey = import.meta.env.VITE_OPENAI_API_KEY;
+  const openai = useMemo(() => {
+    if (openaiApiKey) {
+      return new OpenAI({ apiKey: openaiApiKey, dangerouslyAllowBrowser: true });
+    }
+    console.warn('[DataContext] VITE_OPENAI_API_KEY not found. RAG impaired.');
+    return null;
+  }, [openaiApiKey]);
+
+  const mapDbAgentToAgent = useCallback((dbAgent: DbAgentRow): Agent => {
+    const agentData: Agent = {
+        id: dbAgent.id,
+        name: dbAgent.name,
+        avatar: dbAgent.avatar ?? "",
+        prompt: dbAgent.prompt,
+        description: dbAgent.description ?? "",
+        temperature: dbAgent.temperature ?? 0.7,
+        createdAt: dbAgent.created_at, 
+        updatedAt: dbAgent.updated_at,
+        createdBy: dbAgent.created_by ?? undefined,
+        knowledgeFiles: [], // Populado em getAgentById
+    };
+    // Se a coluna 'model' existir na tabela 'agents' E nos tipos gerados (DbAgentRow),
+    // você pode descomentar e usar a linha abaixo.
+    // if ('model' in dbAgent && dbAgent.model !== null && dbAgent.model !== undefined) {
+    //   agentData.model = dbAgent.model as string;
+    // } else {
+    //   agentData.model = "mixtral-8x7b-32768"; // Default
+    // }
+    // Por enquanto, confiando no tipo Agent ter model opcional e default na UI se necessário
+     if (typeof (dbAgent as any).model === 'string') {
+        agentData.model = (dbAgent as any).model;
+    }
+
+
+    return agentData;
+  }, []);
+
+  const mapDbExpertToExpert = useCallback((dbExpert: DbExpertRow): Expert => ({
+    id: dbExpert.id,
+    name: dbExpert.name,
+    niche: dbExpert.niche,
+    targetAudience: dbExpert.target_audience,
+    deliverables: dbExpert.deliverables,
+    benefits: dbExpert.benefits,
+    objections: dbExpert.objections,
+    avatar: dbExpert.avatar ?? undefined,
+    userId: dbExpert.user_id,
+    createdAt: new Date(dbExpert.created_at),
+    updatedAt: new Date(dbExpert.updated_at),
+  }), []);
+  
+  const mapDbContentTypeToContentType = useCallback((dbContentType: DbContentTypeRow): ContentType => ({
+    id: dbContentType.id,
+    name: dbContentType.name,
+    avatar: dbContentType.avatar ?? undefined,
+    description: dbContentType.description ?? undefined,
+    userId: dbContentType.user_id,
+    createdAt: new Date(dbContentType.created_at),
+    updatedAt: new Date(dbContentType.updated_at),
+  }), []);
+
+  // Declarar getContentTypeById antes de generateCopy
+  const getContentTypeById = useCallback(async (id: string): Promise<ContentType | null> => {
+    const localCt = contentTypes.find(ct => ct.id === id);
+    if (localCt && localCt.userId !== 'system') return localCt;
+
+    try {
+        const { data, error } = await supabase.from(CONTENT_TYPES_TABLE).select<string, DbContentTypeRow>("*").eq('id', id).single();
+        if (error) { 
+            if (error.code === 'PGRST116') {
+                 console.log(`ContentType com id ${id} não encontrado no DB.`);
+                 return null;
+            }
+            console.error("Erro ao buscar content type por ID:", error); 
+            throw error; 
+        }
+        if (!data) return null;
+        const fetchedCt = mapDbContentTypeToContentType(data);
+        if (fetchedCt.userId !== 'system') {
+             setContentTypes(prev => {
+                const exists = prev.find(c => c.id === fetchedCt.id);
+                if (exists) {
+                    return prev.map(c => c.id === fetchedCt.id ? fetchedCt : c);
+                }
+                return [...prev, fetchedCt];
+            });
+        }
+        return fetchedCt;
+    } catch (error) {
+        console.error("Falha ao buscar content type por ID:", error);
+        return null;
+    }
+  }, [supabase, contentTypes, mapDbContentTypeToContentType]);
+
+
+  const getAgentById = useCallback(async (agentId: string): Promise<Agent | null> => {
+    try {
+      const { data, error } = await supabase
+        .from(AGENTS_TABLE)
+        .select(`*`) // Seleciona todas as colunas que existem em DbAgentRow
+        .eq('id', agentId)
+        .single();
+
+      if (error) { 
+        if (error.code === 'PGRST116') { 
+            console.log(`Agente com id ${agentId} não encontrado.`);
+            return null;
+        }
+        console.error("Erro ao buscar agent por ID:", error); 
+        throw error; 
+      }
+      if (!data) return null;
+
+      const agent = mapDbAgentToAgent(data as DbAgentRow); // Cast para o tipo Row correto
+      
+      const { data: chunks, error: chunksError } = await supabase
+        .from(AGENT_KNOWLEDGE_CHUNKS_TABLE)
+        .select('original_file_name, chunk_text')
+        .eq('agent_id', agentId);
+
+      if (chunksError) {
+        console.error("Erro ao buscar chunks para o agente:", chunksError);
+      } else if (chunks) {
+        const filesMap = new Map<string, KnowledgeFile>();
+        chunks.forEach(chunk => {
+          if (!chunk.original_file_name) return; 
+          if (!filesMap.has(chunk.original_file_name)) {
+            filesMap.set(chunk.original_file_name, {
+              name: chunk.original_file_name,
+              path: '', 
+              content: chunk.chunk_text ?? "", 
+            });
+          } else {
+            const existingFile = filesMap.get(chunk.original_file_name)!;
+            existingFile.content += `\n${chunk.chunk_text ?? ""}`;
+          }
+        });
+        agent.knowledgeFiles = Array.from(filesMap.values());
+      }
+      return agent;
+    } catch (error) {
+      console.error("Falha ao buscar agent por ID:", error);
+      return null;
+    }
+  }, [supabase, mapDbAgentToAgent]);
+
+  const fetchUserChats = useCallback(async () => {
+    if (!currentUser?.id) { setChats([]); return; }
+    try {
+      // Usar DbChatRow que reflete a coluna 'content_type'
+      const { data: chatsData, error: chatsError } = await supabase
+        .from(CHATS_TABLE).select<string, DbChatRow>('*').eq('user_id', currentUser.id).order('updated_at', { ascending: false });
+      
+      if (chatsError) { console.error("[DataContext] Erro ao carregar chats:", chatsError); throw chatsError; }
+      if (!chatsData) { setChats([]); return; }
+
+      const chatIds = chatsData.map(c => c.id);
+      let allDbMessages: DbMessageRow[] = [];
+      if (chatIds.length > 0) {
+        // Usar DbMessageRow. Se agent_id não existir, o tipo gerado não o terá.
+        const { data: msgs, error: msgsError } = await supabase
+          .from(MESSAGES_TABLE).select<string, DbMessageRow>('*').in('chat_id', chatIds).order('created_at', { ascending: true });
+        if (msgsError) { console.error("[DataContext] Erro ao carregar mensagens:", msgsError); throw msgsError; }
+        allDbMessages = msgs || [];
+      }
+
+      const messagesByChatId = allDbMessages.reduce((acc, dbMsg) => {
+        acc[dbMsg.chat_id] = acc[dbMsg.chat_id] || [];
+        let sender: Message['sender']; 
+        if (dbMsg.role === 'user') {
+          sender = 'user';
+        } else if (dbMsg.role === 'assistant') {
+          sender = 'agent';
+        } else if (dbMsg.role === 'expert') {
+          sender = 'expert';
+        } else if (dbMsg.role === 'agent') {
+          sender = 'agent';
+        } else {
+          console.warn(`Role não esperado '${dbMsg.role}' recebido para mensagem ${dbMsg.id}, usando 'agent' como fallback.`);
+          sender = 'agent';
+        }
+        
+        const messageEntry: Message = {
+          id: dbMsg.id,
+          text: dbMsg.content,
+          sender: sender,
+          chatId: dbMsg.chat_id,
+          createdAt: new Date(dbMsg.created_at)
+        };
+
+        if ('agent_id' in dbMsg && dbMsg.agent_id !== null && dbMsg.agent_id !== undefined) {
+          messageEntry.agentId = dbMsg.agent_id as string | undefined;
+        }
+        
+        acc[dbMsg.chat_id].push(messageEntry);
+        return acc;
+      }, {} as Record<string, Message[]>);
+
+      const loadedChats: Chat[] = chatsData.map((dbChat: DbChatRow) => {
+        const mappedChat: Chat = {
+          id: dbChat.id, 
+          title: dbChat.title, 
+          messages: messagesByChatId[dbChat.id] || [],
+          expertId: dbChat.expert_id ?? undefined,
+          agentId: dbChat.agent_id, 
+          contentTypeId: dbChat.content_type ?? undefined, 
+          userId: dbChat.user_id, 
+          createdAt: new Date(dbChat.created_at), 
+          updatedAt: new Date(dbChat.updated_at)
+        };
+         if (mappedChat.contentTypeId) { 
+            const foundContentType = contentTypes.find(ct => ct.id === mappedChat.contentTypeId);
+            if (foundContentType) {
+                mappedChat.contentType = foundContentType;
+            }
+        }
+        return mappedChat;
+      });
+      setChats(loadedChats);
+      if (activeChatId && !loadedChats.some(c => c.id === activeChatId)) {
+         setActiveChatId(null); 
+      }
+    } catch (error) { 
+      console.error("[DataContext] Falha em fetchUserChats:", error); 
+      setChats([]); 
+      setActiveChatId(null); 
+    }
+  }, [currentUser, supabase, contentTypes, mapDbContentTypeToContentType, activeChatId]);
+
+
   useEffect(() => {
-    if (!currentUser || initialLoadComplete) return; // Only load once per user session
+    if (!currentUser) {
+      setInitialLoadComplete(false); setAgents([]); setExperts([]); setChats([]);
+      setContentTypes(mockContentTypes); 
+      setActiveChatId(null); // Resetar activeChatId
+      return;
+    }
+    if (initialLoadComplete) return;
 
     const fetchInitialData = async () => {
       setIsLoading(true);
       try {
-        // Usando Promise.all para paralelizar requisições independentes
-        const [agentsResult, expertsResult, contentTypesResult] = await Promise.all([
-          // 1. Fetch Agents - Otimização: selecione apenas os campos necessários para a listagem
-          supabase
-            .from(AGENTS_TABLE)
-            .select('id, name, avatar, prompt, description, temperature, created_at, updated_at, created_by')
-            .order('created_at', { ascending: false }),
-            
-          // 2. Buscar Experts do DB
-          currentUser ? supabase
-            .from(EXPERTS_TABLE)
-            .select('*')
-            .eq('user_id', currentUser.id)
-            .order('created_at', { ascending: false }) : { data: null, error: null },
-            
-          // 3. Buscar ContentTypes do DB
-          supabase
-            .from(CONTENT_TYPES_TABLE)
-            .select('*')
-            .order('created_at', { ascending: false })
+        const [agentsRes, expertsRes, contentTypesRes] = await Promise.all([
+          supabase.from(AGENTS_TABLE).select<string, DbAgentRow>('*').order('created_at', { ascending: false }),
+          supabase.from(EXPERTS_TABLE).select<string, DbExpertRow>('*').eq('user_id', currentUser.id).order('created_at', { ascending: false }),
+          supabase.from(CONTENT_TYPES_TABLE).select<string, DbContentTypeRow>('*').order('name', { ascending: true })
         ]);
+
+        if (agentsRes.error) { console.error("Erro ao buscar agents:", agentsRes.error); throw agentsRes.error; }
+        setAgents(agentsRes.data?.map(mapDbAgentToAgent) || []);
+
+        if (expertsRes.error) { console.error("Erro ao buscar experts:", expertsRes.error); throw expertsRes.error; }
+        setExperts(expertsRes.data?.map(mapDbExpertToExpert) || []);
         
-        // Processar resultados dos agentes
-        const { data: agentsData, error: agentsError } = agentsResult;
-        if (agentsError) throw agentsError;
-        setAgents(agentsData ? agentsData.map((dbAgent: any) => ({
-          id: dbAgent.id,
-          name: dbAgent.name,
-          avatar: dbAgent.avatar,
-          prompt: dbAgent.prompt,
-          description: dbAgent.description || '',
-          temperature: dbAgent.temperature, 
-          createdAt: new Date(dbAgent.created_at),
-          updatedAt: new Date(dbAgent.updated_at),
-          createdBy: dbAgent.created_by,
-          knowledgeFiles: [], // Não carregue os arquivos na listagem inicial (serão carregados sob demanda)
-        })) : []);
-
-        // Processar resultados dos experts
-        const { data: expertsData, error: expertsError } = expertsResult;
-        if (expertsError) throw expertsError;
-        setExperts(expertsData ? expertsData.map((dbExpert: DbExpert) => ({
-          id: dbExpert.id,
-          name: dbExpert.name,
-          niche: dbExpert.niche,
-          targetAudience: dbExpert.target_audience,
-          deliverables: dbExpert.deliverables,
-          benefits: dbExpert.benefits,
-          objections: dbExpert.objections,
-          avatar: dbExpert.avatar,
-          createdAt: new Date(dbExpert.created_at),
-          updatedAt: new Date(dbExpert.updated_at),
-          userId: dbExpert.user_id
-        })) : []);
-
-        // Processar resultados dos tipos de conteúdo
-        const { data: contentTypesData, error: contentTypesError } = contentTypesResult;
-        if (!contentTypesError && contentTypesData) {
-          setContentTypes(contentTypesData.map((dbContentType: any) => ({
-            id: dbContentType.id,
-            name: dbContentType.name,
-            avatar: dbContentType.avatar,
-            description: dbContentType.description,
-            createdAt: new Date(dbContentType.created_at),
-            updatedAt: new Date(dbContentType.updated_at),
-            userId: dbContentType.user_id
-          })));
+        if (contentTypesRes.error) {
+          console.warn("Erro ao buscar ContentTypes, usando mock:", contentTypesRes.error.message);
+          setContentTypes(mockContentTypes);
         } else {
-          console.log("Usando tipos de conteúdo mocados devido a erro:", contentTypesError);
-          // Manter os mocks se a tabela não existir ainda
+          const dbContentTypes = contentTypesRes.data || [];
+          setContentTypes(dbContentTypes.map(mapDbContentTypeToContentType));
         }
 
-        // Buscar Chats do usuário do banco de dados em segundo plano
-        // Para não bloquear o restante do carregamento
-        if (currentUser) {
-          fetchUserChats();
-        }
-
-        setInitialLoadComplete(true); // Mark load as complete
-      } catch (error) {
-        console.error("Error loading initial data from Supabase:", error);
-        // Handle error appropriately (e.g., show toast, fallback to empty)
-        setAgents([]);
-        setExperts([]); // Deixar vazio em caso de erro
-        setChats(mockChats);
-      } finally {
-        setIsLoading(false);
+        await fetchUserChats();
+        setInitialLoadComplete(true);
+      } catch (e) { 
+        console.error("[DC] Erro em fetchInitialData:", e); 
+        setAgents([]); setExperts([]); setChats([]); setContentTypes(mockContentTypes);
+        setInitialLoadComplete(false); 
       }
+      finally { setIsLoading(false); }
     };
     
-    // Função separada para carregar chats (isolando complexidade)
-    const fetchUserChats = async () => {
-      try {
-        const { data: chatsData, error: chatsError } = await supabase
-          .from(CHATS_TABLE)
-          .select('*')
-          .eq('user_id', currentUser!.id)
-          .order('updated_at', { ascending: false });
-        
-        if (chatsError) {
-          console.error("Erro ao carregar chats:", chatsError);
-          setChats([]); // Iniciar com lista vazia em caso de erro
-          return;
-        } 
-        
-        if (!chatsData || chatsData.length === 0) {
-          setChats([]);
-          return;
-        }
-        
-        // Buscar apenas os IDs para a consulta
-        const chatIds = chatsData.map(chat => chat.id);
-        
-        // Otimização: Limitar número de mensagens por chat
-        const { data: messagesData, error: messagesError } = await supabase
-          .from('messages')
-          .select('*')
-          .in('chat_id', chatIds)
-          .order('created_at', { ascending: true });
-        
-        if (messagesError) {
-          console.error("Erro ao carregar mensagens:", messagesError);
-          
-          // Mesmo com erro nas mensagens, podemos carregar os chats sem mensagens
-          const emptyChats: Chat[] = chatsData.map(chat => ({
-            id: chat.id,
-            title: chat.title,
-            messages: [],
-            expertId: chat.expert_id || undefined,
-            agentId: chat.agent_id,
-            contentType: chat.content_type,
-            userId: chat.user_id,
-            createdAt: new Date(chat.created_at),
-            updatedAt: new Date(chat.updated_at)
-          }));
-          
-          setChats(emptyChats);
-          return;
-        }
-        
-        // Agrupar mensagens por chat_id
-        const messagesByChatId: Record<string, Message[]> = {};
-        if (messagesData) {
-          messagesData.forEach(msg => {
-            if (!messagesByChatId[msg.chat_id]) {
-              messagesByChatId[msg.chat_id] = [];
-            }
-            messagesByChatId[msg.chat_id].push({
-              id: msg.id,
-              content: msg.content,
-              role: msg.role as "user" | "assistant",
-              chatId: msg.chat_id,
-              createdAt: new Date(msg.created_at)
-            });
-          });
-        }
-        
-        // Montar objetos Chat completos
-        const loadedChats: Chat[] = chatsData.map(chat => ({
-          id: chat.id,
-          title: chat.title,
-          messages: messagesByChatId[chat.id] || [],
-          expertId: chat.expert_id || undefined,
-          agentId: chat.agent_id,
-          contentType: chat.content_type,
-          userId: chat.user_id,
-          createdAt: new Date(chat.created_at),
-          updatedAt: new Date(chat.updated_at)
-        }));
-        
-        setChats(loadedChats);
-      } catch (error) {
-        console.error("Erro ao carregar chats e mensagens:", error);
-        setChats([]);
-      }
-    };
-
-    fetchInitialData();
-  // Rerun if currentUser changes (login/logout) 
-  // Reset initialLoadComplete on user change to force reload
-  }, [currentUser]);
-
-  // Reset initialLoadComplete when user logs out
-  useEffect(() => {
-      if (!currentUser) {
-          setInitialLoadComplete(false);
-          setAgents([]); // Clear data on logout
-          setExperts([]);
-          setChats(mockChats);
-          setContentTypes([]); // Limpar content types ao fazer logout
-      }
-  }, [currentUser]);
-
-
-  // --- Agents CRUD (Connected to Supabase) --- 
-
-  const createAgent = useCallback(async (
-    agentData: Omit<Agent, "id" | "createdAt" | "updatedAt" | "createdBy" | "knowledgeFiles">
-  ): Promise<Agent> => { 
-    if (!currentUser || currentUser.role !== "admin") {
-      throw new Error("Apenas administradores podem criar agentes.");
+    if (!initialLoadComplete) {
+        fetchInitialData();
     }
+  }, [currentUser, initialLoadComplete, fetchUserChats, supabase, mapDbAgentToAgent, mapDbExpertToExpert, mapDbContentTypeToContentType]); // fetchUserChats agora depende de activeChatId
+
+
+  const createAgent = useCallback(async (agentData: Omit<Agent, "id" | "createdAt" | "updatedAt" | "createdBy" | "knowledgeFiles">): Promise<Agent | null> => {
+    if (!currentUser?.id) { console.error("Não autenticado."); return null; }
     
-    const dataToInsert = {
+    const agentToInsert: DbAgentInsert = {
       name: agentData.name,
-      description: agentData.description,
       prompt: agentData.prompt,
-      temperature: agentData.temperature,
-      avatar: agentData.avatar,
-      created_by: currentUser.id, 
-      // knowledge_files is initially null or handled in update
+      created_by: currentUser.id,
+      description: agentData.description ?? null,
+      avatar: agentData.avatar ?? null,
+      // Se 'model' existir em DbAgentInsert (verifique tipos gerados):
+      // model: agentData.model ?? null, 
     };
-
-    const { data, error } = await supabase
-      .from(AGENTS_TABLE)
-      .insert(dataToInsert)
-      .select('*') 
-      .single();
-
-    if (error || !data) {
-      console.error("Error creating agent:", error);
-      throw new Error(`Falha ao criar agente: ${error?.message || 'Nenhum dado retornado'}`);
-    }
-    const dbData: any = data; // Usa any para evitar erro de tipo
-    const newAgent: Agent = {
-        id: dbData.id,
-        name: dbData.name,
-        avatar: dbData.avatar,
-        prompt: dbData.prompt,
-        description: dbData.description || '',
-        temperature: dbData.temperature,
-        createdAt: new Date(dbData.created_at),
-        updatedAt: new Date(dbData.updated_at),
-        createdBy: dbData.created_by,
-        knowledgeFiles: [],
-    };
-    setAgents(prevAgents => [...prevAgents, newAgent]);
-    return newAgent; 
-
-  }, [currentUser]);
-  
-  const updateAgent = useCallback(async (
-    id: string, 
-    agentData: Partial<Omit<Agent, "id" | "createdAt" | "updatedAt" | "createdBy">>
-  ) => {
-    if (!currentUser || currentUser.role !== "admin") {
-       throw new Error("Apenas administradores podem atualizar agentes.");
+     if (agentData.model && 'model' in agentToInsert) {
+        (agentToInsert as any).model = agentData.model;
     }
 
-    console.log("[DataContext] updateAgent - Recebido para ID:", id, "Dados:", agentData);
-
-    // 1. Lidar com knowledgeFiles: salvar conteúdo em agent_knowledge_chunks
-    if (agentData.knowledgeFiles && agentData.knowledgeFiles.length > 0) {
-      console.log("[DataContext] updateAgent - Processando knowledgeFiles:", agentData.knowledgeFiles);
-      for (const file of agentData.knowledgeFiles) {
-        if (file.content && file.path) { // Processar apenas se houver conteúdo e path
-          console.log(`[DataContext] updateAgent - Processando arquivo: ${file.name} com conteúdo.`);
-          try {
-            // Excluir chunks antigos para este arquivo e agente
-            const { error: deleteError } = await supabase
-              .from('agent_knowledge_chunks' as any)
-              .delete()
-              .eq('agent_id', id)
-              .eq('file_path', file.path);
-            if (deleteError) {
-              console.error(`[DataContext] updateAgent - Erro ao deletar chunks antigos para ${file.path}:`, deleteError);
-              // Considerar se deve logar e continuar ou lançar erro
-            }
-
-            // Inserir novo chunk (texto completo do arquivo)
-            const { error: insertError } = await supabase
-              .from('agent_knowledge_chunks' as any)
-              .insert({
-                agent_id: id,
-                file_path: file.path, 
-                chunk_text: file.content,
-              } as any);
-            if (insertError) {
-              console.error(`[DataContext] updateAgent - Erro ao inserir novo chunk para ${file.path}:`, insertError);
-              throw new Error(`Falha ao salvar conteúdo do arquivo ${file.name} na base de conhecimento.`);
-            }
-            console.log(`[DataContext] updateAgent - Conteúdo do arquivo ${file.name} salvo em agent_knowledge_chunks.`);
-          } catch (e) {
-            console.error(`[DataContext] updateAgent - Exceção ao processar chunks para ${file.path}:`, e);
-            // Considerar se deve lançar o erro ou apenas logar e continuar
-          }
-        }
-      }
-    }
-
-    // 2. Preparar dados para a tabela 'agents' (sem o 'content' em knowledges_files)
-    const agentTableData: AgentUpdateData = { 
-        ...(agentData.name && { name: agentData.name }),
-        ...(agentData.description !== undefined && { description: agentData.description }),
-        ...(agentData.prompt && { prompt: agentData.prompt }),
-        ...(agentData.temperature !== undefined && { temperature: agentData.temperature }),
-        ...(agentData.avatar && { avatar: agentData.avatar }),
-        ...(agentData.knowledgeFiles && { 
-          knowledges_files: agentData.knowledgeFiles.map(f => ({ name: f.name, path: f.path })) 
-        }),
-        updated_at: new Date().toISOString(),
-    };
-    
-    console.log("[DataContext] updateAgent - Dados para salvar na tabela agents:", agentTableData);
-
-    // 3. Atualizar a tabela 'agents'
-    const { data, error } = await supabase
-      .from(AGENTS_TABLE)
-      .update(agentTableData) 
-      .eq('id', id)
-      .select('*')
-      .single();
-
-    if (error) {
-      console.error("[DataContext] updateAgent - Erro ao atualizar tabela agents:", error);
-      throw new Error(`Falha ao atualizar agente: ${error.message}`);
-    }
-    if (!data) {
-      console.error("[DataContext] updateAgent - Nenhum dado retornado após atualizar tabela agents.");
-      throw new Error("Falha ao atualizar agente: Nenhum dado retornado.");
-    }
-
-    // 4. Atualizar estado local
-    const dbData = data as DbAgent;
-    const updatedAgent: Agent = {
-        id: dbData.id,
-        name: dbData.name,
-        avatar: dbData.avatar,
-        prompt: dbData.prompt,
-        description: dbData.description || '',
-        temperature: dbData.temperature,
-        createdAt: new Date(dbData.created_at),
-        updatedAt: new Date(dbData.updated_at),
-        createdBy: dbData.created_by,
-        knowledgeFiles: dbData.knowledges_files?.map(f => ({ name: f.name, path: f.path })) || [],
-    };
-    setAgents(prevAgents =>
-      prevAgents.map(agent => (agent.id === id ? updatedAgent : agent))
-    );
-    console.log("[DataContext] updateAgent - Agente atualizado no estado local:", updatedAgent);
-
-  }, [currentUser, supabase]);
-  
-  const deleteAgent = useCallback(async (id: string) => {
-    if (!currentUser || currentUser.role !== "admin") {
-      throw new Error("Apenas administradores podem excluir agentes.");
-    }
 
     try {
-      // Primeiro, buscar todos os chats associados a este agente
-      const { data: agentChats, error: chatsError } = await supabase
-        .from(CHATS_TABLE)
-        .select('id')
-        .eq('agent_id', id);
-      
-      if (chatsError) {
-        console.error("Erro ao buscar chats associados ao agente:", chatsError);
-        throw new Error(`Falha ao excluir agente: ${chatsError.message}`);
-      }
-      
-      // Se houver chats associados, exclua-os primeiro
-      if (agentChats && agentChats.length > 0) {
-        console.log(`Excluindo ${agentChats.length} chats associados ao agente ${id}`);
-        
-        // Extrair IDs dos chats
-        const chatIds = agentChats.map(chat => chat.id);
-        
-        // Excluir mensagens primeiro (devido à restrição de chave estrangeira)
-        const { error: messagesError } = await supabase
-          .from('messages')
-          .delete()
-          .in('chat_id', chatIds);
-        
-        if (messagesError) {
-          console.error("Erro ao excluir mensagens dos chats:", messagesError);
-          throw new Error(`Falha ao excluir agente: ${messagesError.message}`);
-        }
-        
-        // Agora excluir os chats
-        const { error: deleteChatsError } = await supabase
-          .from(CHATS_TABLE)
-          .delete()
-          .in('id', chatIds);
-        
-        if (deleteChatsError) {
-          console.error("Erro ao excluir chats do agente:", deleteChatsError);
-          throw new Error(`Falha ao excluir agente: ${deleteChatsError.message}`);
-        }
-        
-        // Atualizar o estado local dos chats
-        setChats(prevChats => prevChats.filter(chat => !chatIds.includes(chat.id)));
-        
-        // Se o chat atual estiver entre os excluídos, limpe-o
-        if (currentChat && chatIds.includes(currentChat.id)) {
-          setCurrentChat(null);
-        }
-      }
-
-      // Tentar buscar os arquivos do agente, mas com tratamento robusto de erros
-      let filesToDelete: KnowledgeFile[] = [];
-      
-      try {
-        // Buscar todos os campos em vez de apenas knowledges_files para evitar problemas de formato
-        const { data, error } = await supabase
-          .from(AGENTS_TABLE)
-          .select('*')
-          .eq('id', id)
-          .single();
-
-        if (!error && data) {
-          // Usando type assertion para garantir acesso à propriedade
-          const agentData = data as any;
-          if (agentData.knowledges_files) {
-            filesToDelete = agentData.knowledges_files as KnowledgeFile[] || [];
-          }
-        } else if (error && error.code !== 'PGRST116') { 
-          console.error("Aviso: Não foi possível buscar arquivos do agente:", error);
-          // Continuamos mesmo com erro, já que é apenas um aviso
-        }
-      } catch (fetchError) {
-        console.error("Erro ao tentar buscar arquivos do agente:", fetchError);
-        // Continuamos mesmo com erro, já que a exclusão dos arquivos é secundária
-      }
-
-      // Tentar excluir os arquivos do storage se houver algum
-      const filePathsToDelete = filesToDelete.map(f => f.path).filter(p => !!p);
-      if (filePathsToDelete.length > 0) {
-        try {
-          console.log(`Tentando excluir arquivos do storage: ${filePathsToDelete.join(', ')}`);
-          const { error: storageError } = await supabase.storage
-            .from(KNOWLEDGE_BUCKET)
-            .remove(filePathsToDelete);
-          
-          if (storageError) {
-            console.error("Aviso: Erro ao excluir arquivos do storage:", storageError);
-            // Continuamos mesmo com erro, já que é apenas um aviso
-          }
-        } catch (storageError) {
-          console.error("Erro ao tentar excluir arquivos do storage:", storageError);
-          // Continuamos mesmo com erro, já que a exclusão dos arquivos é secundária
-        }
-      }
-
-      // Finalmente, excluir o agente do banco de dados
-      const { error: deleteError } = await supabase
+      const { data, error } = await supabase
         .from(AGENTS_TABLE)
-        .delete()
-        .eq('id', id);
+        .insert(agentToInsert)
+        .select()
+        .single();
 
-      if (deleteError) {
-        throw deleteError;
-      }
+      if (error) { console.error("Erro ao criar agent:", error); throw error; }
+      if (!data) { console.error("Nenhum dado retornado ao criar agent."); return null;}
 
-      // Atualizar o estado local
-      setAgents(prevAgents => prevAgents.filter(agent => agent.id !== id));
-      console.log(`Agente ${id} excluído com sucesso`);
-
-    } catch (error: any) {
-        console.error("Error deleting agent:", error);
-        throw new Error(`Falha ao excluir agente: ${error.message}`);
-    }
-  }, [currentUser, setChats, currentChat]);
-
-  // --- NOVA getAgentById (Busca agente e nomes de arquivos da tabela de chunks) ---
-  const getAgentById = useCallback(async (agentId: string): Promise<Agent | null> => {
-    console.log(`[DataContext] getAgentById - Buscando agente completo: ${agentId}`);
-    
-    // 1. Buscar dados básicos do agente, incluindo a lista de knowledges_files (metadados)
-    const { data: agentBaseData, error: agentError } = await supabase
-      .from(AGENTS_TABLE)
-      .select('id, name, avatar, prompt, description, temperature, created_at, updated_at, created_by, knowledges_files')
-      .eq('id', agentId)
-      .single();
-
-    if (agentError || !agentBaseData) {
-      console.error(`[DataContext] getAgentById - Erro ao buscar dados base do agente ${agentId}:`, agentError);
+      const newAgent = mapDbAgentToAgent(data as DbAgentRow);
+      setAgents(prev => [newAgent, ...prev]);
+      return newAgent;
+    } catch (error) {
+      console.error("Falha ao criar agent:", error);
       return null;
     }
-
-    const typedAgentBaseData = agentBaseData as unknown as DbAgent; // DbAgent já inclui knowledges_files como KnowledgeFile[] opcional
-
-    let populatedKnowledgeFiles: KnowledgeFile[] = [];
-
-    // 2. Se houver knowledges_files (metadados), buscar seu conteúdo em agent_knowledge_chunks
-    if (typedAgentBaseData.knowledges_files && typedAgentBaseData.knowledges_files.length > 0) {
-      console.log(`[DataContext] getAgentById - Metadados de arquivos encontrados para ${agentId}:`, typedAgentBaseData.knowledges_files);
-      const contentPromises = typedAgentBaseData.knowledges_files.map(async (fileMeta) => {
-        if (!fileMeta || !fileMeta.path) {
-          console.warn("[DataContext] getAgentById - Metadado de arquivo inválido ou sem path:", fileMeta);
-          return { ...fileMeta, content: "" }; // Retorna metadado com conteúdo vazio se inválido
-        }
-        try {
-          const { data: chunksData, error: chunksError } = await supabase
-            .from('agent_knowledge_chunks' as any)
-            .select('chunk_text')
-            .eq('agent_id', agentId)
-            .eq('file_path', fileMeta.path); // fileMeta.path deve ser o identificador
-
-          if (chunksError) {
-            console.error(`[DataContext] getAgentById - Erro ao buscar chunks para ${fileMeta.path}:`, chunksError);
-            return { ...fileMeta, content: "" }; // Conteúdo vazio em caso de erro
-          }
-
-          let fullContent = "";
-          // Garantir que chunksData existe e é um array antes de mapear
-          if (Array.isArray(chunksData)) {
-            fullContent = chunksData
-              .map(chunk => (chunk as { chunk_text?: string })?.chunk_text || "") // Acesso seguro e fallback para string vazia
-              .join('\n');
-          } else if (chunksData) {
-            // Se chunksData não for array mas existir, pode ser um único objeto (pouco provável com .select() sem .single())
-            // ou um objeto de erro que não foi pego por chunksError (também pouco provável)
-            console.warn("[DataContext] getAgentById - chunksData não é um array para", fileMeta.path, chunksData);
-          }
-          
-          console.log(`[DataContext] getAgentById - Conteúdo carregado para ${fileMeta.name} (path: ${fileMeta.path}): ${fullContent.substring(0,100)}...`);
-          return { ...fileMeta, content: fullContent };
-        } catch (e) {
-          console.error(`[DataContext] getAgentById - Exceção ao buscar chunks para ${fileMeta.path}:`, e);
-          return { ...fileMeta, content: "" }; // Conteúdo vazio em caso de exceção
-        }
-      });
-      populatedKnowledgeFiles = await Promise.all(contentPromises);
-    } else {
-      console.log(`[DataContext] getAgentById - Nenhum metadado de arquivo (knowledges_files) encontrado para o agente ${agentId}.`);
-      // A lógica de fallback para buscar de agent_knowledge_chunks se knowledges_files estiver vazio foi removida
-      // pois agora esperamos que knowledges_files (na tabela agents) seja a fonte da verdade para quais arquivos existem.
-      // O conteúdo é então buscado de agent_knowledge_chunks com base nesses metadados.
-    }
-
-    // 3. Construir o objeto Agent completo
-    const agent: Agent = {
-      id: typedAgentBaseData.id,
-      name: typedAgentBaseData.name,
-      avatar: typedAgentBaseData.avatar,
-      prompt: typedAgentBaseData.prompt,
-      description: typedAgentBaseData.description || '',
-      temperature: typedAgentBaseData.temperature,
-      createdAt: new Date(typedAgentBaseData.created_at),
-      updatedAt: new Date(typedAgentBaseData.updated_at),
-      createdBy: typedAgentBaseData.created_by,
-      knowledgeFiles: populatedKnowledgeFiles, // Agora com o campo 'content' populado
-    };
-
-    console.log(`[DataContext] getAgentById - Agente completo carregado para ${agentId}:`, agent);
-    
-    // 4. Atualizar o cache local (estado 'agents') para consistência
-    setAgents(prevAgents => 
-      prevAgents.map(a => (a.id === agentId ? { ...agent } : a))
-    );
-
-    return agent;
-  }, [agents, supabase, setAgents]); // Adicionado supabase e setAgents às dependências
-
-  // --- Método para atualizar apenas os arquivos de um agente ---
-  const updateAgentFiles = useCallback(async (
-    agentId: string,
-    files: KnowledgeFile[]
-  ) => {
-    if (!currentUser || currentUser.role !== "admin") {
-      throw new Error("Apenas administradores podem atualizar agentes.");
-    }
-
-    try {
-      // 1. Primeiro, obter a lista atual de arquivos do agente
-      const { data: agentData, error: fetchError } = await supabase
-        .from(AGENTS_TABLE)
-        .select('*')
-        .eq('id', agentId)
-        .single();
-      
-      if (fetchError) {
-        console.error(`[DataContext] Erro ao buscar arquivos atuais do agente ${agentId}:`, fetchError);
-      }
-
-      // 2. Comparar arquivos anteriores com a nova lista para encontrar os arquivos removidos
-      const previousFiles = ((agentData as any)?.knowledges_files || []) as KnowledgeFile[];
-      const currentFileNames = files.map(f => f.name);
-      const removedFiles = previousFiles.filter(
-        prevFile => !currentFileNames.includes(prevFile.name)
-      );
-
-      // 3. Se houver arquivos removidos, excluir seus chunks da tabela agent_knowledge_chunks
-      if (removedFiles.length > 0) {
-        console.log(`[DataContext] Excluindo chunks dos arquivos removidos: ${removedFiles.map(f => f.name).join(', ')}`);
-        
-        for (const file of removedFiles) {
-          // Usar o cliente supabase diretamente para evitar erros de tipagem
-          const { error: deleteChunksError } = await supabase
-            .from('agent_knowledge_chunks' as any)
-            .delete()
-            .eq('agent_id', agentId)
-            .eq('file_path', file.name);
-            
-          if (deleteChunksError) {
-            console.error(`[DataContext] Erro ao excluir chunks do arquivo ${file.name}:`, deleteChunksError);
-            // Continuamos mesmo se a exclusão falhar
-          }
-        }
-      }
-
-      // 4. Atualizar a lista de arquivos do agente
-      const updateData: AgentUpdateData = { knowledges_files: files };
-      const { error } = await supabase
-        .from(AGENTS_TABLE)
-        .update(updateData)
-        .eq('id', agentId);
-
-      if (error) {
-        console.error("Erro ao atualizar arquivos do agente:", error);
-        throw new Error(`Falha ao atualizar arquivos: ${error.message}`);
-      }
-      
-      // 5. Atualizar o estado local de agents
-      setAgents(prevAgents =>
-        prevAgents.map(agent => 
-          agent.id === agentId 
-            ? { ...agent, knowledgeFiles: files } 
-            : agent
-        )
-      );
-      
-      console.log(`[DataContext] Arquivos do agente ${agentId} atualizados com sucesso`);
-    } catch (error) {
-      console.error(`[DataContext] Erro ao atualizar arquivos do agente ${agentId}:`, error);
-      throw error;
-    }
-  }, [currentUser]);
+  }, [currentUser, supabase, mapDbAgentToAgent]);
   
-  // --- Manter refetchAgentData (OPCIONAL - pode ser removido se não usado em outro lugar) ---
-  // Se mantido, deve usar getAgentById para atualizar o estado global 'agents'
-  const refetchAgentData = useCallback(async (agentId: string) => {
-     console.log(`[DataContext] Refetching global state for agent: ${agentId}`);
-     try {
-         const freshAgentData = await getAgentById(agentId); 
-         if (freshAgentData) {
-             setAgents(prevAgents => 
-                 prevAgents.map(agent => 
-                     agent.id === agentId ? freshAgentData : agent
-                 )
-             );
-             console.log(`[DataContext] Global agent state updated for ${agentId}`);
-         } 
-     } catch(error) {
-          console.error(`[DataContext] Error during refetchAgentData for ${agentId}:`, error);
-     }
-  }, [getAgentById]); // Depende de getAgentById
+  const updateAgent = useCallback(async (id: string, agentData: Partial<Omit<Agent, "id" | "createdAt" | "updatedAt" | "createdBy" | "knowledgeFiles">> ): Promise<Agent | null> => {
+    if (!currentUser) { console.error("Não autenticado."); return null; }
 
-  // Experts CRUD (Implementação real usando Supabase)
-  const addExpert = useCallback(async (expertData: Omit<Expert, "id" | "createdAt" | "updatedAt" | "userId">) => {
-    if (!currentUser) {
-      throw new Error("Usuário não autenticado.");
+    const agentToUpdate: Partial<DbAgentInsert> = { 
+        name: agentData.name,
+        prompt: agentData.prompt,
+        description: agentData.description,
+        avatar: agentData.avatar,
+        temperature: agentData.temperature,
+        updated_at: new Date().toISOString(),
+    };
+     if (agentData.model && 'model' in agentToUpdate) {
+        (agentToUpdate as any).model = agentData.model;
     }
     
+    Object.keys(agentToUpdate).forEach(key => {
+      const K = key as keyof typeof agentToUpdate;
+      if (agentToUpdate[K] === undefined) {
+        delete agentToUpdate[K];
+      }
+    });
+
     try {
-      const dataToInsert = {
+      const { data, error } = await supabase
+        .from(AGENTS_TABLE)
+        .update(agentToUpdate)
+        .eq('id', id)
+        .select()
+        .single();
+
+      if (error) { console.error("Erro ao atualizar agent:", error); throw error; }
+      if (!data) { console.error("Nenhum dado retornado ao atualizar agent."); return null; }
+      
+      const fullAgent = await getAgentById(id); // Refetch para pegar knowledge files
+      if (fullAgent) {
+         setAgents(prev => prev.map(a => a.id === id ? fullAgent : a));
+         return fullAgent;
+      }
+      // Fallback se getAgentById falhar, retorna o dado do update direto
+      const updatedAgentDirectly = mapDbAgentToAgent(data as DbAgentRow);
+      setAgents(prev => prev.map(a => a.id === id ? updatedAgentDirectly : a));
+      return updatedAgentDirectly;
+
+    } catch (error) {
+      console.error("Falha ao atualizar agent:", error);
+      return null;
+    }
+  }, [currentUser, supabase, mapDbAgentToAgent, getAgentById]);
+
+  const deleteAgent = useCallback(async (id: string): Promise<void> => {
+    try {
+      // Primeiro, deletar chats associados ao agente
+      const { error: chatError } = await supabase
+        .from(CHATS_TABLE)
+        .delete()
+        .eq('agent_id', id);
+
+      if (chatError) {
+        console.error('Erro ao deletar chats associados ao agente:', chatError);
+        // Você pode decidir se quer parar aqui ou continuar tentando deletar o agente e os chunks
+        // throw chatError; // Descomente para parar se a exclusão do chat falhar
+      }
+
+      // Em seguida, deletar chunks de conhecimento associados
+      const { error: chunkError } = await supabase
+        .from(AGENT_KNOWLEDGE_CHUNKS_TABLE)
+        .delete()
+        .eq('agent_id', id);
+
+      if (chunkError) {
+        console.error('Erro ao deletar chunks de conhecimento associados:', chunkError);
+        // throw chunkError; // Descomente para parar se a exclusão do chunk falhar
+      }
+
+      // Finalmente, deletar o agente
+      const { error: agentDeleteError } = await supabase.from(AGENTS_TABLE).delete().eq('id', id);
+      if (agentDeleteError) { 
+        console.error("Erro ao deletar agent:", agentDeleteError); 
+        throw agentDeleteError; 
+      }
+      
+      setAgents(prev => prev.filter(a => a.id !== id));
+      // Se o agente deletado estava em algum chat aberto, você pode querer limpar esse estado também
+      // Exemplo: se currentChat?.agentId === id, então setCurrentChat(null)
+
+    } catch (error) {
+      console.error("Falha na operação de deletar agent e seus dados associados:", error);
+      // Opcional: notificar o usuário sobre a falha
+    }
+  }, [supabase]);
+  
+  // Declarar refetchAgentData antes de updateAgentFiles
+  const refetchAgentData = useCallback(async (agentId: string) => {
+    console.log(`[DataContext] Refetching agent data for ${agentId}`);
+    const agent = await getAgentById(agentId); 
+    if (agent) {
+      setAgents(prev => prev.map(a => a.id === agentId ? agent : a));
+    }
+  }, [getAgentById]);
+
+  const updateAgentFiles = useCallback(async (agentId: string, files: KnowledgeFile[]): Promise<void> => {
+    console.log("[DataContext] updateAgentFiles chamada. AgentId:", agentId, "Files:", files);
+    setAgents(prevAgents =>
+      prevAgents.map(agent =>
+        agent.id === agentId
+          ? { ...agent, knowledgeFiles: files } 
+          : agent
+      )
+    );
+    await refetchAgentData(agentId);
+  }, [refetchAgentData]);
+
+
+  const addExpert = useCallback(async (expertData: Omit<Expert, "id" | "createdAt" | "updatedAt" | "userId">): Promise<Expert | null> => {
+    if (!currentUser?.id) { console.error("Não autenticado."); return null; }
+    const expertToInsert: DbExpertInsert = {
+      name: expertData.name,
+      niche: expertData.niche,
+      target_audience: expertData.targetAudience,
+      deliverables: expertData.deliverables,
+      benefits: expertData.benefits,
+      objections: expertData.objections,
+      avatar: expertData.avatar,
+      user_id: currentUser.id,
+    };
+    try {
+      const { data, error } = await supabase.from(EXPERTS_TABLE).insert(expertToInsert).select().single();
+      if (error) { console.error("Erro ao adicionar expert:", error); throw error; }
+      if (!data) { console.error("Nenhum dado retornado ao adicionar expert."); return null;}
+      
+      const newExpert = mapDbExpertToExpert(data as DbExpertRow);
+      setExperts(prev => [newExpert, ...prev]);
+      return newExpert;
+    } catch (error) {
+      console.error("Falha ao adicionar expert:", error);
+      return null;
+    }
+  }, [currentUser, supabase, mapDbExpertToExpert]);
+
+  const updateExpert = useCallback(async (id: string, expertData: Partial<Omit<Expert, "id" | "createdAt" | "updatedAt" | "userId">>): Promise<Expert | null> => {
+    if (!currentUser) { console.error("Não autenticado."); return null; }
+     const expertToUpdate: Partial<DbExpertInsert> = { 
         name: expertData.name,
         niche: expertData.niche,
         target_audience: expertData.targetAudience,
@@ -835,842 +548,400 @@ export function DataProvider({ children }: { children: ReactNode }) {
         benefits: expertData.benefits,
         objections: expertData.objections,
         avatar: expertData.avatar,
-        user_id: currentUser.id
-      };
-      
-      const { data, error } = await supabase
-        .from(EXPERTS_TABLE)
-        .insert(dataToInsert)
-        .select('*')
-        .single();
-        
-      if (error) {
-        console.error("Erro ao criar expert:", error);
-        throw new Error(`Falha ao criar expert: ${error.message}`);
-      }
-      
-      if (!data) {
-        throw new Error("Falha ao criar expert: Nenhum dado retornado.");
-      }
-      
-      const dbExpert = data as DbExpert;
-    const newExpert: Expert = {
-        id: dbExpert.id,
-        name: dbExpert.name,
-        niche: dbExpert.niche,
-        targetAudience: dbExpert.target_audience,
-        deliverables: dbExpert.deliverables,
-        benefits: dbExpert.benefits,
-        objections: dbExpert.objections,
-        avatar: dbExpert.avatar,
-        createdAt: new Date(dbExpert.created_at),
-        updatedAt: new Date(dbExpert.updated_at),
-        userId: dbExpert.user_id
+        updated_at: new Date().toISOString(),
     };
     
-    setExperts(prevExperts => [...prevExperts, newExpert]);
-      return newExpert;
-      
-    } catch (error) {
-      console.error("Erro ao adicionar expert:", error);
-      throw error;
-    }
-  }, [currentUser]);
-  
-  const updateExpert = useCallback(async (id: string, expertData: Partial<Omit<Expert, "id" | "createdAt" | "updatedAt" | "userId">>) => {
-    if (!currentUser) {
-      throw new Error("Usuário não autenticado.");
-    }
-    
+    Object.keys(expertToUpdate).forEach(key => {
+      const K = key as keyof typeof expertToUpdate;
+      if (expertToUpdate[K] === undefined) {
+        delete expertToUpdate[K];
+      }
+    });
+
     try {
-      const dataToUpdate: Record<string, any> = {};
-      
-      if (expertData.name !== undefined) dataToUpdate.name = expertData.name;
-      if (expertData.niche !== undefined) dataToUpdate.niche = expertData.niche;
-      if (expertData.targetAudience !== undefined) dataToUpdate.target_audience = expertData.targetAudience;
-      if (expertData.deliverables !== undefined) dataToUpdate.deliverables = expertData.deliverables;
-      if (expertData.benefits !== undefined) dataToUpdate.benefits = expertData.benefits;
-      if (expertData.objections !== undefined) dataToUpdate.objections = expertData.objections;
-      if (expertData.avatar !== undefined) dataToUpdate.avatar = expertData.avatar;
-      
-      // Adicionar timestamp de atualização
-      dataToUpdate.updated_at = new Date().toISOString();
-      
-      const { data, error } = await supabase
-        .from(EXPERTS_TABLE)
-        .update(dataToUpdate)
-        .eq('id', id)
-        .eq('user_id', currentUser.id) // Garantir que o usuário seja proprietário do expert
-        .select('*')
-        .single();
-        
-      if (error) {
-        console.error("Erro ao atualizar expert:", error);
-        throw new Error(`Falha ao atualizar expert: ${error.message}`);
-      }
-      
-      if (!data) {
-        throw new Error("Falha ao atualizar expert: Nenhum dado retornado.");
-      }
-      
-      const dbExpert = data as DbExpert;
-      const updatedExpert: Expert = {
-        id: dbExpert.id,
-        name: dbExpert.name,
-        niche: dbExpert.niche,
-        targetAudience: dbExpert.target_audience,
-        deliverables: dbExpert.deliverables,
-        benefits: dbExpert.benefits,
-        objections: dbExpert.objections,
-        avatar: dbExpert.avatar,
-        createdAt: new Date(dbExpert.created_at),
-        updatedAt: new Date(dbExpert.updated_at),
-        userId: dbExpert.user_id
-      };
-    
-    setExperts(prevExperts => 
-        prevExperts.map(expert => (expert.id === id ? updatedExpert : expert))
-      );
-      
+      const { data, error } = await supabase.from(EXPERTS_TABLE).update(expertToUpdate).eq('id', id).select().single();
+      if (error) { console.error("Erro ao atualizar expert:", error); throw error; }
+      if (!data) { console.error("Nenhum dado retornado ao atualizar expert."); return null; }
+
+      const updatedExpert = mapDbExpertToExpert(data as DbExpertRow);
+      setExperts(prev => prev.map(e => e.id === id ? updatedExpert : e));
       return updatedExpert;
-      
     } catch (error) {
-      console.error("Erro ao atualizar expert:", error);
-      throw error;
+      console.error("Falha ao atualizar expert:", error);
+      return null;
     }
-  }, [currentUser]);
-  
-  const deleteExpert = useCallback(async (id: string) => {
-    if (!currentUser) {
-      throw new Error("Usuário não autenticado.");
-    }
-    
+  }, [currentUser, supabase, mapDbExpertToExpert]);
+
+  const deleteExpert = useCallback(async (id: string): Promise<void> => {
     try {
-      // Primeiro, encontrar todos os chats associados a este expert
-      const { data: expertChats, error: chatsError } = await supabase
-        .from(CHATS_TABLE)
-        .select('id')
-        .eq('expert_id', id)
-        .eq('user_id', currentUser.id);
-      
-      if (chatsError) {
-        console.error("Erro ao buscar chats associados ao expert:", chatsError);
-        throw new Error(`Falha ao excluir expert: ${chatsError.message}`);
-      }
-      
-      // Se houver chats associados, exclua-os primeiro
-      if (expertChats && expertChats.length > 0) {
-        console.log(`Excluindo ${expertChats.length} chats associados ao expert ${id}`);
-        
-        // Extrair IDs dos chats
-        const chatIds = expertChats.map(chat => chat.id);
-        
-        // Excluir mensagens primeiro (devido à restrição de chave estrangeira)
-        const { error: messagesError } = await supabase
-          .from('messages')
-          .delete()
-          .in('chat_id', chatIds);
-        
-        if (messagesError) {
-          console.error("Erro ao excluir mensagens dos chats:", messagesError);
-          throw new Error(`Falha ao excluir expert: ${messagesError.message}`);
-        }
-        
-        // Agora excluir os chats
-        const { error: deleteChatsError } = await supabase
-          .from(CHATS_TABLE)
-          .delete()
-          .in('id', chatIds);
-        
-        if (deleteChatsError) {
-          console.error("Erro ao excluir chats do expert:", deleteChatsError);
-          throw new Error(`Falha ao excluir expert: ${deleteChatsError.message}`);
-        }
-        
-        // Atualizar o estado local dos chats
-        setChats(prevChats => prevChats.filter(chat => !chatIds.includes(chat.id)));
-        
-        // Se o chat atual estiver entre os excluídos, limpe-o
-        if (currentChat && chatIds.includes(currentChat.id)) {
-          setCurrentChat(null);
-        }
-      }
-      
-      // Verificar se há avatar para excluir
-      let avatarUrl: string | null = null;
-      try {
-        const result = await supabase
-          .from(EXPERTS_TABLE)
-          .select('avatar')
-          .eq('id', id)
-          .eq('user_id', currentUser.id)
-          .single();
-          
-        if (result.data && !result.error) {
-          avatarUrl = (result.data as any).avatar;
-        }
-      } catch (err) {
-        console.error("Erro ao buscar avatar:", err);
-      }
-        
-      // Se houver avatar, tentar excluí-lo do storage
-      if (avatarUrl) {
-        try {
-          // Extrair o caminho do arquivo da URL completa
-          // O formato esperado é algo como: https://xxx.supabase.co/storage/v1/object/public/expert-avatars/[ID]/[TIMESTAMP]-[FILENAME]
-          // Precisamos apenas da parte após 'expert-avatars/'
-          const urlParts = avatarUrl.split('expert-avatars/');
-          if (urlParts.length > 1) {
-            const avatarPath = urlParts[1]; // Pega apenas a parte do caminho após 'expert-avatars/'
-            console.log("Tentando excluir avatar do caminho:", avatarPath);
-            
-            await supabase.storage
-              .from('expert-avatars')
-              .remove([avatarPath]);
-              
-            console.log("Avatar excluído com sucesso do storage");
-          } else {
-            console.warn("Formato de URL de avatar inesperado:", avatarUrl);
-          }
-        } catch (avatarError) {
-          console.error("Erro ao excluir avatar do expert:", avatarError);
-          // Continua mesmo se falhar ao excluir o avatar
-        }
-      }
-      
-      // Finalmente, excluir o expert do banco de dados
-      const { error } = await supabase
-        .from(EXPERTS_TABLE)
-        .delete()
-        .eq('id', id)
-        .eq('user_id', currentUser.id);
-        
-      if (error) {
-        console.error("Erro ao excluir expert:", error);
-        throw new Error(`Falha ao excluir expert: ${error.message}`);
-      }
-      
-      // Atualizar o estado local
-      setExperts(prevExperts => prevExperts.filter(expert => expert.id !== id));
-      
+      const { error } = await supabase.from(EXPERTS_TABLE).delete().eq('id', id);
+      if (error) { console.error("Erro ao deletar expert:", error); throw error; }
+      setExperts(prev => prev.filter(e => e.id !== id));
     } catch (error) {
-      console.error("Erro ao excluir expert:", error);
-      throw error;
+      console.error("Falha ao deletar expert:", error);
     }
-  }, [currentUser, setChats, currentChat]);
+  }, [supabase]);
 
-  // Chats CRUD (Mocks - Keep as is or update later)
-  const stableSetCurrentChat = useCallback((chat: Chat | null) => {
-    setCurrentChat(chat);
-  }, []);
+  const createChat = useCallback(async (copyRequest: CopyRequest): Promise<Chat | null> => {
+    if (!currentUser?.id) { console.error("Não autenticado."); return null; }
 
-  const createChat = useCallback((copyRequest: CopyRequest): Chat => {
-    if (!currentUser) {
-      throw new Error("Usuário não autenticado");
-    }
-
-    // Encontrar o tipo de conteúdo para usar no título
-    const contentTypeName = contentTypes.find(ct => ct.id === copyRequest.contentType)?.name || copyRequest.contentType;
-    
-    // Encontrar o agente para usar no título
-    const agentName = agents.find(a => a.id === copyRequest.agentId)?.name || "Agente";
-    
-    // Criar título baseado no agente e tipo de conteúdo
-    const title = `${agentName} - ${contentTypeName}`;
-    
-    // Criar o objeto do chat para a UI
-    const newChat: Chat = {
-      id: uuidv4(),
-      title,
-      messages: [], // Inicialmente vazio
-      expertId: copyRequest.expertId,
-      agentId: copyRequest.agentId,
-      contentType: copyRequest.contentType,
-      userId: currentUser.id,
-      createdAt: new Date(),
-      updatedAt: new Date()
+    const chatToInsert: DbChatInsert = {
+      title: copyRequest.userInput.substring(0, 50), 
+      agent_id: copyRequest.agentId,
+      expert_id: copyRequest.expertId, 
+      content_type: copyRequest.contentTypeId ?? "", 
+      user_id: currentUser.id,
     };
     
-    // Iniciar salvamento assíncrono no banco de dados
-    (async () => {
-      try {
-        const { data, error } = await supabase
-          .from(CHATS_TABLE)
-          .insert({
-            id: newChat.id,
-            title: newChat.title,
-            expert_id: newChat.expertId,
-            agent_id: newChat.agentId,
-            content_type: newChat.contentType,
-            user_id: newChat.userId,
-            created_at: newChat.createdAt.toISOString(),
-            updated_at: newChat.updatedAt.toISOString()
-          })
-          .select('*')
-          .single();
-        
-        if (error) {
-          console.error("Erro ao salvar chat no banco de dados:", error);
-        } else {
-          console.log("Chat salvo com sucesso:", data);
+    if (copyRequest.expertId === undefined) {
+        delete (chatToInsert as any).expert_id; 
+    }
+    if (!copyRequest.contentTypeId) {
+        delete (chatToInsert as any).content_type; 
+    }
+
+
+    try {
+      const { data, error } = await supabase.from(CHATS_TABLE).insert(chatToInsert).select().single();
+      if (error) { console.error("Erro ao criar chat:", error); throw error; }
+      if (!data) { console.error("Nenhum dado retornado ao criar chat."); return null; }
+      
+      const dbChatRow = data as DbChatRow;
+      const newChat: Chat = {
+        id: dbChatRow.id,
+        title: dbChatRow.title,
+        messages: [],
+        agentId: dbChatRow.agent_id,
+        expertId: dbChatRow.expert_id ?? undefined,
+        contentTypeId: dbChatRow.content_type ?? undefined, 
+        userId: dbChatRow.user_id,
+        createdAt: new Date(dbChatRow.created_at),
+        updatedAt: new Date(dbChatRow.updated_at),
+      };
+       if (newChat.contentTypeId) {
+            const foundContentType = contentTypes.find(ct => ct.id === newChat.contentTypeId);
+            if (foundContentType) {
+                newChat.contentType = foundContentType;
+            }
         }
-      } catch (error) {
-        console.error("Erro ao salvar chat:", error);
-      }
-    })();
-    
-    // Atualizar estado local e retornar o chat
-    setChats(prevChats => [newChat, ...prevChats]);
-    return newChat;
-  }, [contentTypes, agents, currentUser]);
-  
-  const addMessageToChat = useCallback((chatId: string, content: string, role: "user" | "assistant", updateState: boolean = true) => {
-    if (!currentUser || !chatId || !content) return;
-    
-    console.log(`Adding message to chat ${chatId} with role ${role}`);
-    
-    const newMessage: Message = {
-      id: uuidv4(),
-      content,
-      role,
-      chatId,
-      createdAt: new Date()
+      setChats(prev => [newChat, ...prev].sort((a,b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()));
+      setActiveChatId(newChat.id); 
+      return newChat;
+    } catch (error) {
+      console.error("Falha ao criar chat:", error);
+      return null;
+    }
+  }, [currentUser, supabase, contentTypes]);
+
+  const addMessageToChat = useCallback(async ( 
+    chatId: string, 
+    messageData: Omit<Message, "id" | "createdAt" | "chatId">,
+    // _agentForMessage?: Agent | null // Remover parâmetro não usado
+  ): Promise<Message | null> => {
+    if (!currentUser?.id && messageData.sender === 'user') { console.error("Não autenticado para enviar mensagem de usuário."); return null; }
+
+    // Mapear sender para um role válido no banco de dados
+    let dbRole: string;
+    switch (messageData.sender) {
+      case 'user':
+        dbRole = 'user';
+        break;
+      case 'agent':
+      case 'expert': // Mapear 'expert' para 'assistant' também, ou defina uma lógica específica se necessário
+        dbRole = 'assistant';
+        break;
+      default:
+        // Fallback para 'assistant' ou lançar um erro se o sender for inesperado
+        console.warn(`Sender não esperado: ${messageData.sender}, usando 'assistant'.`);
+        dbRole = 'assistant';
+    }
+
+    const messageToInsert: DbMessageInsert = {
+      chat_id: chatId,
+      content: messageData.text,
+      role: dbRole, // Usar o dbRole mapeado
     };
-    
-    // Sempre atualiza a lista de chats para o sidebar
-    setChats(prev => prev.map(chat => {
-      if (chat.id === chatId) {
-        return {
-          ...chat,
-          messages: [...chat.messages, newMessage],
-          updatedAt: new Date()
-        };
-      } 
-      return chat;
-    }));
-    
-    // Atualiza o chat atual apenas se updateState for true
-    if (updateState) {
-      setCurrentChat(prev => {
-        if (prev?.id === chatId) {
-          return {
-            ...prev,
-            messages: [...prev.messages, newMessage],
-            updatedAt: new Date()
-          };
-        } 
-        return prev;
+    // Se agent_id existir em DbMessageInsert (ver tipos gerados):
+    if (messageData.sender === 'agent' && messageData.agentId && 'agent_id' in messageToInsert) {
+        (messageToInsert as any).agent_id = messageData.agentId;
+    }
+
+
+    try {
+      const { data, error } = await supabase.from(MESSAGES_TABLE).insert(messageToInsert).select().single();
+      if (error) { console.error("Erro ao adicionar mensagem:", error); throw error; }
+      if (!data) { console.error("Nenhum dado retornado ao adicionar mensagem."); return null; }
+
+      const dbMessageRow = data as DbMessageRow;
+      const newMessage: Message = {
+        id: dbMessageRow.id,
+        text: dbMessageRow.content,
+        sender: dbMessageRow.role as Message['sender'], 
+        chatId: dbMessageRow.chat_id,
+        createdAt: new Date(dbMessageRow.created_at),
+      };
+      // Se agent_id existir em dbMessageRow:
+       if ('agent_id' in dbMessageRow && dbMessageRow.agent_id !== null && dbMessageRow.agent_id !== undefined) {
+        newMessage.agentId = dbMessageRow.agent_id as string | undefined;
+      }
+      
+      console.log("[DataContext AddMsg] Nova mensagem pronta para estado:", JSON.stringify(newMessage), "Para ChatID:", chatId);
+
+      // APENAS atualiza a lista mestre de chats
+      setChats(prevChats => {
+        const newChats = prevChats.map(chat => { 
+          if (chat.id === chatId) { 
+            // Sempre cria um novo objeto de chat com a nova mensagem
+            return { 
+              ...chat, 
+              messages: [...chat.messages, newMessage], 
+              updatedAt: new Date(dbMessageRow.created_at) 
+            }; 
+          } 
+          return chat;
+        });
+        return newChats.sort((a,b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
       });
+
+      return newMessage;
+    } catch (error) {
+      console.error("Falha ao adicionar mensagem:", error);
+      return null;
     }
-    
-    // Salvar mensagem e atualizar chat no banco de dados
-    (async () => {
-      try {
-        // Salvar a mensagem
-        const { error: messageError } = await supabase
-          .from('messages')
-          .insert({
-            id: newMessage.id,
-            content: newMessage.content,
-            role: newMessage.role,
-            chat_id: newMessage.chatId,
-            created_at: newMessage.createdAt.toISOString()
-          });
-        
-        if (messageError) {
-          console.error("Erro ao salvar mensagem:", messageError);
-          return;
-        } else {
-          console.log("Mensagem salva com sucesso no banco de dados:", newMessage.id);
-        }
-        
-        // Atualizar a data de atualização do chat
-        const { error: chatError } = await supabase
-          .from(CHATS_TABLE)
-          .update({ updated_at: new Date().toISOString() })
-          .eq('id', chatId);
-        
-        if (chatError) {
-          console.error("Erro ao atualizar data do chat:", chatError);
-        } else {
-          console.log("Data do chat atualizada com sucesso:", chatId);
-        }
-      } catch (error) {
-        console.error("Erro ao salvar mensagem e atualizar chat:", error);
-      }
-    })();
-    
-    return newMessage;
-  }, [currentUser]);
-  
-  const deleteChat = useCallback(async (id: string) => {
-    if (!currentUser) return;
-    
-    // Verificar se o usuário pode excluir o chat
-    const chatToDelete = chats.find(chat => chat.id === id);
-    if (!chatToDelete || (chatToDelete.userId !== currentUser.id && currentUser.role !== 'admin')) {
-      console.warn("Usuário não tem permissão para excluir este chat");
-      return;
-    }
-    
-    // Atualizar estado local imediatamente para UI responsiva
-    setChats(prevChats => prevChats.filter(chat => chat.id !== id));
-    
-    if (currentChat?.id === id) {
-      setCurrentChat(null);
-    }
-    
-    // Excluir mensagens e chat do banco de dados
+  }, [currentUser, supabase]);
+
+  const deleteChat = useCallback(async (id: string): Promise<void> => {
     try {
-      // Excluir mensagens primeiro (devido à restrição de chave estrangeira)
-      const { error: messagesError } = await supabase
-        .from('messages')
-        .delete()
-        .eq('chat_id', id);
-      
-      if (messagesError) {
-        console.error("Erro ao excluir mensagens:", messagesError);
-      }
-      
-      // Excluir o chat
-      const { error: chatError } = await supabase
-        .from(CHATS_TABLE)
-        .delete()
-        .eq('id', id);
-      
-      if (chatError) {
-        console.error("Erro ao excluir chat:", chatError);
+      const { error } = await supabase.from(CHATS_TABLE).delete().eq('id', id);
+      if (error) { console.error("Erro ao deletar chat:", error); throw error; }
+      setChats(prev => prev.filter(c => c.id !== id));
+      if (activeChatId === id) { // Limpar ID se o chat deletado era o ativo
+        setActiveChatId(null);
       }
     } catch (error) {
-      console.error("Erro ao excluir chat e mensagens:", error);
+      console.error("Falha ao deletar chat:", error);
     }
-  }, [currentUser, chats, currentChat]);
+  }, [supabase, activeChatId]);
 
-  // Também atualize a função deleteMessageFromChat para persistência
-  const deleteMessageFromChat = useCallback(async (chatId: string, messageId: string) => {
-    if (!currentUser) return;
-
-    // Verificar permissões
-    const chat = chats.find(c => c.id === chatId);
-    if (!chat || (chat.userId !== currentUser.id && currentUser.role !== 'admin')) {
-      console.warn("Usuário não tem permissão para excluir mensagens deste chat");
-      return;
-    }
-
-    // Atualizar estado local
-    setChats(prevChats =>
-      prevChats.map(chat => {
-        if (chat.id === chatId) {
-          return { 
-            ...chat, 
-            messages: chat.messages.filter(msg => msg.id !== messageId), 
-            updatedAt: new Date() 
-          };
-        }
-        return chat;
-      })
-    );
-
-    setCurrentChat(prev => 
-      prev?.id === chatId 
-        ? { ...prev, messages: prev.messages.filter(msg => msg.id !== messageId), updatedAt: new Date() } 
-        : prev
-    );
-
-    // Excluir a mensagem do banco de dados
+  const deleteMessageFromChat = useCallback(async (chatId: string, messageId: string): Promise<void> => {
     try {
-      const { error } = await supabase
-        .from('messages')
-        .delete()
-        .eq('id', messageId);
-      
-      if (error) {
-        console.error("Erro ao excluir mensagem do banco de dados:", error);
-      }
-      
-      // Atualizar a data de atualização do chat
-      await supabase
-        .from(CHATS_TABLE)
-        .update({ updated_at: new Date().toISOString() })
-        .eq('id', chatId);
-        
+      const { error } = await supabase.from(MESSAGES_TABLE).delete().eq('id', messageId);
+      if (error) { console.error("Erro ao deletar mensagem:", error); throw error; }
+      setChats(prev => prev.map(chat => 
+        chat.id === chatId 
+          ? { ...chat, messages: chat.messages.filter(m => m.id !== messageId) } 
+          : chat
+      ));
     } catch (error) {
-      console.error("Erro ao excluir mensagem:", error);
+      console.error("Falha ao deletar mensagem:", error);
     }
-  }, [currentUser, chats]);
+  }, [supabase]);
 
-  // Copy Generation (Keep as is)
-  const generateCopy = useCallback(async (request: CopyRequest): Promise<string> => {
-    console.log("[DataContext] generateCopy - Request:", request);
-    if (!currentUser) {
-      throw new Error("Usuário não autenticado.");
+  const generateCopy = async (request: CopyRequest, chatHistory: Message[] = []): Promise<string> => {
+    console.log("[DataContext] generateCopy chamada com request:", request);
+    console.log("[DataContext] generateCopy chamada com chatHistory:", chatHistory);
+
+    if (!currentUser?.apiKey) {
+      console.error("[DataContext] API Key da Groq não encontrada para o usuário.");
+      return "Erro: API Key da Groq não configurada para o usuário.";
     }
-    if (!currentUser.apiKey) {
-      throw new Error("Chave API Groq não configurada. Vá para Configurações.");
+    if (!request.agentId) {
+      console.error("[DataContext] Agent ID não fornecido para generateCopy.");
+      return "Erro: Agente não especificado.";
     }
 
-    const { expertId, agentId, contentType, additionalInfo } = request;
-
-    // --- 1. Obter Agente completo com base de conhecimento --- 
-    const agent = await getAgentById(agentId); // Chama o getAgentById modificado
+    const agent = await getAgentById(request.agentId);
     if (!agent) {
-      console.error(`[DataContext] generateCopy - Agente com ID ${agentId} não encontrado ou falha ao carregar.`);
-      throw new Error(`Agente com ID ${agentId} não encontrado ou falha ao carregar sua base de conhecimento.`);
-    }
-    console.log("[DataContext] generateCopy - Agente carregado:", agent);
-
-    // --- 2. Obter Expert e Histórico de Conversa --- 
-    const expert = expertId ? experts.find(e => e.id === expertId && e.userId === currentUser.id) : null;
-    const historyChat = currentChat; 
-    const conversationHistory = historyChat?.messages
-       .filter(msg => !msg.content.startsWith("⚠️")) 
-       .map(msg => ({ role: msg.role, content: msg.content })) 
-       || [];
-    if (!historyChat && conversationHistory.length > 0) { 
-        console.warn("[DataContext] generateCopy: Discrepância entre currentChat e histórico existente. Histórico pode ser impreciso.");
+      console.error(`[DataContext] Agente com ID ${request.agentId} não encontrado.`);
+      return `Erro: Agente com ID ${request.agentId} não encontrado.`;
     }
 
-    // --- 3. Construir Prompt do Sistema --- 
-    let systemPrompt = agent.prompt; // Prompt base do agente
-
-    // Adicionar contexto do Expert, se houver
-    if (expert) {
-      console.log("[DataContext] generateCopy - Adicionando contexto do expert:", expert.name);
-      systemPrompt += `\n\n## Contexto Adicional (Sobre o Negócio/Produto do Usuário - Expert: ${expert.name}):\nUse estas informações como base para dar mais relevância e especificidade à copy, mas priorize sempre a solicitação específica feita pelo usuário no prompt atual.\n`;
-      systemPrompt += `- Nicho Principal: ${expert.niche || "Não definido"}\n`;
-      systemPrompt += `- Público-alvo: ${expert.targetAudience || "Não definido"}\n`;
-      systemPrompt += `- Principais Entregáveis/Produtos/Serviços: ${expert.deliverables || "Não definido"}\n`;
-      systemPrompt += `- Maiores Benefícios: ${expert.benefits || "Não definido"}\n`;
-      systemPrompt += `- Objeções/Dúvidas Comuns: ${expert.objections || "Não definido"}\n`;
-    } else if (expertId) {
-        console.warn(`[DataContext] generateCopy - Expert com ID ${expertId} selecionado, mas não encontrado.`);
-        systemPrompt += `\n\nNota: Um perfil de Expert foi selecionado, mas seus detalhes não estão disponíveis no momento.`;
+    const contentType = await getContentTypeById(request.contentTypeId || ""); // Adicionado fallback para string vazia se undefined
+    if (!contentType) {
+      console.error(`[DataContext] Tipo de conteúdo com ID ${request.contentTypeId} não encontrado.`);
+      // Não retornar erro fatal aqui, pode ser opcional dependendo da lógica de negócios
+      // return `Erro: Tipo de conteúdo com ID ${request.contentTypeId} não encontrado.`; 
     }
 
-    // Adicionar Base de Conhecimento do Agente, se houver
-    let knowledgeBaseContent = "";
-    if (agent.knowledgeFiles && agent.knowledgeFiles.length > 0) {
-      console.log("[DataContext] generateCopy - Processando base de conhecimento do agente:", agent.knowledgeFiles);
-      knowledgeBaseContent += "\n\n## Base de Conhecimento Relevante do Agente:\n";
-      agent.knowledgeFiles.forEach(file => {
-        if (file.content && file.content.trim() !== "") {
-          console.log(`[DataContext] generateCopy - Adicionando conteúdo do arquivo: ${file.name}`);
-          knowledgeBaseContent += `\n### Trecho do arquivo: ${file.name}\n${file.content.trim()}\n---\n`;
+    const currentTemperature = agent.temperature ?? 0.7;
+    console.log(`[DataContext] Usando temperatura: ${currentTemperature} para o agente ${agent.name}`);
+
+    let retrievedKnowledge = "Nenhum conhecimento adicional encontrado.";
+    if (openai && agent.knowledgeFiles && agent.knowledgeFiles.length > 0 && request.userInput) {
+      try {
+        const userInputEmbeddingResponse = await openai.embeddings.create({
+          model: "text-embedding-3-small",
+          input: request.userInput,
+        });
+        const userInputEmbedding = userInputEmbeddingResponse.data[0].embedding;
+
+        interface RpcChunk {
+          original_file_name: string;
+          chunk_text: string;
+          similarity: number; // Incluindo similarity, pois o linter o mencionou e é comum em funções de match
+          // Adicione outros campos se a sua RPC os retornar e você precisar deles
+        }
+
+        const { data: chunks, error: chunksError } = await supabase.rpc('match_knowledge_chunks', {
+          match_agent_id: agent.id,
+          query_embedding: userInputEmbedding as any, 
+          match_threshold: 0.75, 
+          match_count: 5 
+        });
+
+        if (chunksError) {
+          console.error("[DataContext] Erro ao buscar chunks de conhecimento:", chunksError);
+        } else if (chunks && chunks.length > 0) {
+          retrievedKnowledge = (chunks as RpcChunk[]).map((chunk: RpcChunk) => 
+            `Trecho do arquivo \"${chunk.original_file_name}\":\n${chunk.chunk_text}`
+          ).join("\n\n---\n\n");
         } else {
-          console.log(`[DataContext] generateCopy - Arquivo ${file.name} sem conteúdo ou conteúdo vazio.`);
+          console.log("[DataContext] Nenhum chunk de conhecimento similar encontrado via RAG.");
         }
-      });
-      // Adicionar ao systemPrompt apenas se houver conteúdo efetivo da base de conhecimento
-      if (knowledgeBaseContent.trim() !== "## Base de Conhecimento Relevante do Agente:") { 
-        systemPrompt += knowledgeBaseContent;
+      } catch (ragError) {
+        console.error("[DataContext] Erro durante o processo RAG:", ragError);
       }
-    } else {
-      console.log("[DataContext] generateCopy - Agente não possui arquivos de conhecimento ou estão vazios.");
     }
+    console.log("[DataContext] Chunks de conhecimento recuperados:", retrievedKnowledge);
 
-    // Instruções Gerais Finais
-    systemPrompt += `\n\nInstruções Gerais: Gere o conteúdo exclusivamente no idioma Português do Brasil. Seja criativo e siga o tom de voz implícito no prompt do agente e no contexto do expert (se fornecido). Adapte o formato ao Tipo de Conteúdo solicitado: ${contentType}.`;
-    console.log("[DataContext] generateCopy - System Prompt Final Construído:", systemPrompt);
+    const formattedHistory = chatHistory
+      .map(msg => `${msg.sender === 'user' ? 'Usuário' : 'Agente'}: ${msg.text}`)
+      .join('\\n');
 
-    // --- 4. Preparar Corpo da Requisição para API --- 
-    const GROQ_API_ENDPOINT = "https://api.groq.com/openai/v1/chat/completions";
-    const DEFAULT_TEMPERATURE = 0.7;
-    const GROQ_MODEL = "meta-llama/llama-4-maverick-17b-128e-instruct"; // Llama4 Maverick para geração superior de copys
+    const contentTypeContext = contentType 
+      ? `\\n\\nContexto do Tipo de Conteúdo (${contentType.name}):\\n${contentType.description}`
+      : "";
 
-    const requestBody = {
-      model: GROQ_MODEL,
-      messages: [
-        { role: "system", content: systemPrompt },
-        ...conversationHistory, 
-        { role: "user", content: additionalInfo } 
-      ],
-      temperature: agent.temperature ?? DEFAULT_TEMPERATURE, 
-    };
-    console.log(`Usando modelo avançado: ${GROQ_MODEL} para geração de copy`);
-    console.log("Sending messages to Groq:", JSON.stringify(requestBody.messages, null, 2)); 
+    const finalPrompt = `Contexto do Agente: ${agent.prompt}${contentTypeContext}\\n\\nConhecimento Recuperado:\\n${retrievedKnowledge}\\n\\n---\\n\\nHistórico da Conversa Anterior:\\n${formattedHistory || 'Nenhuma conversa anterior.'}\\n\\n---\\n\\nSolicitação Atual do Usuário: "${request.userInput}"\\n\\nBaseado em TODO o contexto fornecido (agente, tipo de conteúdo, conhecimento recuperado e histórico da conversa), responda à solicitação atual do Usuário. Priorize o conhecimento recuperado. Seja direto e responda apenas o que foi perguntado.`;
+    
+    console.log("[DataContext] Final prompt being sent to Groq:", finalPrompt);
 
-    // --- 5. Fazer Chamada à API --- 
     try {
-      const response = await fetch(GROQ_API_ENDPOINT, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${currentUser.apiKey}`,
-        },
-        body: JSON.stringify(requestBody),
+      const groq = new Groq({ apiKey: currentUser.apiKey, dangerouslyAllowBrowser: true });
+      const DEFAULT_GROQ_MODEL = "meta-llama/llama-4-maverick-17b-128e-instruct"; // Definir o modelo padrão
+      const completion = await groq.chat.completions.create({
+        messages: [
+          {
+            role: "user",
+            content: finalPrompt,
+          },
+        ],
+        model: agent.model || DEFAULT_GROQ_MODEL, // Usar agent.model ou o DEFAULT_GROQ_MODEL
+        temperature: currentTemperature, 
       });
-
-      if (!response.ok) {
-        const errorBody = await response.json().catch(() => ({ message: "Erro desconhecido ao ler corpo do erro" }));
-        console.error("Groq API Error Response:", errorBody);
-        throw new Error(`Erro na API Groq: ${response.status} ${response.statusText} - ${errorBody?.error?.message || JSON.stringify(errorBody)}`);
-      }
-
-      const data = await response.json();
-      console.log("Groq API Success Response:", data);
-      const generatedContent = data.choices?.[0]?.message?.content;
-      if (!generatedContent) {
-        throw new Error("Resposta da API Groq não continha conteúdo gerado.");
-      }
-      return generatedContent.trim();
+      console.log("[DataContext] Groq completion received:", completion);
+      const resultText = completion.choices[0]?.message?.content || "";
+      console.log("[DataContext] Result text from Groq:", resultText);
+      return resultText;
 
     } catch (error) {
-      console.error("Erro ao chamar a API Groq:", error);
-      let errorMessage = "Ocorreu um erro desconhecido ao chamar a API Groq.";
-      if (error instanceof Error) {
-         if (error.message.includes("401")) { 
-             errorMessage = "Chave API Groq inválida ou expirada. Verifique as Configurações.";
-         } else if (error.message.includes("Failed to fetch")) {
-             errorMessage = "Não foi possível conectar à API Groq. Verifique sua conexão com a internet.";
-         } else {
-             errorMessage = `Falha na comunicação com a Groq: ${error.message}`;
-         }
-      } 
-      throw new Error(errorMessage);
+      console.error("[DataContext] Erro ao chamar API Groq:", error);
+      return `Erro ao gerar cópia: ${error instanceof Error ? error.message : String(error)}`;
     }
-  }, [currentUser, agents, experts, currentChat]);
+  };
 
-  // --- ContentTypes CRUD --- 
 
-  const createContentType = useCallback(async (
-    contentTypeData: Omit<ContentType, "id" | "createdAt" | "updatedAt" | "userId">
-  ): Promise<ContentType> => {
-    if (!currentUser) {
-      throw new Error("Usuário não autenticado.");
-    }
-    
-    try {
-      console.log("[DataContext] Criando tipo de conteúdo:", contentTypeData);
-      
-      // Preparar dados para inserção
-      const dbData = {
+  const createContentType = useCallback(async (contentTypeData: Omit<ContentType, "id" | "createdAt" | "updatedAt" | "userId">): Promise<ContentType | null> => {
+    if (!currentUser?.id) { console.error("Não autenticado."); return null; }
+    const contentTypeToInsert: DbContentTypeInsert = {
         name: contentTypeData.name,
-        description: contentTypeData.description || null,
-        avatar: contentTypeData.avatar || null,
-        user_id: currentUser.id
-      };
-      
-      // Inserir no banco de dados
-      const { data, error } = await supabase
-        .from(CONTENT_TYPES_TABLE)
-        .insert(dbData)
-        .select('*')
-        .single();
-      
-      if (error) {
-        console.error("[DataContext] Erro ao criar tipo de conteúdo:", error);
-        // Fallback para dados locais se a tabela não existir
-        if (error.code === "42P01") { // código para tabela não existe
-          console.log("[DataContext] Tabela não existe, usando mock temporariamente");
-          const newContentType: ContentType = {
-            id: uuidv4(),
-            name: contentTypeData.name,
-            description: contentTypeData.description || "",
-            avatar: contentTypeData.avatar || null,
-            createdAt: new Date(),
-            updatedAt: new Date(),
-            userId: currentUser.id
-          };
-          
-          setContentTypes(prev => [newContentType, ...prev]);
-          return newContentType;
-        }
-        throw new Error(`Erro ao criar tipo de conteúdo: ${error.message}`);
-      }
-      
-      // Converter para o formato da aplicação
-      const newContentType: ContentType = {
-        id: data.id,
-        name: data.name,
-        description: data.description || "",
-        avatar: data.avatar,
-        createdAt: new Date(data.created_at),
-        updatedAt: new Date(data.updated_at),
-        userId: data.user_id
-      };
-      
-      // Atualizar o estado local
-      setContentTypes(prev => [newContentType, ...prev]);
-      
-      console.log("[DataContext] Tipo de conteúdo criado:", newContentType);
-      return newContentType;
-    } catch (error) {
-      console.error("[DataContext] Erro ao criar tipo de conteúdo:", error);
-      throw error;
-    }
-  }, [currentUser, supabase]);
-  
-  const updateContentType = useCallback(async (
-    id: string, 
-    contentTypeData: Partial<Omit<ContentType, "id" | "createdAt" | "updatedAt" | "userId">>
-  ): Promise<ContentType> => {
-    if (!currentUser) {
-      throw new Error("Usuário não autenticado.");
-    }
-    
+        description: contentTypeData.description,
+        avatar: contentTypeData.avatar,
+        user_id: currentUser.id,
+    };
     try {
-      console.log("[DataContext] Atualizando tipo de conteúdo:", id, contentTypeData);
-      
-      // Preparar dados para atualização
-      const dbData: any = {
-        updated_at: new Date().toISOString()
-      };
-      
-      if (contentTypeData.name !== undefined) dbData.name = contentTypeData.name;
-      if (contentTypeData.description !== undefined) dbData.description = contentTypeData.description;
-      if (contentTypeData.avatar !== undefined) dbData.avatar = contentTypeData.avatar;
-      
-      // Atualizar no banco de dados
-      const { data, error } = await supabase
-        .from(CONTENT_TYPES_TABLE)
-        .update(dbData)
-        .eq('id', id)
-        .select('*')
-        .single();
-      
-      if (error) {
-        console.error("[DataContext] Erro ao atualizar tipo de conteúdo:", error);
-        // Fallback para dados locais se a tabela não existir
-        if (error.code === "42P01") { // código para tabela não existe
-          console.log("[DataContext] Tabela não existe, usando mock temporariamente");
-          
-          // Find and update local state
-          const contentTypeIndex = contentTypes.findIndex(ct => ct.id === id);
-          if (contentTypeIndex === -1) {
-            throw new Error("Tipo de conteúdo não encontrado.");
-          }
-          
-          const updatedContentType: ContentType = {
-            ...contentTypes[contentTypeIndex],
-            ...contentTypeData,
-            updatedAt: new Date()
-          };
-          
-          const newContentTypes = [...contentTypes];
-          newContentTypes[contentTypeIndex] = updatedContentType;
-          setContentTypes(newContentTypes);
-          
-          return updatedContentType;
-        }
-        throw new Error(`Erro ao atualizar tipo de conteúdo: ${error.message}`);
-      }
-      
-      // Converter para o formato da aplicação
-      const updatedContentType: ContentType = {
-        id: data.id,
-        name: data.name,
-        description: data.description || "",
-        avatar: data.avatar,
-        createdAt: new Date(data.created_at),
-        updatedAt: new Date(data.updated_at),
-        userId: data.user_id
-      };
-      
-      // Atualizar o estado local
-      setContentTypes(prev => 
-        prev.map(ct => ct.id === id ? updatedContentType : ct)
-      );
-      
-      console.log("[DataContext] Tipo de conteúdo atualizado:", updatedContentType);
-      return updatedContentType;
+        const { data, error } = await supabase.from(CONTENT_TYPES_TABLE).insert(contentTypeToInsert).select().single();
+        if (error) { console.error("Erro ao criar content type:", error); throw error; }
+        if (!data) { console.error("Nenhum dado retornado."); return null;}
+        
+        const newContentType = mapDbContentTypeToContentType(data as DbContentTypeRow);
+        setContentTypes(prev => [newContentType, ...prev]);
+        return newContentType;
     } catch (error) {
-      console.error("[DataContext] Erro ao atualizar tipo de conteúdo:", error);
-      throw error;
+        console.error("Falha ao criar content type:", error);
+        return null;
     }
-  }, [currentUser, contentTypes, supabase]);
-  
-  const deleteContentType = useCallback(async (id: string): Promise<void> => {
-    if (!currentUser) {
-      throw new Error("Usuário não autenticado.");
-    }
-    
-    try {
-      console.log("[DataContext] Excluindo tipo de conteúdo:", id);
-      
-      // Excluir do banco de dados
-      const { error } = await supabase
-        .from(CONTENT_TYPES_TABLE)
-        .delete()
-        .eq('id', id);
-      
-      if (error) {
-        console.error("[DataContext] Erro ao excluir tipo de conteúdo:", error);
-        // Fallback para dados locais se a tabela não existir
-        if (error.code === "42P01") { // código para tabela não existe
-          console.log("[DataContext] Tabela não existe, usando mock temporariamente");
-          setContentTypes(prev => prev.filter(ct => ct.id !== id));
-          return;
-        }
-        throw new Error(`Erro ao excluir tipo de conteúdo: ${error.message}`);
-      }
-      
-      // Atualizar o estado local
-      setContentTypes(prev => prev.filter(ct => ct.id !== id));
-      
-      console.log("[DataContext] Tipo de conteúdo excluído com sucesso");
-    } catch (error) {
-      console.error("[DataContext] Erro ao excluir tipo de conteúdo:", error);
-      throw error;
-    }
-  }, [currentUser, supabase]);
-  
-  const getContentTypeById = useCallback(async (id: string): Promise<ContentType | null> => {
-    const contentType = contentTypes.find(ct => ct.id === id);
-    return contentType || null;
-  }, [contentTypes]);
+  }, [currentUser, supabase, mapDbContentTypeToContentType]);
 
-  // Value object for context
-  const value = useMemo(() => ({
-    isLoading, 
-    agents,
-    createAgent,
-    updateAgent,
-    deleteAgent,
-    getAgentById,
-    updateAgentFiles,
-    refetchAgentData,
-    experts,
-    addExpert,
-    updateExpert,
-    deleteExpert,
+  const updateContentType = useCallback(async (id: string, contentTypeData: Partial<Omit<ContentType, "id" | "createdAt" | "updatedAt" | "userId">>): Promise<ContentType | null> => {
+    if (!currentUser) { console.error("Não autenticado."); return null; }
+    const contentTypeToUpdate: Partial<DbContentTypeInsert> = {
+        name: contentTypeData.name,
+        description: contentTypeData.description,
+        avatar: contentTypeData.avatar,
+        updated_at: new Date().toISOString(),
+    };
+     Object.keys(contentTypeToUpdate).forEach(key => {
+      const K = key as keyof typeof contentTypeToUpdate;
+      if (contentTypeToUpdate[K] === undefined) {
+        delete contentTypeToUpdate[K];
+      }
+    });
+    
+    try {
+        const { data, error } = await supabase.from(CONTENT_TYPES_TABLE).update(contentTypeToUpdate).eq('id', id).select().single();
+        if (error) { console.error("Erro ao atualizar content type:", error); throw error; }
+        if (!data) { console.error("Nenhum dado retornado."); return null; }
+        
+        const updatedContentType = mapDbContentTypeToContentType(data as DbContentTypeRow);
+        setContentTypes(prev => prev.map(ct => ct.id === id ? updatedContentType : ct));
+        return updatedContentType;
+    } catch (error) {
+        console.error("Falha ao atualizar content type:", error);
+        return null;
+    }
+  }, [currentUser, supabase, mapDbContentTypeToContentType]);
+
+  const deleteContentType = useCallback(async (id: string): Promise<void> => {
+    try {
+        const { error } = await supabase.from(CONTENT_TYPES_TABLE).delete().eq('id', id);
+        if (error) { console.error("Erro ao deletar content type:", error); throw error; }
+        setContentTypes(prev => prev.filter(ct => ct.id !== id));
+    } catch (error) {
+        console.error("Falha ao deletar content type:", error);
+    }
+  }, [supabase]);
+
+  // ADAPTAR A FUNÇÃO QUE SERÁ EXPORTADA COMO setCurrentChat
+  const handleSetCurrentChat = useCallback((chat: Chat | null) => {
+    setActiveChatId(chat?.id ?? null);
+  }, []); // Sem dependências, pois só chama setActiveChatId
+
+  const contextValue = useMemo(() => ({
+    agents, createAgent, updateAgent, deleteAgent, getAgentById, updateAgentFiles, refetchAgentData,
+    experts, addExpert, updateExpert, deleteExpert,
     chats,
-    currentChat,
-    setCurrentChat,
-    createChat,
-    addMessageToChat,
-    deleteChat,
-    deleteMessageFromChat,
-    generateCopy,
-    contentTypes,
-    createContentType,
-    updateContentType,
-    deleteContentType,
-    getContentTypeById
-  }), [
-    isLoading, 
-    agents, 
-    createAgent, 
-    updateAgent, 
-    deleteAgent, 
-    getAgentById,
-    updateAgentFiles,
-    refetchAgentData,
-    experts, 
-    addExpert, 
-    updateExpert, 
-    deleteExpert,
-    chats, 
-    currentChat, 
+    setCurrentChat: handleSetCurrentChat, // Exportar a função que define o ID
+    activeChatId, // Exportar o ID ativo
     createChat, 
     addMessageToChat, 
-    deleteChat,
+    deleteChat, 
     deleteMessageFromChat,
-    contentTypes,
-    createContentType,
-    updateContentType,
-    deleteContentType,
-    getContentTypeById
+    generateCopy,
+    contentTypes, createContentType, updateContentType, deleteContentType, getContentTypeById,
+    isLoading,
+  }), [
+    agents, createAgent, updateAgent, deleteAgent, getAgentById, updateAgentFiles, refetchAgentData,
+    experts, addExpert, updateExpert, deleteExpert,
+    chats,
+    activeChatId, // Adicionar activeChatId
+    handleSetCurrentChat, // Adicionar handleSetCurrentChat
+    createChat, 
+    addMessageToChat, 
+    deleteChat, 
+    deleteMessageFromChat,
+    generateCopy,
+    contentTypes, createContentType, updateContentType, deleteContentType, getContentTypeById, // getContentTypeById está aqui agora
+    isLoading
   ]);
 
-  return <DataContext.Provider value={value}>{children}</DataContext.Provider>;
+  return <DataContext.Provider value={contextValue}>{children}</DataContext.Provider>;
+}
+
+export function useData(): DataContextType {
+  const context = useContext(DataContext);
+  if (context === undefined) {
+    throw new Error("useData deve ser usado dentro de um DataProvider");
+  }
+  return context;
 }

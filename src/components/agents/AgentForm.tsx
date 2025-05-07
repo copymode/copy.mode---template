@@ -14,12 +14,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { v4 as uuidv4 } from 'uuid';
 import { AgentAvatarUploader } from "./AgentAvatarUploader";
 
-// Importação e configuração do PDF.js
-// @ts-ignore - Ignorar erro de tipagem do módulo pdf.js
-import * as pdfjsLib from 'pdfjs-dist/build/pdf';
-// @ts-ignore
-pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
-
 const DEFAULT_TEMPERATURE = 0.7;
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 const ACCEPTED_FILE_TYPES = [
@@ -175,73 +169,13 @@ export function AgentForm({ onCancel, agentToEdit }: AgentFormProps) {
     return successfulUploads;
   };
 
-  const extractTextFromFile = async (file: File): Promise<string | null> => {
-    const fileType = file.type;
-    const fileName = file.name;
-    
-    try {
-      if (fileType === 'text/plain' || fileType === 'text/markdown') {
-        return new Promise((resolve, reject) => {
-          const reader = new FileReader();
-          reader.onload = (event) => {
-            if (event.target?.result) {
-              resolve(event.target.result as string);
-            } else {
-              reject(new Error('Failed to read text file'));
-            }
-          };
-          reader.onerror = (error) => {
-            console.error(`Error reading text file ${fileName}:`, error);
-            reject(error);
-          };
-          reader.readAsText(file);
-        });
-      } else if (fileType === 'application/pdf') {
-        try {
-          const arrayBuffer = await file.arrayBuffer();
-          const typedArray = new Uint8Array(arrayBuffer);
-          const pdf = await pdfjsLib.getDocument({ data: typedArray }).promise;
-          
-          // Otimizando a extração de PDF processando múltiplas páginas em paralelo
-          const pagePromises = [];
-          for (let i = 1; i <= pdf.numPages; i++) {
-            pagePromises.push(pdf.getPage(i));
-          }
-          
-          const pages = await Promise.all(pagePromises);
-          const textPromises = pages.map(page => page.getTextContent());
-          const textContents = await Promise.all(textPromises);
-          
-          // Concatenando o texto de todas as páginas
-          const fullText = textContents
-            .map(content => 
-              content.items
-                .map((item: any) => item.str)
-                .join(' ')
-            )
-            .join('\n\n');
-            
-          return fullText.trim();
-        } catch (error) {
-          console.error(`Error parsing PDF ${fileName}:`, error);
-          throw new Error(`Failed to parse PDF: ${error.message}`);
-        }
-      } else {
-        console.warn(`Unsupported file type for text extraction: ${fileName} (${fileType})`);
-        return null; // Retorna null para tipos não suportados
-      }
-    } catch (error) {
-      console.error(`Error extracting text from ${fileName}:`, error);
-      return null;
-    }
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (isSubmitting || isFileLoading) return;
     setIsSubmitting(true);
     
     let currentAgentId = agentToEdit?.id;
+    let processedNewFiles: KnowledgeFile[] = []; // Esta variável não será mais preenchida com 'content'
 
     try {
       if (!formData.name || !formData.prompt) {
@@ -250,91 +184,79 @@ export function AgentForm({ onCancel, agentToEdit }: AgentFormProps) {
         return;
       }
 
-      // Start with existing files from formData
-      let agentKnowledgeFilesToUpdate: KnowledgeFile[] = formData.knowledgeFiles || [];
+      let agentKnowledgeFilesToUpdate: Omit<KnowledgeFile, 'content'>[] = (formData.knowledgeFiles || []).map(f => ({ name: f.name, path: f.path }));
+      let newlyUploadedKnowledgeFiles: Omit<KnowledgeFile, 'content'>[] = [];
 
-      if (!isEditMode) {
+      if (!isEditMode) { // NOVO AGENTE
+        console.log("AgentForm: Criando novo agente...");
         const newAgentData = {
           name: formData.name,
           description: formData.description,
           prompt: formData.prompt,
           temperature: formData.temperature,
           avatar: formData.avatar,
-          // knowledgeFiles will be associated in the update step after creation and file processing
+          // knowledgeFiles (metadados) serão associados após o upload, se houver arquivos
         };
-        const newAgent = await createAgent(newAgentData); // createAgent from useData
-        currentAgentId = newAgent.id;
-        // Toast for agent creation will be shown after files are potentially processed and agent is fully updated
-      }
+        const createdAgent = await createAgent(newAgentData);
+        if (!createdAgent || !createdAgent.id) {
+          setIsSubmitting(false);
+          throw new Error("Falha ao criar o novo agente ou ID não retornado.");
+        }
+        currentAgentId = createdAgent.id;
+        console.log("AgentForm: Novo agente criado com ID:", currentAgentId);
+        
+        if (selectedFiles.length > 0 && currentAgentId) {
+          console.log("AgentForm: Fazendo upload de arquivos para novo agente...", selectedFiles);
+          newlyUploadedKnowledgeFiles = await uploadFiles(currentAgentId); 
+          console.log("AgentForm: Arquivos novos upados (metadados):", newlyUploadedKnowledgeFiles);
+        }
+        // Para um novo agente, os knowledgeFiles a serem salvos são apenas os recém-upados (apenas metadados)
+        agentKnowledgeFilesToUpdate = newlyUploadedKnowledgeFiles;
       
-      // Ensure currentAgentId is available for file operations
-      if (!currentAgentId) {
-        toast({ title: "Erro Crítico", description: "ID do Agente não está disponível para salvar arquivos.", variant: "destructive" });
-        setIsSubmitting(false);
-        return;
+      } else if (currentAgentId && selectedFiles.length > 0) { // EDITAR AGENTE + NOVOS ARQUIVOS
+        console.log("AgentForm: Fazendo upload de novos arquivos para agente existente...", selectedFiles);
+        newlyUploadedKnowledgeFiles = await uploadFiles(currentAgentId); 
+        console.log("AgentForm: Arquivos novos upados (metadados):", newlyUploadedKnowledgeFiles);
+        
+        agentKnowledgeFilesToUpdate = [
+          ...(formData.knowledgeFiles || []).map(f => ({ name: f.name, path: f.path })), 
+          ...newlyUploadedKnowledgeFiles
+        ];
       }
+      // Se modo de edição e sem novos arquivos, agentKnowledgeFilesToUpdate já contém os metadados existentes.
 
-      // Process newly selected files
-      let processedNewFiles: KnowledgeFile[] = [];
-      if (selectedFiles.length > 0) {
-        console.log("AgentForm: Iniciando processamento de novos arquivos selecionados", selectedFiles);
-        // 1. Upload files to storage (gets name and path)
-        const uploadedFilesMeta = await uploadFiles(currentAgentId);
-        console.log("AgentForm: Metadados dos arquivos upados", uploadedFilesMeta);
-
-        // 2. Extract text and combine with upload metadata
-        const extractionPromises = selectedFiles.map(async (fileObject) => {
-          const uploadedMeta = uploadedFilesMeta.find(meta => meta.name === fileObject.name);
-          if (!uploadedMeta) {
-            console.warn(`AgentForm: Metadados de upload não encontrados para ${fileObject.name}`);
-            return null; // Skip this file if metadata is missing
-          }
-          const textContent = await extractTextFromFile(fileObject);
-          return {
-            name: uploadedMeta.name,
-            path: uploadedMeta.path,
-            content: textContent || "", // Add content, or empty string if null
-          };
-        });
-
-        const results = await Promise.all(extractionPromises);
-        processedNewFiles = results.filter(r => r !== null) as KnowledgeFile[];
-        console.log("AgentForm: Arquivos novos processados com conteúdo:", processedNewFiles);
-      }
-
-      // Combine existing files (possibly without content) with newly processed files (with content)
-      agentKnowledgeFilesToUpdate = [
-        ...(formData.knowledgeFiles || []).map(f => ({ name: f.name, path: f.path, content: f.content || undefined })),
-        ...processedNewFiles
-      ];
-
-      // Deduplicate by path, keeping the last occurrence (newly processed or re-uploaded file takes precedence)
+      // Deduplicar por path, mantendo a última ocorrência (novo arquivo com mesmo path sobrescreve)
       const uniqueKnowledgeFiles = agentKnowledgeFilesToUpdate.reduceRight((acc, current) => {
         if (current && typeof current.path === 'string' && !acc.find(item => item.path === current.path)) {
-          acc.unshift(current);
+          acc.unshift({ name: current.name, path: current.path });
         }
         return acc;
-      }, [] as KnowledgeFile[]);
+      }, [] as Omit<KnowledgeFile, 'content'>[]);
       
-      console.log("AgentForm: Lista final de arquivos de conhecimento únicos para salvar:", uniqueKnowledgeFiles);
+      console.log("AgentForm: Lista final de arquivos de conhecimento (metadados) para salvar:", uniqueKnowledgeFiles);
 
-      // Update the agent (either existing or the new one) with all data including processed files
       const agentDataToSave: Partial<Agent> = {
         name: formData.name,
         description: formData.description,
         prompt: formData.prompt,
         temperature: formData.temperature,
         avatar: formData.avatar,
-        knowledgeFiles: uniqueKnowledgeFiles,
+        knowledgeFiles: uniqueKnowledgeFiles, // Passa apenas metadados para DataContext
       };
 
-      await updateAgent(currentAgentId, agentDataToSave);
-      console.log("AgentForm: Agente atualizado/criado com arquivos via updateAgent.");
+      if (currentAgentId) { // Aplica tanto para novo agente (após criação) quanto para existente
+        await updateAgent(currentAgentId, agentDataToSave);
+        console.log("AgentForm: Agente atualizado/criado com metadados de arquivos via updateAgent.");
+      } else {
+        // Este caso não deveria acontecer se a lógica de criação do agente acima estiver correta
+        console.error("AgentForm: currentAgentId está indefinido antes de chamar updateAgent.");
+        throw new Error("ID do Agente não definido para atualização.");
+      }
 
       if (isEditMode) {
-        toast({ title: "Agente Atualizado", description: "O agente foi atualizado com sucesso." });
+        toast({ title: "Agente Atualizado", description: "O agente e sua lista de arquivos foram atualizados." });
       } else {
-        toast({ title: "Agente Criado", description: "O novo agente e seus arquivos de conhecimento foram salvos." });
+        toast({ title: "Agente Criado", description: "O novo agente foi criado. Arquivos de conhecimento, se houver, serão processados." });
       }
 
       onCancel(); // Close form
