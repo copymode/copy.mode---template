@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useData } from "@/hooks/useData";
+import { useData } from "@/context/DataContext";
 import { Chat } from "@/types";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -12,7 +12,7 @@ interface ChatSidebarProps {
 }
 
 export function ChatSidebar({ isOpen, onToggle, onNewChat }: ChatSidebarProps) {
-  const { chats, setCurrentChat, currentChat, deleteChat } = useData();
+  const { chats, setCurrentChat, activeChatId, deleteChat } = useData();
   const [sortedChats, setSortedChats] = useState<Chat[]>([]);
   
   // Sort chats by date
@@ -31,9 +31,18 @@ export function ChatSidebar({ isOpen, onToggle, onNewChat }: ChatSidebarProps) {
     return `${day} - ${month}`;
   };
   
-  // Esta função agora sempre vai retornar a data, não o conteúdo da mensagem
+  // Restaurar a lógica para mostrar o início da primeira mensagem como título/placeholder
   const getChatTitle = (chat: Chat) => {
-    return formatCreationDate(chat.createdAt);
+    if (chat.messages && chat.messages.length > 0 && chat.messages[0].text) {
+      const firstMessageText = chat.messages[0].text;
+      // Limitar a 27 caracteres e adicionar "..." se for maior
+      return firstMessageText.length > 27 
+        ? firstMessageText.substring(0, 27) + "..." 
+        : firstMessageText;
+    } else {
+      // Fallback para a data se não houver mensagens ou a primeira mensagem estiver vazia
+      return formatCreationDate(chat.createdAt);
+    }
   };
 
   // Handler para excluir chat
@@ -89,7 +98,7 @@ export function ChatSidebar({ isOpen, onToggle, onNewChat }: ChatSidebarProps) {
                     key={chat.id}
                     variant="ghost"
                     className={`w-full justify-start text-left px-3 py-2 h-auto ${
-                      currentChat?.id === chat.id ? "bg-accent" : ""
+                      activeChatId === chat.id ? "bg-accent" : ""
                     }`}
                     onClick={() => {
                       sessionStorage.removeItem("fromNavigation");

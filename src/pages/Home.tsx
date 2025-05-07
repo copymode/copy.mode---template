@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useMemo } from "react";
-import { useData } from "@/hooks/useData";
+import { useData } from "@/context/DataContext";
 import { ChatArea } from "@/components/chat/ChatArea";
 import { ChatInput } from "@/components/chat/ChatInput";
 import { ChatSidebar } from "@/components/chat/ChatSidebar";
@@ -26,24 +26,24 @@ import { useTheme } from "@/context/ThemeContext";
 interface ChatConversationHeaderProps {
   expertId?: string;
   agentId?: string;
-  contentType?: string;
+  contentTypeId?: string;
   experts: Expert[];
   agents: Agent[];
-  contentTypes: any[]; // Usando 'any' pois o tipo exato pode variar
+  contentTypes: any[];
 }
 
 // Componente de cabeçalho de conversa simplificado
 function ChatConversationHeader({ 
   expertId, 
   agentId, 
-  contentType, 
+  contentTypeId,
   experts, 
   agents, 
   contentTypes 
 }: ChatConversationHeaderProps) {
   const expert = expertId ? experts.find(e => e.id === expertId) : undefined;
   const agent = agentId ? agents.find(a => a.id === agentId) : undefined;
-  const contentTypeObj = contentType ? contentTypes.find(ct => ct.name === contentType) : undefined;
+  const contentTypeObj = contentTypeId ? contentTypes.find(ct => ct.id === contentTypeId) : undefined;
 
   return (
     <div className="chat-conversation-header w-full max-w-full">
@@ -55,7 +55,7 @@ function ChatConversationHeader({
             <AvatarFallback>{expertId ? (expert?.name?.[0] || "E").toUpperCase() : "E"}</AvatarFallback>
           )}
         </Avatar>
-        <span className="text-sm font-medium truncate">{expert?.name || "Expert"}</span>
+        <span className="text-sm font-medium truncate text-muted-foreground">{expert?.name || "Expert"}</span>
       </div>
       
       <div className="header-item">
@@ -66,18 +66,18 @@ function ChatConversationHeader({
             <AvatarFallback>{agentId ? (agent?.name?.[0] || "A").toUpperCase() : "A"}</AvatarFallback>
           )}
         </Avatar>
-        <span className="text-sm font-medium truncate">{agent?.name || "Agente"}</span>
+        <span className="text-sm font-medium truncate text-muted-foreground">{agent?.name || "Agente"}</span>
       </div>
       
       <div className="header-item">
         <Avatar className="h-8 w-8">
           {contentTypeObj?.avatar ? (
-            <AvatarImage src={contentTypeObj.avatar} alt={contentType || "Tipo"} />
+            <AvatarImage src={contentTypeObj.avatar} alt={contentTypeObj.name || "Tipo"} />
           ) : (
-            <AvatarFallback>{contentType ? contentType[0].toUpperCase() : "T"}</AvatarFallback>
+            <AvatarFallback>{contentTypeObj?.name ? contentTypeObj.name[0].toUpperCase() : "T"}</AvatarFallback>
           )}
         </Avatar>
-        <span className="text-sm font-medium truncate">{contentType || "Tipo de Conteúdo"}</span>
+        <span className="text-sm font-medium truncate text-muted-foreground">{contentTypeObj?.name || "Tipo de Conteúdo"}</span>
       </div>
     </div>
   );
@@ -563,7 +563,7 @@ export default function Home() {
                 <ChatConversationHeader 
                   expertId={currentChat?.expertId}
                   agentId={currentChat?.agentId}
-                  contentType={currentChat?.contentTypeId}
+                  contentTypeId={currentChat?.contentTypeId}
                   experts={experts}
                   agents={agents}
                   contentTypes={contentTypes}
