@@ -629,9 +629,9 @@ export default function Home() {
            </AlertDialog>
         </>
       ) : (
-        <div className="flex flex-col h-screen overflow-hidden">
+        <div className="flex flex-col min-h-screen">
           {/* Layout estilo ChatGPT com todos os elementos centralizados */}
-          <div className="flex flex-1 flex-col justify-start items-center px-4 py-8 overflow-y-auto">
+          <div className="flex flex-1 flex-col justify-start items-center px-4 py-8">
             <div className="w-full max-w-3xl mx-auto flex flex-col items-center">
               {/* Logo baseada no tema atual */}
               {theme === 'light' ? (
