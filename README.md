@@ -2,7 +2,7 @@
 
 ## Versões do Projeto
 
-**Versão Atual**: v2.0.3
+**Versão Atual**: v2.0.4
 
 ### Histórico de Versões
 - **v2.0.3**: Correção no fluxo de processamento de arquivos de conhecimento e RAG.

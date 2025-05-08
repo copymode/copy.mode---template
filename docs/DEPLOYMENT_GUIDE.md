@@ -30,6 +30,7 @@ npm install
    - `bucket-test.sql`
    - `rls-policy-fix.sql`
    - `content-type-avatars-fix.sql`
+   - **Importante:** Certifique-se de que a função SQL `match_knowledge_chunks` (responsável pela busca semântica na base de conhecimento) está criada corretamente no banco de dados. A definição recomendada pode ser encontrada na documentação interna ou solicitada à equipe de desenvolvimento (ela usa a extensão `pgvector`).
 3. Crie os buckets de armazenamento necessários:
    - `agent.files`
    - `content.type.avatars`

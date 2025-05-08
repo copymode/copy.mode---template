@@ -757,7 +757,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
     
     console.log(`[DataContext] generateCopy - System Prompt Final (Tamanho: ${systemPrompt.length} caracteres)`);
 
-    const GROQ_MODEL = "mixtral-8x7b-32768"; 
+    const GROQ_MODEL = "meta-llama/Llama-4-maverick-17b-128e-instruct"; 
     const requestTemperature = agent.temperature ?? 0.7;
 
     // Objeto que será enviado como 'body' para a Edge Function 'groq-proxy'
