@@ -2,9 +2,10 @@
 
 ## Versões do Projeto
 
-**Versão Atual**: v2.0.2
+**Versão Atual**: v2.0.3
 
 ### Histórico de Versões
+- **v2.0.3**: Correção no fluxo de processamento de arquivos de conhecimento e RAG.
 - **v2.0.2**: Versão estável como ponto de recuperação - correções nas Edge Functions `search-knowledge` e `groq-proxy`
 - **v2.0.0**: Implementação completa do sistema RAG com Edge Functions e Groq API
 - **v1.50.0**: Atualização da versão para v1.50.0 com melhorias gerais no sistema

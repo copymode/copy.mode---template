@@ -137,7 +137,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
         const [agentsResult, expertsResult, contentTypesResult] = await Promise.all([
           supabase
             .from(AGENTS_TABLE)
-            .select('id, name, avatar, prompt, description, temperature, created_at, updated_at, created_by') 
+            .select('id, name, avatar, prompt, description, temperature, created_at, updated_at, created_by, knowledges_files')
             .order('created_at', { ascending: false }),
           currentUser ? supabase
             .from(EXPERTS_TABLE)
@@ -162,7 +162,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
           createdAt: new Date(dbAgent.created_at),
           updatedAt: new Date(dbAgent.updated_at),
           createdBy: dbAgent.created_by,
-          knowledgeFiles: [], 
+          knowledgeFiles: dbAgent.knowledges_files?.map((f: Pick<KnowledgeFile, "name" | "path">) => ({ name: f.name, path: f.path, content: '' })) || [],
         })) : []);
 
         const { data: expertsData, error: expertsError } = expertsResult;
@@ -331,6 +331,24 @@ export function DataProvider({ children }: { children: ReactNode }) {
     if (error) throw new Error(`Falha ao atualizar agente: ${error.message}`);
     if (!data) throw new Error("Falha ao atualizar agente: Nenhum dado retornado.");
 
+    // Se a atualização foi bem-sucedida e os arquivos de conhecimento foram modificados,
+    // invoca a função para processá-los.
+    if (agentTableData.knowledges_files && agentTableData.knowledges_files.length > 0) {
+      try {
+        console.log(`[DataContext] updateAgent - Invocando process-knowledge-file para agentId: ${id}`);
+        const { error: processError } = await supabase.functions.invoke('process-knowledge-file', {
+          body: { agent_id: id } 
+        });
+        if (processError) {
+          console.error(`[DataContext] updateAgent - Erro ao invocar process-knowledge-file para agentId ${id}:`, processError);
+        } else {
+          console.log(`[DataContext] updateAgent - process-knowledge-file invocado com sucesso para agentId: ${id}`);
+        }
+      } catch (invokeError) {
+        console.error(`[DataContext] updateAgent - Exceção ao invocar process-knowledge-file para agentId ${id}:`, invokeError);
+      }
+    }
+
     const dbData = data as DbAgent;
     const updatedAgent: Agent = {
         id: dbData.id, name: dbData.name, avatar: dbData.avatar, prompt: dbData.prompt,
@@ -367,15 +385,15 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const getAgentById = useCallback(async (agentId: string): Promise<Agent | null> => {
     console.log(`[DataContext] getAgentById - Buscando metadados do agente: ${agentId}`);
     
-    const localAgent = agents.find(a => a.id === agentId && a.prompt);
-    if (localAgent) {
-        console.log(`[DataContext] getAgentById - Agente ${agentId} encontrado no estado local com prompt.`);
+    const localAgent = agents.find(a => a.id === agentId && a.prompt && Array.isArray(a.knowledgeFiles) /*&& a.knowledgeFiles.length > 0*/ ); 
+    if (localAgent && localAgent.knowledgeFiles && localAgent.knowledgeFiles.length > 0) { 
+        console.log(`[DataContext] getAgentById - Agente ${agentId} encontrado no estado local com prompt e knowledgeFiles.`);
         return localAgent;
     }
 
     const { data: agentBaseData, error: agentError } = await supabase
       .from(AGENTS_TABLE)
-      .select('id, name, avatar, prompt, description, temperature, created_at, updated_at, created_by')
+      .select('id, name, avatar, prompt, description, temperature, created_at, updated_at, created_by, knowledges_files')
       .eq('id', agentId)
       .single();
 
@@ -389,13 +407,13 @@ export function DataProvider({ children }: { children: ReactNode }) {
       id: typedAgentBaseData.id,
       name: typedAgentBaseData.name,
       avatar: typedAgentBaseData.avatar,
-      prompt: typedAgentBaseData.prompt, 
+      prompt: typedAgentBaseData.prompt,
       description: typedAgentBaseData.description || '',
       temperature: typedAgentBaseData.temperature,
       createdAt: new Date(typedAgentBaseData.created_at),
       updatedAt: new Date(typedAgentBaseData.updated_at),
       createdBy: typedAgentBaseData.created_by,
-      knowledgeFiles: [], 
+      knowledgeFiles: typedAgentBaseData.knowledges_files?.map((f: Pick<KnowledgeFile, "name" | "path">) => ({ name: f.name, path: f.path, content: '' })) || [],
     };
     
     setAgents(prevAgents => {
@@ -424,6 +442,23 @@ export function DataProvider({ children }: { children: ReactNode }) {
         .eq('id', agentId);
       if (error) throw new Error(`Falha ao atualizar metadados dos arquivos do agente: ${error.message}`);
       
+      // Após atualizar os metadados, invoca a função para processar os arquivos.
+      if (files && files.length > 0) {
+        try {
+          console.log(`[DataContext] updateAgentFiles - Invocando process-knowledge-file para agentId: ${agentId}`);
+          const { error: processError } = await supabase.functions.invoke('process-knowledge-file', {
+            body: { agent_id: agentId }
+          });
+          if (processError) {
+            console.error(`[DataContext] updateAgentFiles - Erro ao invocar process-knowledge-file para agentId ${agentId}:`, processError);
+          } else {
+            console.log(`[DataContext] updateAgentFiles - process-knowledge-file invocado com sucesso para agentId: ${agentId}`);
+          }
+        } catch (invokeError) {
+          console.error(`[DataContext] updateAgentFiles - Exceção ao invocar process-knowledge-file para agentId ${agentId}:`, invokeError);
+        }
+      }
+
       setAgents(prevAgents =>
         prevAgents.map(agent => 
           agent.id === agentId 
