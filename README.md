@@ -2,9 +2,11 @@
 
 ## Versões do Projeto
 
-**Versão Atual**: v1.50.0
+**Versão Atual**: v2.0.2
 
 ### Histórico de Versões
+- **v2.0.2**: Versão estável como ponto de recuperação - correções nas Edge Functions `search-knowledge` e `groq-proxy`
+- **v2.0.0**: Implementação completa do sistema RAG com Edge Functions e Groq API
 - **v1.50.0**: Atualização da versão para v1.50.0 com melhorias gerais no sistema
 - **v1.46.1**: Versão estável com correções para exclusão de agentes e experts com chats associados (foreign key constraints)
 - **v1.27.24**: Ajustes nos balões de chat: removido fundo das mensagens da IA, aplicado bg-secondary para mensagens do usuário e alterada largura do texto da IA para 100%
