@@ -2,8 +2,8 @@
 import { createClient } from '@supabase/supabase-js';
 import type { Database } from './types';
 
-const SUPABASE_URL = "https://tprmiyclgmkyujswyotr.supabase.co";
-const SUPABASE_PUBLISHABLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRwcm1peWNsZ21reXVqc3d5b3RyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDYwNjczODIsImV4cCI6MjA2MTY0MzM4Mn0.yjzJR2P2Ma_CQ8oqWsNSY8yqpLi6bZnNdsV78lXxL6k";
+export const SUPABASE_URL = "https://tprmiyclgmkyujswyotr.supabase.co";
+export const SUPABASE_PUBLISHABLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRwcm1peWNsZ21reXVqc3d5b3RyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDYwNjczODIsImV4cCI6MjA2MTY0MzM4Mn0.yjzJR2P2Ma_CQ8oqWsNSY8yqpLi6bZnNdsV78lXxL6k";
 
 // Import the supabase client like this:
 // import { supabase } from "@/integrations/supabase/client";
@@ -12,12 +12,6 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
   auth: {
     persistSession: true,
     detectSessionInUrl: true
-  },
-  global: {
-    fetch: (url, options) => {
-      console.log('Supabase Fetch Request:', url);
-      return fetch(url, options);
-    }
   }
 });
 
