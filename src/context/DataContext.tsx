@@ -205,7 +205,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
         console.error("Error loading initial data from Supabase:", error);
         setAgents([]);
         setExperts([]);
-        setChats(mockChats); 
+        setChats(mockChats);
       } finally {
         setIsLoading(false);
       }
@@ -271,7 +271,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
           setInitialLoadComplete(false);
           setAgents([]); 
           setExperts([]);
-          setChats(mockChats); 
+          setChats(mockChats);
           setContentTypes(mockContentTypes); 
       }
   }, [currentUser]);
@@ -343,7 +343,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
           console.error(`[DataContext] updateAgent - Erro ao invocar process-knowledge-file para agentId ${id}:`, processError);
         } else {
           console.log(`[DataContext] updateAgent - process-knowledge-file invocado com sucesso para agentId: ${id}`);
-        }
+    }
       } catch (invokeError) {
         console.error(`[DataContext] updateAgent - Exceção ao invocar process-knowledge-file para agentId ${id}:`, invokeError);
       }
@@ -475,14 +475,14 @@ export function DataProvider({ children }: { children: ReactNode }) {
   
   const addExpert = useCallback(async (expertData: Omit<Expert, "id" | "createdAt" | "updatedAt" | "userId">): Promise<Expert> => {
     if (!currentUser) throw new Error("Usuário não autenticado.");
-    const dataToInsert = {
+      const dataToInsert = {
         name: expertData.name, niche: expertData.niche, target_audience: expertData.targetAudience,
         deliverables: expertData.deliverables, benefits: expertData.benefits, objections: expertData.objections,
         avatar: expertData.avatar, user_id: currentUser.id
-    };
+      };
     const { data, error } = await supabase.from(EXPERTS_TABLE).insert(dataToInsert).select('*').single();
     if (error || !data) throw new Error(`Falha ao criar expert: ${error?.message || "Nenhum dado retornado"}`);
-    const dbExpert = data as DbExpert;
+      const dbExpert = data as DbExpert;
     const newExpert: Expert = {
         id: dbExpert.id, name: dbExpert.name, niche: dbExpert.niche, targetAudience: dbExpert.target_audience,
         deliverables: dbExpert.deliverables, benefits: dbExpert.benefits, objections: dbExpert.objections,
@@ -490,39 +490,39 @@ export function DataProvider({ children }: { children: ReactNode }) {
         userId: dbExpert.user_id
     };
     setExperts(prevExperts => [...prevExperts, newExpert]);
-    return newExpert;
+      return newExpert;
   }, [currentUser, supabase]);
   
   const updateExpert = useCallback(async (id: string, expertData: Partial<Omit<Expert, "id" | "createdAt" | "updatedAt" | "userId">>): Promise<Expert> => {
     if (!currentUser) throw new Error("Usuário não autenticado.");
     const dataToUpdate: Record<string, any> = { updated_at: new Date().toISOString() };
-    if (expertData.name !== undefined) dataToUpdate.name = expertData.name;
-    if (expertData.niche !== undefined) dataToUpdate.niche = expertData.niche;
-    if (expertData.targetAudience !== undefined) dataToUpdate.target_audience = expertData.targetAudience;
-    if (expertData.deliverables !== undefined) dataToUpdate.deliverables = expertData.deliverables;
-    if (expertData.benefits !== undefined) dataToUpdate.benefits = expertData.benefits;
-    if (expertData.objections !== undefined) dataToUpdate.objections = expertData.objections;
-    if (expertData.avatar !== undefined) dataToUpdate.avatar = expertData.avatar;
-
+      if (expertData.name !== undefined) dataToUpdate.name = expertData.name;
+      if (expertData.niche !== undefined) dataToUpdate.niche = expertData.niche;
+      if (expertData.targetAudience !== undefined) dataToUpdate.target_audience = expertData.targetAudience;
+      if (expertData.deliverables !== undefined) dataToUpdate.deliverables = expertData.deliverables;
+      if (expertData.benefits !== undefined) dataToUpdate.benefits = expertData.benefits;
+      if (expertData.objections !== undefined) dataToUpdate.objections = expertData.objections;
+      if (expertData.avatar !== undefined) dataToUpdate.avatar = expertData.avatar;
+      
     const { data, error } = await supabase.from(EXPERTS_TABLE).update(dataToUpdate).eq('id', id).eq('user_id', currentUser.id).select('*').single();
     if (error || !data) throw new Error(`Falha ao atualizar expert: ${error?.message || "Nenhum dado retornado"}`);
-    const dbExpert = data as DbExpert;
-    const updatedExpert: Expert = { 
+      const dbExpert = data as DbExpert;
+      const updatedExpert: Expert = {
         id: dbExpert.id, name: dbExpert.name, niche: dbExpert.niche, 
         targetAudience: dbExpert.target_audience, deliverables: dbExpert.deliverables, 
         benefits: dbExpert.benefits, objections: dbExpert.objections, 
         avatar: dbExpert.avatar, createdAt: new Date(dbExpert.created_at), 
         updatedAt: new Date(dbExpert.updated_at), userId: dbExpert.user_id 
-    };
+      };
     setExperts(prevExperts => prevExperts.map(expert => (expert.id === id ? updatedExpert : expert)));
-    return updatedExpert;
+      return updatedExpert;
   }, [currentUser, supabase]);
   
   const deleteExpert = useCallback(async (id: string) => {
     if (!currentUser) throw new Error("Usuário não autenticado.");
     const { error } = await supabase.from(EXPERTS_TABLE).delete().eq('id', id).eq('user_id', currentUser.id);
     if (error) throw new Error(`Falha ao excluir expert: ${error.message}`);
-    setExperts(prevExperts => prevExperts.filter(expert => expert.id !== id));
+      setExperts(prevExperts => prevExperts.filter(expert => expert.id !== id));
   }, [currentUser, supabase]);
 
   const stableSetCurrentChat = useCallback((chat: Chat | null) => {
@@ -568,7 +568,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
         await supabase.from('messages').insert({
             id: newMessage.id, content: newMessage.content, role: newMessage.role,
             chat_id: newMessage.chatId, created_at: newMessage.createdAt.toISOString()
-        });
+          });
         await supabase.from(CHATS_TABLE).update({ updated_at: new Date().toISOString() }).eq('id', chatId);
       } catch (dbError) { console.error("Erro ao salvar mensagem e atualizar chat:", dbError); }
     })();
@@ -616,9 +616,9 @@ export function DataProvider({ children }: { children: ReactNode }) {
     const historyChat = currentChat; 
     const conversationHistory = historyChat?.messages
        .filter(msg => !msg.content.startsWith("⚠️")) 
-       .map(msg => ({ role: msg.role, content: msg.content }))
+       .map(msg => ({ role: msg.role, content: msg.content })) 
        || [];
-    if (!historyChat && conversationHistory.length > 0) {
+    if (!historyChat && conversationHistory.length > 0) { 
         console.warn("[DataContext] generateCopy: currentChat is null but conversationHistory has items. History might be from a different context if not managed carefully.");
     }
 
@@ -748,10 +748,10 @@ export function DataProvider({ children }: { children: ReactNode }) {
         if (availableSpace > 100) { 
             systemPrompt += finalInstructions.substring(0, availableSpace - 3) + "..."; 
             console.warn("[DataContext] generateCopy - Instruções finais truncadas para caber no limite do prompt do sistema.");
-        } else {
+          } else {
             console.warn("[DataContext] generateCopy - Instruções finais não adicionadas (prompt do sistema muito longo).");
-        }
-    } else {
+          }
+        } else {
         systemPrompt += finalInstructions;
     }
     
@@ -811,27 +811,27 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
         } else { 
             console.log("[DataContext] generateCopy - Chamando API Groq diretamente...");
-            const GROQ_API_ENDPOINT = "https://api.groq.com/openai/v1/chat/completions";
-            
+    const GROQ_API_ENDPOINT = "https://api.groq.com/openai/v1/chat/completions";
+
             // Definir o corpo da requisição para a chamada direta, similar ao que a proxy faria internamente
             const directGroqPayload = {
-              model: GROQ_MODEL,
-              messages: [
-                { role: "system", content: systemPrompt },
-                ...conversationHistory, 
-                { role: "user", content: additionalInfo }
-              ],
+      model: GROQ_MODEL,
+      messages: [
+        { role: "system", content: systemPrompt },
+        ...conversationHistory, 
+        { role: "user", content: additionalInfo } 
+      ],
               temperature: requestTemperature,
-            };
+    };
 
             const apiResponse = await fetch(GROQ_API_ENDPOINT, {
-                method: "POST",
-                headers: {
-                  "Content-Type": "application/json",
-                  "Authorization": `Bearer ${currentUser.apiKey}`, 
-                },
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${currentUser.apiKey}`,
+        },
                 body: JSON.stringify(directGroqPayload), // Usar directGroqPayload aqui
-            });
+      });
 
             if (!apiResponse.ok) {
                 const errorBodyText = await apiResponse.text(); 
@@ -840,7 +840,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
                 console.error("[DataContext] Groq API Error:", apiResponse.status, errorBodyJson || errorBodyText);
                 const message = errorBodyJson?.error?.message || apiResponse.statusText || "Erro desconhecido da API Groq";
                 throw new Error(`Erro na API Groq (${apiResponse.status}): ${message}`);
-            }
+      }
             const responseData = await apiResponse.json();
             generatedContent = responseData.choices?.[0]?.message?.content;
         }
@@ -848,8 +848,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
         if (typeof generatedContent !== 'string' || !generatedContent.trim()) {
             console.warn("[DataContext] generateCopy - Resposta da API Groq (ou proxy) não continha conteúdo de texto válido.");
             throw new Error("Não foi possível gerar o conteúdo ou a resposta estava vazia. Tente novamente.");
-        }
-        return generatedContent.trim();
+      }
+      return generatedContent.trim();
 
     } catch (error: any) {
         console.error("[DataContext] Erro final em generateCopy ao chamar API Groq (ou proxy):", error);
@@ -862,21 +862,21 @@ export function DataProvider({ children }: { children: ReactNode }) {
   ): Promise<ContentType> => {
     if (!currentUser) throw new Error("Usuário não autenticado.");
     const dataToInsert = {
-      name: contentTypeData.name,
-      description: contentTypeData.description || null,
-      avatar: contentTypeData.avatar || null,
-      user_id: currentUser.id
-    };
+        name: contentTypeData.name,
+        description: contentTypeData.description || null,
+        avatar: contentTypeData.avatar || null,
+        user_id: currentUser.id
+      };
     const { data, error } = await supabase.from(CONTENT_TYPES_TABLE).insert(dataToInsert).select('*').single();
     if (error || !data) throw new Error(`Falha ao criar tipo de conteúdo: ${error?.message || "Nenhum dado retornado"}`);
-    const newContentType: ContentType = {
+          const newContentType: ContentType = {
       id: data.id, name: data.name, description: data.description || '', avatar: data.avatar,
       createdAt: new Date(data.created_at), updatedAt: new Date(data.updated_at), userId: data.user_id
-    };
+          };
     setContentTypes(prev => [newContentType, ...prev].sort((a,b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
-    return newContentType;
+          return newContentType;
   }, [currentUser, supabase, setContentTypes]);
-
+  
   const updateContentType = useCallback(async (
     id: string, 
     contentTypeData: Partial<Omit<ContentType, "id" | "createdAt" | "updatedAt" | "userId">>
@@ -886,24 +886,24 @@ export function DataProvider({ children }: { children: ReactNode }) {
     if (contentTypeData.name !== undefined) dataToUpdate.name = contentTypeData.name;
     if (contentTypeData.description !== undefined) dataToUpdate.description = contentTypeData.description;
     if (contentTypeData.avatar !== undefined) dataToUpdate.avatar = contentTypeData.avatar;
-    
+      
     const { data, error } = await supabase.from(CONTENT_TYPES_TABLE).update(dataToUpdate).eq('id', id).select('*').single();
     if (error || !data) throw new Error(`Falha ao atualizar tipo de conteúdo: ${error?.message || "Nenhum dado retornado"}`);
-    const updatedContentType: ContentType = {
+          const updatedContentType: ContentType = {
       id: data.id, name: data.name, description: data.description || '', avatar: data.avatar,
       createdAt: new Date(data.created_at), updatedAt: new Date(data.updated_at), userId: data.user_id
     };
     setContentTypes(prev => prev.map(ct => ct.id === id ? updatedContentType : ct).sort((a,b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
-    return updatedContentType;
+          return updatedContentType;
   }, [currentUser, supabase, setContentTypes]);
-
+  
   const deleteContentType = useCallback(async (id: string): Promise<void> => {
     if (!currentUser) throw new Error("Usuário não autenticado.");
     const { error } = await supabase.from(CONTENT_TYPES_TABLE).delete().eq('id', id);
     if (error) throw new Error(`Erro ao excluir tipo de conteúdo: ${error.message}`);
-    setContentTypes(prev => prev.filter(ct => ct.id !== id));
+          setContentTypes(prev => prev.filter(ct => ct.id !== id));
   }, [currentUser, supabase, setContentTypes]);
-
+  
   const getContentTypeById = useCallback(async (id: string): Promise<ContentType | null> => {
     const contentType = contentTypes.find(ct => ct.id === id);
     return contentType || null;

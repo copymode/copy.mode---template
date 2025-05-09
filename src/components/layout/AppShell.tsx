@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
+import { useKeyboardVisible } from "@/hooks/use-keyboard-visible";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -39,7 +40,9 @@ export function AppShell({ children }: AppShellProps) {
   const location = useLocation();
   const navigate = useNavigate();
   const sidebarRef = useRef<HTMLDivElement>(null);
+  const headerRef = useRef<HTMLElement>(null);
   const [isDesktop, setIsDesktop] = useState(window.innerWidth >= 768);
+  const { visualViewportOffsetTop } = useKeyboardVisible();
 
   const chatHistory = chats;
 
@@ -57,7 +60,6 @@ export function AppShell({ children }: AppShellProps) {
     };
   }, []);
 
-  // Efeito para atualizar classe do body com base no estado do sidebar
   useEffect(() => {
     if (isDesktop) {
       if (sidebarCollapsed) {
@@ -76,11 +78,21 @@ export function AppShell({ children }: AppShellProps) {
       }
     }
 
-    // Cleanup
     return () => {
       document.body.classList.remove('sidebar-collapsed', 'sidebar-open', 'sidebar-mobile-open');
     };
   }, [sidebarCollapsed, sidebarOpen, isDesktop]);
+
+  useEffect(() => {
+    const isMobile = window.innerWidth <= 768;
+    if (isMobile && headerRef.current) {
+      headerRef.current.style.transform = `translateY(${visualViewportOffsetTop}px)`;
+      headerRef.current.style.transition = 'transform 0.1s ease-out';
+    } else if (headerRef.current) {
+      headerRef.current.style.transform = 'translateY(0px)';
+      headerRef.current.style.transition = 'transform 0.1s ease-out';
+    }
+  }, [visualViewportOffsetTop, isDesktop]);
 
   const closeSidebarIfMobile = () => {
     if (!isDesktop) {
@@ -549,13 +561,14 @@ export function AppShell({ children }: AppShellProps) {
       )}
       
       <div className="flex flex-col h-screen overflow-hidden"> 
-        <header className="bg-background border-b py-3 px-4 sticky top-0 z-10 flex-shrink-0">
+        <header ref={headerRef} className="bg-background border-b py-3 px-4 sticky top-0 z-10 flex-shrink-0">
            <div className="flex items-center justify-between">
               <button 
-                className="p-1 rounded-md md:hidden text-foreground hover:bg-secondary"
+                className="md:hidden text-foreground bg-background hover:bg-secondary p-2 rounded-full shadow-md"
                 onClick={toggleSidebar}
+                aria-label="Abrir menu"
               >
-                <Menu size={24} />
+                <Menu className="h-6 w-6" />
               </button>
               <div className="flex-1 md:ml-0">
                 {/* Potential placeholder or title? */}

@@ -134,6 +134,9 @@ function BlackButton({
   );
 }
 
+// Altura estimada (em pixels) da área do input fixo na base SEM o teclado
+const BASE_CHAT_INPUT_AREA_HEIGHT = 95; 
+
 export default function Home() {
   const { 
     experts,
@@ -152,7 +155,7 @@ export default function Home() {
   const { toast } = useToast();
   const location = useLocation();
   const { theme } = useTheme();
-  const isKeyboardVisible = useKeyboardVisible();
+  const { isKeyboardVisible, keyboardHeight } = useKeyboardVisible();
   
   // Initialize state with undefined, not depending on currentChat which might be null initially
   const [selectedExpert, setSelectedExpert] = useState<string | undefined>(undefined);
@@ -164,6 +167,7 @@ export default function Home() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [typingContent, setTypingContent] = useState("");
   const scrollAreaRef = useRef<HTMLDivElement>(null);
+  const chatAreaContainerRef = useRef<HTMLDivElement>(null);
 
   const [showApiKeyAlert, setShowApiKeyAlert] = useState(
     !currentUser?.apiKey && typeof window !== 'undefined' && window.localStorage.getItem("apiKeyAlertShown") !== "true"
@@ -224,6 +228,10 @@ export default function Home() {
       setIsGenerating(false);
       setTypingContent("");
     }
+    // Quando o chat muda (ou para estado inicial), reseta o padding do chat area
+    if (chatAreaContainerRef.current) {
+        chatAreaContainerRef.current.style.paddingBottom = `calc(${BASE_CHAT_INPUT_AREA_HEIGHT}px + env(safe-area-inset-bottom, 16px))`;
+    }
   }, [currentChat]);
 
   useEffect(() => {
@@ -231,6 +239,59 @@ export default function Home() {
       scrollAreaRef.current.scrollTop = scrollAreaRef.current.scrollHeight;
     }
   }, [currentChat?.messages, isGenerating]);
+
+  // EFEITO PARA ADICIONAR/REMOVER CLASSE AO BODY QUANDO TECLADO APARECE/SOME (MOBILE)
+  // Esta lógica foi movida de dentro do hook para o componente que o utiliza.
+  useEffect(() => {
+    const isMobile = window.innerWidth <= 768;
+    // Só aplica a classe no mobile
+    if (isMobile) { 
+      if (isKeyboardVisible) {
+        console.log("(Home.tsx) Adicionando classe keyboard-visible ao body");
+        document.body.classList.add('keyboard-visible');
+      } else {
+        console.log("(Home.tsx) Removendo classe keyboard-visible do body");
+        document.body.classList.remove('keyboard-visible');
+      }
+    }
+    // Cleanup para garantir que a classe seja removida se o componente desmontar ou isMobile/isKeyboardVisible mudar
+    return () => {
+      // Remove a classe independentemente de ser mobile ou não na limpeza, por segurança
+      document.body.classList.remove('keyboard-visible');
+    };
+  }, [isKeyboardVisible]); // Depende apenas de isKeyboardVisible
+
+  // EFEITO PARA AJUSTAR PADDING-BOTTOM DA ÁREA DE CHAT COM BASE NA ALTURA DO TECLADO
+  useEffect(() => {
+    const isMobile = window.innerWidth <= 768;
+    if (isMobile && chatAreaContainerRef.current) {
+      let newPaddingBottom = BASE_CHAT_INPUT_AREA_HEIGHT; // Padding base
+      
+      if (isKeyboardVisible && keyboardHeight > 0) {
+        // Se teclado está visível, adiciona sua altura ao padding base
+        console.log(`(Home.tsx) Teclado visível. Altura: ${keyboardHeight}px. Ajustando padding.`);
+        newPaddingBottom += keyboardHeight;
+      } else {
+        // Se teclado não está visível, adiciona apenas a safe area (se aplicável)
+        // Usamos CSS calc() para incorporar env() dinamicamente
+        chatAreaContainerRef.current.style.paddingBottom = `calc(${BASE_CHAT_INPUT_AREA_HEIGHT}px + env(safe-area-inset-bottom, 16px))`;
+        return; // Sai cedo pois já definimos o padding para o estado sem teclado
+      }
+
+      // Define o padding bottom calculado em pixels
+      chatAreaContainerRef.current.style.paddingBottom = `${newPaddingBottom}px`;
+      
+    } else if (chatAreaContainerRef.current) {
+      // Se não for mobile, garante o padding padrão (pode ser diferente do mobile base)
+      // Aqui usamos um valor fixo, ajuste se necessário para desktop.
+      // A classe md:pb-4 no elemento já define um padding no desktop.
+      // Podemos simplesmente resetar o estilo inline para deixar as classes Tailwind agirem.
+      chatAreaContainerRef.current.style.paddingBottom = ''; 
+    }
+
+    // Função de cleanup não é estritamente necessária aqui, pois o próximo render ajustará
+
+  }, [isKeyboardVisible, keyboardHeight]); // Depende da visibilidade e altura do teclado
 
   const handleSendMessage = async (message: string) => {
     console.log("handleSendMessage: Start", { currentChat, prompt: message });
@@ -548,11 +609,8 @@ export default function Home() {
           <div className="flex flex-col h-screen overflow-hidden chat-container">
             {/* Área de conversa com padding suficiente para o input */}
             <div 
-              className="flex-1 overflow-y-auto px-4 pt-4 pb-20 mobile-chat-area md:pb-4"
-              // Adiciona padding-bottom com base na altura do input no elemento pai
-              style={{ 
-                paddingBottom: 'calc(80px + env(safe-area-inset-bottom, 16px))'
-              }}
+              ref={chatAreaContainerRef}
+              className="flex-1 overflow-y-auto px-4 pt-4 mobile-chat-area md:pb-4"
             >
               <div className="max-w-3xl mx-auto">
                 <ChatConversationHeader 

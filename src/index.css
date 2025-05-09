@@ -94,13 +94,23 @@
     --scrollbar-thumb: 217 33% 30%; /* Darker gray for thumb */
     --scrollbar-track: 222 47% 12%; /* Similar to background */
   }
-}
 
-@layer base {
-  html,
-  body,
+  html {
+    height: 100%;
+    touch-action: pan-x pan-y;
+    -ms-touch-action: pan-x pan-y;
+  }
+  body {
+    min-height: 100vh;
+    @apply bg-background text-foreground;
+    font-feature-settings: "rlig" 1, "calt" 1;
+    touch-action: pan-x pan-y;
+    -ms-touch-action: pan-x pan-y;
+  }
   #root {
-    height: 100%; /* Ensure full viewport height */
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
     touch-action: pan-x pan-y;
     -ms-touch-action: pan-x pan-y;
   }
@@ -108,37 +118,28 @@
   * {
     @apply border-border;
   }
-  body {
-    @apply bg-background text-foreground;
-    font-feature-settings: "rlig" 1, "calt" 1;
-    /* Remove potential conflicting height from default body if present */
-    /* height: auto; */ 
-  }
 }
 
 @media (max-width: 768px) {
   html {
-    touch-action: pan-x pan-y;
-    -ms-touch-action: pan-x pan-y;
-    overflow: hidden;
-    overflow-y: auto;
-    -webkit-overflow-scrolling: touch;
-    overscroll-behavior: none;
+    -webkit-overflow-scrolling: touch; 
   }
   
-  body, #root {
-    width: 100vw;
-    height: 100vh;
-    overflow: hidden;
-    overflow-y: auto;
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    -webkit-overflow-scrolling: touch;
-    overscroll-behavior: none;
+  body {
+    overflow-y: auto;   
+    overflow-x: hidden; 
+    position: relative; 
+    overscroll-behavior-y: contain; 
+    -webkit-overflow-scrolling: touch; 
   }
+
+  #root {
+    /* Nenhuma regra específica necessária aqui se as globais estiverem corretas */
+  }
+
+  /* REGRAS MOBILE EXISTENTES DA v2.0.4 (como para header.bg-background.border-b.sticky, 
+     main.flex-1.overflow-auto, body.keyboard-visible, etc.) 
+     DEVEM PERMANECER ABAIXO DESTE PONTO E NÃO SER MODIFICADAS POR ESTA EDIÇÃO. */
 }
 
 @layer components {
@@ -551,19 +552,23 @@ body::-webkit-scrollbar {
     right: 0;
     width: 100%;
     z-index: 50;
-    height: 56px; /* Altura definida para o header */
+    height: 48px !important; /* ALTURA AJUSTADA (ex: ícone 24px + padding y ~12px * 2) */
+    background-color: transparent !important; /* FUNDO TRANSPARENTE */
+    border-bottom: none !important; /* SEM BORDA INFERIOR */
+    /* py-3 px-4 são do AppShell.tsx (12px vertical, 16px horizontal) */
+    /* O conteúdo do header (botão do menu) já tem seu próprio padding */
   }
 
   /* Adicionar padding-top em todos os contêineres principais para compensar o header fixo */
   main.flex-1.overflow-auto {
-    padding-top: 70px !important; /* 56px (altura do header) + 14px de espaço extra */
-    padding-bottom: 130px !important; /* Espaço para o input fixo */
+    padding-top: 60px !important; /* NOVA ALTURA DO HEADER (48px) + 12px de espaço extra */
+    padding-bottom: 130px !important; 
     -webkit-overflow-scrolling: touch;
   }
   
   /* Ajuste específico para contêineres da página Home */
   .chat-container {
-    padding-top: 70px !important;
+    padding-top: 60px !important; /* NOVA ALTURA DO HEADER (48px) + 12px de espaço extra */
     min-height: 100vh;
     display: flex;
     flex-direction: column;
@@ -600,7 +605,7 @@ body::-webkit-scrollbar {
   .flex-1.grid.place-items-center,
   .flex-1.p-6,
   .flex-1.flex.flex-col {
-    padding-top: 70px !important;
+    padding-top: 60px !important; /* NOVA ALTURA DO HEADER (48px) + 12px de espaço extra */
   }
   
   /* Height ajustado para o contêiner principal */
@@ -617,11 +622,14 @@ body::-webkit-scrollbar {
     /* Reposiciona o header para ficar no topo */
     header.bg-background.border-b.sticky,
     header.bg-background.border-b.fixed {
-      position: absolute !important;
+      position: fixed !important;
       top: 0;
       left: 0;
       right: 0;
       z-index: 50;
+      background-color: transparent !important; /* FUNDO TRANSPARENTE */
+      border-bottom: none !important; /* SEM BORDA INFERIOR */
+      height: 48px !important; /* ALTURA AJUSTADA */
     }
     
     /* Reposiciona o input para que não seja encoberto pelo teclado */
@@ -637,7 +645,7 @@ body::-webkit-scrollbar {
     
     /* Ajusta o padding da área de conteúdo para acomodar ambos */
     main.flex-1.overflow-auto {
-      padding-top: 70px !important;
+      padding-top: 60px !important; /* NOVA ALTURA DO HEADER (48px) + 12px de espaço extra */
       padding-bottom: 60px !important;
     }
     
@@ -672,9 +680,9 @@ body::-webkit-scrollbar {
 @media (max-width: 768px) {
   /* Configuração específica para a área de chat móvel */
   .mobile-chat-area {
-    padding-top: 10px !important;
-    padding-bottom: calc(80px + 20px) !important; /* Aumentado: Altura do input (60px) + padding do container (20px) + margem extra (20px) */
-    min-height: calc(100vh - 130px);
+    padding-top: 10px !important; /* Mantido, pois é relativo ao seu container pai que já tem padding-top */
+    padding-bottom: calc(80px + 20px) !important; 
+    min-height: calc(100vh - 130px); /* O 130px pode precisar de ajuste se o header + input mudarem muito */
     -webkit-overflow-scrolling: touch;
     overscroll-behavior-y: contain;
   }
