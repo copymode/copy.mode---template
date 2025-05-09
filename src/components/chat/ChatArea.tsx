@@ -124,7 +124,7 @@ export function ChatArea({ messages, isTyping = false, typingContent = "" }: Cha
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="absolute -top-3 -right-3 h-7 w-7 rounded-full bg-background opacity-0 group-hover:opacity-100 transition-opacity"
+                    className="absolute -bottom-3 -left-3 h-7 w-7 rounded-full bg-background shadow-sm"
                     onClick={() => copyToClipboard(message.content)}
                   >
                     <Copy className="h-4 w-4" />

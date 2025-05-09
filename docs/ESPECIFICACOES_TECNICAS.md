@@ -130,7 +130,7 @@ A chave de API é armazenada no perfil do usuário e utilizada para as chamadas 
 
 ## Versão e Histórico de Alterações
 
-A versão atual do sistema é 2.0.7, com melhorias recentes focadas na experiência móvel, correção de problemas de UI, otimização de performance e ajuste do scroll da área de chat.
+A versão atual do sistema é 2.0.8. Este é um checkpoint de estabilidade antes da refatoração da lógica de construção de prompts para a integração com a Groq API.
 
 ---
 
