@@ -58,7 +58,7 @@ export function ChatArea({ messages, isTyping = false, typingContent = "" }: Cha
       // Verifica se estamos em um dispositivo móvel
       const isMobile = window.innerWidth <= 768;
       
-      // Adiciona um pequeno atraso para garantir que o layout seja renderizado completamente
+      // Aumenta o atraso para garantir que o layout seja renderizado completamente
       setTimeout(() => {
         // Scroll com comportamento específico para mobile
         scrollRef.current?.scrollIntoView({ 
@@ -75,9 +75,9 @@ export function ChatArea({ messages, isTyping = false, typingContent = "" }: Cha
               behavior: "smooth",
               block: "end"
             });
-          }, 200);
+          }, 250); // Aumentado de 200 para 250ms
         }
-      }, 50);
+      }, 150); // Aumentado de 50 para 150ms para melhor renderização antes do scroll
     }
   }, [messages, isTyping, typingContent]);
   
@@ -171,8 +171,14 @@ export function ChatArea({ messages, isTyping = false, typingContent = "" }: Cha
             </div>
           )}
           
-          {/* Referência para scroll com espaço adicional */}
-          <div ref={scrollRef} className="pb-4" />
+          {/* Referência para scroll com espaço adicional e scroll-margin-bottom para evitar que 
+              fique escondido sob a área de input fixa */}
+          <div 
+            ref={scrollRef} 
+            id="chat-scroll-ref" 
+            className="pb-4" 
+            style={{ scrollMarginBottom: '120px' }} // Valor suficiente para compensar a altura do input
+          />
         </div>
       )}
     </div>

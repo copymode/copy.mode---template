@@ -977,3 +977,22 @@ html.dark [data-empty="true"] {
   opacity: 0.18 !important;
 }
 
+/* Garantir que elementos de scroll tenham margem adequada em relação ao fundo da tela 
+   para evitar que fiquem escondidos sob a área de input fixa */
+#chat-scroll-ref {
+  scroll-margin-bottom: 120px !important;
+}
+
+/* Para dispositivos móveis, pode precisar de uma margem maior */
+@media (max-width: 768px) {
+  #chat-scroll-ref {
+    scroll-margin-bottom: 140px !important;
+  }
+  
+  /* Garantir que o div de referência de scroll esteja visível */
+  .mobile-chat-area > div > div:last-child {
+    scroll-margin-bottom: 140px !important; /* Aumentado para garantir visibilidade */
+    margin-bottom: 40px !important; /* Aumentado para espaçamento adicional no final */
+  }
+}
+
