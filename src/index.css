@@ -712,6 +712,7 @@ body::-webkit-scrollbar {
 .markdown-content {
   font-size: 1rem;
   line-height: 1.6;
+  white-space: pre-wrap;
 }
 
 .markdown-content h1,

@@ -7,7 +7,8 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders } from "../_shared/cors.ts"; 
 
 const GROQ_API_ENDPOINT = "https://api.groq.com/openai/v1/chat/completions";
-const GROQ_MODEL = "llama3-70b-8192"; // Modelo atualizado para Mixtral
+// Modelo atualizado para Llama 4 Scout conforme solicitação do usuário, visando maior TPM.
+const GROQ_MODEL = "meta-llama/llama-4-scout-17b-16e-instruct"; 
 
 console.log('groq-proxy v2.0.2: Script da função iniciado.'); // Adicionado versão
 
@@ -97,13 +98,9 @@ serve(async (req) => {
     }
 
     // --- 3. Parse Request Body ---
-    // Remover log de início do parse
-    // console.log('groq-proxy: Parseando corpo da requisição JSON...');
     let payload;
     try {
         payload = await req.json();
-        // Remover log de sucesso do parse
-        // console.log('groq-proxy: Corpo da requisição parseado:', payload ? "Sim" : "Não");
     } catch (parseError: any) {
         console.error('groq-proxy: Erro ao parsear payload JSON:', parseError.message);
         return new Response(JSON.stringify({ error: `Invalid JSON payload: ${parseError.message}` }), {
@@ -112,112 +109,95 @@ serve(async (req) => {
         });
     }
 
-    const { agentId, expertId, contentType, prompt: userPrompt, conversationHistory = [], knowledgeBaseContext, temperature: requestTemperature } = payload;
+    // MODIFICADO: Destruturar os novos campos do payload
+    const {
+      agentBasePrompt,      // NOVO: Prompt base do agente
+      expertContext,        // NOVO: Contexto do expert já formatado
+      retrievedKnowledge,   // NOVO: Chunks de conhecimento recuperados (anteriormente knowledgeBaseContext)
+      finalInstructions,    // NOVO: Instruções finais já formatadas
+      // Campos existentes:
+      agentId, 
+      // expertId, // Não precisamos mais do expertId aqui se expertContext já vem pronto
+      contentType, 
+      prompt: userPrompt, 
+      conversationHistory = [], 
+      temperature: requestTemperature 
+    } = payload;
 
-    // Manter validação e log de erro de campos ausentes
-    if (!agentId || !contentType || !userPrompt) {
-      console.warn('groq-proxy: Campos obrigatórios ausentes no payload:', { agentId, contentType, userPrompt });
-      return new Response(JSON.stringify({ error: "Missing required fields: agentId, contentType, prompt" }), {
+    // Validação adaptada para os novos campos principais do prompt
+    if (!agentBasePrompt || !contentType || !userPrompt || !finalInstructions) {
+      console.warn('groq-proxy: Campos obrigatórios ausentes no payload:', 
+        { agentBasePrompt: !!agentBasePrompt, contentType: !!contentType, userPrompt: !!userPrompt, finalInstructions: !!finalInstructions });
+      return new Response(JSON.stringify({ error: "Missing required fields from: agentBasePrompt, contentType, userPrompt, finalInstructions" }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
-    // Remover log de validação OK
-    // console.log('groq-proxy: Campos obrigatórios do payload validados.');
 
     // --- 4. Fetch Agent and Expert Data ---
-    // Remover log de criação de cliente service role
-    // console.log('groq-proxy: Criando Supabase service role client...');
+    // A busca do agente (para temperatura padrão) e do expert não é mais estritamente necessária aqui
+    // se todas as strings do prompt já vêm do DataContext. No entanto, a temperatura padrão do agente pode ser útil.
     const serviceRoleSupabaseClient = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
     );
-    console.log(`groq-proxy: Buscando agente ${agentId}...`); // Simplificado
-    const { data: agent, error: agentError } = await serviceRoleSupabaseClient
-      .from("agents")
-      .select("prompt, temperature") 
-      .eq("id", agentId)
-      .single();
-
-    // Manter logs de erro de busca de agente
-    if (agentError || !agent) {
-      console.error("groq-proxy: Agent fetch error:", agentError?.message);
-      return new Response(JSON.stringify({ error: `Agent with ID ${agentId} not found. ${agentError?.message || ''}`.trim() }), {
-        status: 404,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-    // Remover log de agente encontrado
-    // console.log(`groq-proxy: Agente ${agentId} encontrado. Prompt base carregado.`);
-
-    let expert = null;
-    if (expertId) {
-      console.log(`groq-proxy: Buscando expert ${expertId}...`); // Simplificado
-      const { data: expertData, error: expertError } = await serviceRoleSupabaseClient
-        .from("experts")
-        .select("name, niche, target_audience, deliverables, benefits, objections") 
-        .eq("id", expertId)
-        .eq("user_id", user.id) 
-        .single();
-
-      if (expertError) {
-        // Manter log de erro de busca de expert
-        console.warn(`groq-proxy: Expert fetch error for ID ${expertId}, user ${user.id}:`, expertError?.message);
-      } else if (expertData) {
-        expert = expertData;
-         // Remover log de expert encontrado
-         // console.log(`groq-proxy: Expert ${expertId} encontrado.`);
-      } else {
-         // Manter log se não encontrado
-         console.log(`groq-proxy: Expert ${expertId} não encontrado para usuário ${user.id}.`);
+    
+    let agentDefaultTemperature = 0.7; // Valor padrão caso não consiga buscar o agente
+    if (agentId) { // Se agentId ainda for enviado (para referência ou fallback de temperatura)
+      try {
+        const { data: agentData } = await serviceRoleSupabaseClient
+          .from("agents")
+          .select("temperature") 
+          .eq("id", agentId)
+          .single();
+        if (agentData && typeof agentData.temperature === 'number') {
+          agentDefaultTemperature = agentData.temperature;
+        }
+      } catch (agentFetchError) {
+        console.warn(`groq-proxy: Não foi possível buscar temperatura do agente ${agentId}:`, agentFetchError.message);
       }
     }
 
     // --- 5. Construct Groq API Request ---
-    // Remover log de início de construção
-    // console.log('groq-proxy: Construindo prompt para API Groq...');
-    let systemPrompt = agent.prompt;
+    let systemPrompt = agentBasePrompt; // Começa com o prompt base do agente
 
-    if (expert) {
-      systemPrompt += `\n\n## Contexto Adicional (Sobre o Negócio/Produto do Usuário - Expert: ${expert.name}):\nUse estas informações como base para dar mais relevância e especificidade à copy, mas priorize sempre a solicitação específica feita pelo usuário no prompt atual.\n`;
-      systemPrompt += `- Nicho Principal: ${expert.niche || "Não definido"}\n`;
-      systemPrompt += `- Público-alvo: ${expert.target_audience || "Não definido"}\n`;
-      systemPrompt += `- Principais Entregáveis/Produtos/Serviços: ${expert.deliverables || "Não definido"}\n`;
-      systemPrompt += `- Maiores Benefícios: ${expert.benefits || "Não definido"}\n`;
-      systemPrompt += `- Objeções/Dúvidas Comuns: ${expert.objections || "Não definido"}\n`;
-    } else if (expertId) {
-      systemPrompt += `\n\nNota: Um perfil de Expert foi selecionado (ID: ${expertId}), mas seus detalhes não foram encontrados para este usuário ou não puderam ser carregados.`;
+    if (expertContext) {
+      systemPrompt += expertContext; // Adiciona o contexto do expert (já formatado)
     }
     
-    if (knowledgeBaseContext) {
-      // Remover log específico de adição de contexto
-      // console.log('groq-proxy: Adicionando knowledgeBaseContext ao systemPrompt.');
-      systemPrompt += knowledgeBaseContext;
+    if (retrievedKnowledge) { // Adiciona o conhecimento recuperado
+      systemPrompt += retrievedKnowledge;
     }
 
-    systemPrompt += `\n\n## Instruções Finais:\n` + 
-                    `- Gere o conteúdo exclusivamente no idioma Português do Brasil.\n` + 
-                    `- Seja criativo e siga o tom de voz implícito no prompt do agente e no contexto do expert (se fornecido).\n` + 
-                    `- Adapte o formato ao Tipo de Conteúdo solicitado: ${contentType}.\n` + 
-                    `- Priorize a solicitação específica feita pelo usuário no prompt atual, usando a base de conhecimento (se fornecida) e o contexto do expert como apoio para maior relevância e especificidade.`;
-
+    systemPrompt += finalInstructions; // Adiciona as instruções finais
+    
+    // O restante da montagem de 'messages' e chamada para Groq permanece similar
     const messages = [
       { role: "system", content: systemPrompt },
       ...conversationHistory, 
       { role: "user", content: userPrompt },
     ];
 
-    const finalTemperature = typeof requestTemperature === 'number' ? requestTemperature : (agent.temperature ?? 0.7);
+    const finalTemperature = typeof requestTemperature === 'number' ? requestTemperature : agentDefaultTemperature;
 
     const groqPayload = {
-      model: GROQ_MODEL,
+      model: GROQ_MODEL, // Você pode querer pegar o GROQ_MODEL do payload também se for dinâmico
       messages: messages,
       temperature: finalTemperature, 
     };
-    // Remover log do payload final
-    // console.log('groq-proxy: Prompt para Groq construído. Payload final:', JSON.stringify(groqPayload, null, 2).substring(0, 500) + "...");
 
     // --- 6. Call Groq API ---
+    console.log(`groq-proxy: Preparando para chamar API Groq (${GROQ_MODEL}). Tamanho do System Prompt: ${systemPrompt.length} caracteres.`);
+    // Log seguro do payload, omitindo o conteúdo real do system prompt para não poluir demais os logs com dados sensíveis ou muito grandes.
+    // Mostra a estrutura e os outros prompts.
+    console.log(`groq-proxy: Payload para Groq (omitindo messages[0].content): ${JSON.stringify({
+      ...groqPayload,
+      messages: [
+        { role: "system", content: `CONTEÚDO OMITIDO DO LOG (Tamanho: ${systemPrompt.length})` },
+        ...groqPayload.messages.slice(1).map(m => ({...m, content: m.content.substring(0, 100) + (m.content.length > 100 ? "..." : "")})) // Logar apenas início das outras mensagens
+      ]
+    })}`);
+
     console.log(`groq-proxy: Chamando API Groq (${GROQ_MODEL})...`); // Simplificado
     const groqResponse = await fetch(GROQ_API_ENDPOINT, {
       method: "POST",
@@ -229,19 +209,46 @@ serve(async (req) => {
     });
 
     console.log(`groq-proxy: Resposta da API Groq - Status: ${groqResponse.status}`); // Manter log de status
+    const responseBodyText = await groqResponse.text(); // Ler como texto primeiro
+
     if (!groqResponse.ok) {
-      const errorBodyText = await groqResponse.text();
-      let errorBodyJson;
-      try { errorBodyJson = JSON.parse(errorBodyText); } catch { /* ignore */ }
       // Manter log de erro da API Groq
-      console.error("groq-proxy: Groq API Error:", groqResponse.status, errorBodyJson || errorBodyText);
-      return new Response(JSON.stringify({ error: `Groq API Error (${groqResponse.status}): ${errorBodyJson?.error?.message || errorBodyText || groqResponse.statusText}` }), {
-        status: groqResponse.status, 
+      console.error(`groq-proxy: Groq API Error - Status ${groqResponse.status}. Body: ${responseBodyText}`);
+      
+      // Tentar parsear como JSON se possível, mas retornar o texto se não for
+      let errorDetail = responseBodyText;
+      try {
+        const parsedError = JSON.parse(responseBodyText);
+        if (parsedError && parsedError.error && parsedError.error.message) {
+          errorDetail = parsedError.error.message;
+        } else if (parsedError && parsedError.error) {
+           errorDetail = JSON.stringify(parsedError.error); // Caso error seja um objeto
+        } else if (parsedError) {
+          errorDetail = responseBodyText; // Se parseou mas não tem a estrutura esperada
+        }
+      } catch (e) { 
+        // Se não conseguiu parsear JSON, errorDetail já é responseBodyText
+        console.warn(`groq-proxy: Não foi possível parsear o corpo do erro da Groq como JSON. Detalhe do erro será o corpo bruto.`);
+      }
+
+      return new Response(JSON.stringify({ error: `Groq API Error (${groqResponse.status}): ${errorDetail}` }), {
+        status: groqResponse.status, // Usar o status original da Groq 
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    const groqData = await groqResponse.json();
+    // Se groqResponse.ok
+    let groqData;
+    try {
+      groqData = JSON.parse(responseBodyText);
+    } catch (parseError: any) {
+      console.error(`groq-proxy: Erro ao parsear resposta JSON da Groq: ${parseError.message}. Resposta bruta: ${responseBodyText}`);
+      return new Response(JSON.stringify({ error: "Failed to parse Groq API response." }), {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     const generatedContent = groqData.choices?.[0]?.message?.content;
 
     if (!generatedContent) {

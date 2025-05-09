@@ -130,7 +130,7 @@ export function ChatArea({ messages, isTyping = false, typingContent = "" }: Cha
                     <Copy className="h-4 w-4" />
                   </Button>
                 )}
-                <div className="text-sm markdown-content">
+                <div className="text-sm whitespace-pre-wrap markdown-content">
                   <ReactMarkdown 
                     components={{
                       code({className, children, ...props}) {
