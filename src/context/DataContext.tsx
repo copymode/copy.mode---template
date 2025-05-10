@@ -605,53 +605,56 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
     const { expertId, agentId, contentType, additionalInfo } = request;
 
-    const agent = await getAgentById(agentId); 
+    const agent = await getAgentById(agentId);
     if (!agent || !agent.prompt) {
         console.error(`[DataContext] generateCopy - Agente ${agentId} não encontrado ou sem prompt base.`);
         throw new Error(`Agente ${agentId} não encontrado ou não configurado (sem prompt base).`);
     }
     console.log("[DataContext] generateCopy - Agente carregado:", agent.name);
+    console.log(`[DataContext] generateCopy - Tamanho do Agent Base Prompt: ${agent.prompt.length} caracteres`);
 
     const expert = expertId ? experts.find(e => e.id === expertId && e.userId === currentUser.id) : null;
-    const historyChat = currentChat; 
+    const historyChat = currentChat;
     const conversationHistory = historyChat?.messages
-       .filter(msg => !msg.content.startsWith("⚠️")) 
-       .map(msg => ({ role: msg.role, content: msg.content })) 
+       .filter(msg => !msg.content.startsWith("⚠️"))
+       .map(msg => ({ role: msg.role, content: msg.content }))
        || [];
-    if (!historyChat && conversationHistory.length > 0) { 
-        console.warn("[DataContext] generateCopy: currentChat is null but conversationHistory has items. History might be from a different context if not managed carefully.");
+    
+    let conversationHistoryCharCount = 0;
+    conversationHistory.forEach(msg => conversationHistoryCharCount += msg.content.length);
+    console.log(`[DataContext] generateCopy - Histórico da Conversa: ${conversationHistory.length} mensagens, ${conversationHistoryCharCount} caracteres`);
+
+    if (!historyChat && conversationHistory.length > 0) {
+        console.warn("[DataContext] generateCopy: currentChat is null mas conversationHistory tem itens. O histórico pode ser de um contexto diferente se não gerenciado com cuidado.");
     }
 
-    let knowledgeBaseContext = "";
+    let knowledgeBaseContextString = "";
     try {
-      // Manter a checagem, mas remover o log de erro específico daqui, será pego no catch geral
       if (!agent?.id || typeof additionalInfo !== 'string' || !additionalInfo.trim()) {
-          throw new Error("A consulta não pode estar vazia."); 
+          throw new Error("A consulta não pode estar vazia para busca de conhecimento.");
       }
 
-      console.log(`[DataContext] Buscando conhecimento para query: "${additionalInfo}"`); // Log simplificado
+      console.log(`[DataContext] Buscando conhecimento para query: "${additionalInfo}" (Agente: ${agent.id})`);
       const requestBodyString = JSON.stringify({ agent_id: agent.id, query: additionalInfo });
 
-      // --- USANDO fetch PADRÃO ---
       const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
       if (sessionError || !sessionData.session) {
-        console.error("[DataContext] Erro ao obter sessão para chamar função:", sessionError);
-        throw new Error("Não foi possível obter a sessão do usuário para a chamada da função.");
+        console.error("[DataContext] Erro ao obter sessão para chamar função search-knowledge:", sessionError);
+        throw new Error("Não foi possível obter a sessão do usuário para a chamada da função de busca.");
       }
       const accessToken = sessionData.session.access_token;
       
-      const functionsUrlBase = `${SUPABASE_URL}/functions/v1`; 
+      const functionsUrlBase = `${SUPABASE_URL}/functions/v1`;
       const anonKey = SUPABASE_PUBLISHABLE_KEY;
 
       if (!functionsUrlBase || !anonKey) {
         console.error("[DataContext] URL base das funções ou Chave pública Supabase não estão definidas.");
         throw new Error("Configuração de URL de funções ou chave API ausente.");
       }
-
       const functionUrl = `${functionsUrlBase}/search-knowledge`;
 
       let searchFnData: any = null;
-      let searchFnError: any = null; 
+      let searchFnError: any = null;
 
       try {
         const response = await fetch(functionUrl, {
@@ -659,18 +662,16 @@ export function DataProvider({ children }: { children: ReactNode }) {
           headers: {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${accessToken}`,
-            'apikey': anonKey 
+            'apikey': anonKey
           },
           body: requestBodyString
         });
 
         if (!response.ok) {
-          let errorBody = { error: `Edge Function returned status ${response.status}` };
-          try {
-            errorBody = await response.json();
-          } catch (e) { /* ignore */ }
-          searchFnError = new Error(errorBody.error || `Edge Function returned status ${response.status}`);
-          (searchFnError as any).context = errorBody; 
+          let errorBody = { error: `Edge Function search-knowledge retornou status ${response.status}` };
+          try { errorBody = await response.json(); } catch (e) { /* ignore */ }
+          searchFnError = new Error(errorBody.error || `Edge Function search-knowledge retornou status ${response.status}`);
+          (searchFnError as any).context = errorBody;
         } else {
           searchFnData = await response.json();
         }
@@ -678,17 +679,12 @@ export function DataProvider({ children }: { children: ReactNode }) {
         console.error("[DataContext] Erro durante a chamada fetch para search-knowledge:", fetchError);
         searchFnError = fetchError instanceof Error ? fetchError : new Error(String(fetchError));
       }
-      // --- FIM DA SUBSTITUIÇÃO ---
 
-      if (searchFnError) {
-        throw searchFnError;
-      }
-
+      if (searchFnError) throw searchFnError;
       if (!searchFnData || typeof searchFnData.success === 'undefined') {
         console.error("[DataContext] generateCopy - Resposta inválida de 'search-knowledge':", searchFnData);
-        throw new Error("Resposta inesperada do serviço de busca.");
+        throw new Error("Resposta inesperada do serviço de busca de conhecimento.");
       }
-        
       if (!searchFnData.success) {
         console.error("[DataContext] generateCopy - 'search-knowledge' retornou erro:", searchFnData.error);
         throw new Error(searchFnData.error || "Falha ao buscar conhecimento na base de dados.");
@@ -698,164 +694,143 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
       if (retrievedChunks.length > 0) {
         console.log(`[DataContext] generateCopy - ${retrievedChunks.length} chunks recuperados.`);
-        knowledgeBaseContext = "\n\n## Base de Conhecimento Relevante (Recuperado Dinamicamente):\n";
-        knowledgeBaseContext += retrievedChunks
+        knowledgeBaseContextString = "\n\n## Base de Conhecimento Relevante (Recuperado Dinamicamente):\n";
+        knowledgeBaseContextString += retrievedChunks
           .map(chunk => {
             let chunkEntry = `- Trecho: ${chunk.chunk_text}`;
             if (chunk.original_file_name) {
-              chunkEntry = `- Trecho do arquivo "${chunk.original_file_name}": ${chunk.chunk_text}`;
+              chunkEntry = `- Trecho do arquivo \"${chunk.original_file_name}\": ${chunk.chunk_text}`;
             }
             return chunkEntry;
           })
           .join("\n");
-        knowledgeBaseContext += "\n---\n";
+        console.log(`[DataContext] generateCopy - Tamanho Knowledge Base Context String: ${knowledgeBaseContextString.length} caracteres`);
       } else {
         console.log("[DataContext] generateCopy - Nenhum chunk relevante encontrado para esta consulta.");
-        knowledgeBaseContext = "\n\nNota: Nenhuma informação específica da base de conhecimento foi encontrada para esta pergunta.\n";
       }
     } catch (error: any) {
       console.error("[DataContext] generateCopy - Erro durante a busca de conhecimento:", error);
-      knowledgeBaseContext = `\n\nNota: Houve um problema ao tentar acessar a base de conhecimento. ${error.message ? `Detalhe: ${error.message}` : ''}\n`;
+      knowledgeBaseContextString = `\n\nNota: Houve um problema ao tentar acessar a base de conhecimento. ${error.message ? `Detalhe: ${error.message}` : ''}\n`;
+      console.log(`[DataContext] generateCopy - Tamanho Knowledge Base Context String (Erro): ${knowledgeBaseContextString.length} caracteres`);
     }
 
-    let systemPrompt = agent.prompt;
+    // --- CONSTRUÇÃO DO SYSTEM INSTRUCTIONS --- 
+    const agentBasePrompt = agent.prompt;
+    let partAgentPrompt = `VOCÊ É UM AGENTE DE IA ESPECIALIZADO. SUAS DIRETRIZES DE COMPORTAMENTO, TOM E ESTILO ESTÃO DEFINIDAS NO BLOCO 'INSTRUÇÕES OBRIGATÓRIAS PARA ESTE AGENTE' ABAIXO. VOCÊ DEVE SEGUIR ESSAS DIRETRIZES ESTRITAMENTE EM TODAS AS SUAS RESPOSTAS, COM MÁXIMA PRIORIDADE SOBRE QUALQUER OUTRO ESTILO SUGERIDO PELO CONTEXTO ADICIONAL OU HISTÓRICO DA CONVERSA.
+QUALQUER INSTRUÇÃO POSTERIOR PARA USAR "CONTEXTO ADICIONAL" OU "BASE DE CONHECIMENTO" SIGNIFICA QUE VOCÊ DEVE USAR A *INFORMAÇÃO* CONTIDA NESSES TEXTOS, MAS PROCESSÁ-LA E APRESENTÁ-LA *INTEIRAMENTE* DENTRO DA PERSONA E DAS REGRAS DEFINIDAS PARA VOCÊ NO BLOCO DE INSTRUÇÕES OBRIGATÓRIAS ABAIXO.
+--- INÍCIO DAS INSTRUÇÕES OBRIGATÓRIAS PARA ESTE AGENTE (NÃO ALTERE ESTE BLOCO) ---
+${agentBasePrompt}
+--- FIM DAS INSTRUÇÕES OBRIGATÓRIAS PARA ESTE AGENTE ---
+`;
+    console.log(`[DataContext] generateCopy - Tamanho Parte Persona Agente: ${partAgentPrompt.length} caracteres`);
 
+    let partExpertContext = "";
     if (expert) {
       console.log("[DataContext] generateCopy - Adicionando contexto do expert:", expert.name);
-      systemPrompt += `\n\n## Contexto Adicional (Sobre o Negócio/Produto do Usuário - Expert: ${expert.name}):\n`;
-      systemPrompt += `Nicho Principal: ${expert.niche || "Não definido"}\n`;
-      systemPrompt += `Público-alvo: ${expert.targetAudience || "Não definido"}\n`;
-      systemPrompt += `Principais Entregáveis/Produtos/Serviços: ${expert.deliverables || "Não definido"}\n`;
-      systemPrompt += `Maiores Benefícios: ${expert.benefits || "Não definido"}\n`;
-      systemPrompt += `Objeções/Dúvidas Comuns: ${expert.objections || "Não definido"}\n`;
+      partExpertContext += `\n\n## Contexto Adicional sobre o Negócio/Produto do Usuário (Expert: ${expert.name}):\n`;
+      partExpertContext += `Nicho Principal: ${expert.niche || "Não definido"}\n`;
+      partExpertContext += `Público-alvo: ${expert.targetAudience || "Não definido"}\n`;
+      partExpertContext += `Principais Entregáveis/Produtos/Serviços: ${expert.deliverables || "Não definido"}\n`;
+      partExpertContext += `Maiores Benefícios: ${expert.benefits || "Não definido"}\n`;
+      partExpertContext += `Objeções/Dúvidas Comuns: ${expert.objections || "Não definido"}\n`;
+      partExpertContext += `Lembre-se: use esta informação sobre o expert, mas responda estritamente de acordo com as INSTRUÇÕES DO AGENTE definidas acima.\n`;
+      console.log(`[DataContext] generateCopy - Tamanho Parte Contexto Expert: ${partExpertContext.length} caracteres`);
     }
 
-    systemPrompt += knowledgeBaseContext; 
-    
+    let partKnowledgeBase = "";
+    if (knowledgeBaseContextString.trim() && !knowledgeBaseContextString.includes("Houve um problema")) {
+        partKnowledgeBase = knowledgeBaseContextString; // knowledgeBaseContextString já tem seu próprio cabeçalho
+        partKnowledgeBase += `\nLembre-se: use as informações desta base de conhecimento, mas responda estritamente de acordo com as INSTRUÇÕES DO AGENTE definidas no início.\n---\n`;
+    } else if (knowledgeBaseContextString.includes("Houve um problema")) {
+        partKnowledgeBase = knowledgeBaseContextString;
+    } else {
+        partKnowledgeBase = `\n\nNota: Nenhuma informação específica da base de conhecimento foi encontrada para esta pergunta. Baseie-se nas INSTRUÇÕES DO AGENTE e no histórico da conversa.\n`;
+    }
+    console.log(`[DataContext] generateCopy - Tamanho Parte Base de Conhecimento: ${partKnowledgeBase.length} caracteres`);
+
     const selectedContentTypeData = contentTypes.find(ct => ct.id === contentType);
     const contentTypeNameForPrompt = selectedContentTypeData?.name || "o conteúdo solicitado";
     const contentTypeDescForPrompt = selectedContentTypeData?.description ? ` (${selectedContentTypeData.description})` : "";
 
-    const finalInstructions = `\n\n## Instruções Finais:\n` +
-                              `- Gere o conteúdo exclusivamente no idioma Português do Brasil.\n` +
-                              `- Seja criativo e siga o tom de voz implícito no prompt do agente e no contexto do expert (se fornecido).\n` +
-                              `- Adapte o formato ao Tipo de Conteúdo solicitado: ${contentTypeNameForPrompt}${contentTypeDescForPrompt}.\n` +
-                              `- Priorize a solicitação específica feita pelo usuário no prompt atual, usando a base de conhecimento e o contexto do expert como apoio para maior relevância e especificidade.`;
-
-    const MAX_SYSTEM_PROMPT_CHARS = 100000; 
-    if (systemPrompt.length + finalInstructions.length > MAX_SYSTEM_PROMPT_CHARS) {
-        const availableSpace = MAX_SYSTEM_PROMPT_CHARS - systemPrompt.length;
-        if (availableSpace > 100) { 
-            systemPrompt += finalInstructions.substring(0, availableSpace - 3) + "..."; 
-            console.warn("[DataContext] generateCopy - Instruções finais truncadas para caber no limite do prompt do sistema.");
-          } else {
-            console.warn("[DataContext] generateCopy - Instruções finais não adicionadas (prompt do sistema muito longo).");
-          }
-        } else {
-        systemPrompt += finalInstructions;
-    }
+    let partFinalInstructions = `\n\n## Tarefa Atual e Diretrizes Finais de Execução:\n` +
+                          `- O usuário solicitou a criação de: ${contentTypeNameForPrompt}${contentTypeDescForPrompt}.\n` +
+                          `- A última mensagem do usuário (prompt atual a ser respondido) é: "${additionalInfo}"\n` +
+                          `- Gere sua resposta exclusivamente em Português do Brasil.\n` +
+                          `- É IMPERATIVO E NÃO NEGOCIÁVEL que você MANTENHA ESTRITAMENTE A PERSONA, O TOM E AS REGRAS DO AGENTE, conforme detalhado NO BLOCO 'INSTRUÇÕES OBRIGATÓRIAS PARA ESTE AGENTE' NO INÍCIO DESTAS INSTRUÇÕES. NÃO SUAVIZE. NÃO MUDE O TOM. NÃO QUEBRE AS REGRAS ESTABELECIDAS PARA O AGENTE ATUAL.`;
+    console.log(`[DataContext] generateCopy - Tamanho Prompt Usuário (additionalInfo): ${additionalInfo.length} caracteres`);
+    console.log(`[DataContext] generateCopy - Tamanho Parte Instruções Finais: ${partFinalInstructions.length} caracteres`);
     
-    console.log(`[DataContext] generateCopy - System Prompt Final (Tamanho: ${systemPrompt.length} caracteres)`);
+    const systemInstructions = partAgentPrompt + partExpertContext + partKnowledgeBase + partFinalInstructions;
+    console.log(`[DataContext] generateCopy - System Instructions ANTES da truncação (Tamanho Total): ${systemInstructions.length} caracteres`);
 
-    const GROQ_MODEL = "meta-llama/Llama-4-maverick-17b-128e-instruct"; 
+    let finalSystemInstructions = systemInstructions;
+    const MAX_SYSTEM_PROMPT_CHARS = 100000; // Mantemos o limite de caracteres, mas agora temos mais visibilidade
+    if (systemInstructions.length > MAX_SYSTEM_PROMPT_CHARS) {
+        const truncationMarker = "... (instruções do sistema truncadas para caber no limite)";
+        finalSystemInstructions = systemInstructions.substring(0, MAX_SYSTEM_PROMPT_CHARS - truncationMarker.length) + truncationMarker;
+        console.warn("[DataContext] generateCopy - Instruções do sistema truncadas para caber no limite.");
+    }
+    console.log(`[DataContext] generateCopy - System Instructions FINAIS (APÓS truncação, se houver): ${finalSystemInstructions.length} caracteres`);
+
+    // const GROQ_MODEL_FROM_PROXY_INFO = "meta-llama/Llama-4-maverick-17b-128e-instruct"; // Modelo é definido na proxy
     const requestTemperature = agent.temperature ?? 0.7;
 
-    // Objeto que será enviado como 'body' para a Edge Function 'groq-proxy'
     const payloadForGroqProxy = {
-      agentId: agent.id, // ID do agente para a groq-proxy buscar o prompt base
-      expertId: expert?.id, // ID do expert (opcional)
-      contentType: contentType, // ID ou nome do tipo de conteúdo
-      prompt: additionalInfo, // O prompt/input direto do usuário
-      conversationHistory: conversationHistory, // Histórico da conversa
-      knowledgeBaseContext: knowledgeBaseContext, // String com o conhecimento recuperado
-      temperature: requestTemperature, // Temperatura para a API Groq
-      // A groq-proxy irá reconstruir o array 'messages' usando essas informações.
+      systemPrompt: finalSystemInstructions, // Usar a versão potencialmente truncada
+      agentId: agent.id,
+      expertId: expert?.id,
+      contentType: contentType,
+      prompt: additionalInfo, 
+      conversationHistory: conversationHistory,
+      // knowledgeBaseContext não é mais necessário no payload principal se a proxy só usa systemPrompt
+      // mas vamos manter por enquanto para não quebrar a proxy se ela tiver algum uso de fallback dele.
+      knowledgeBaseContext: knowledgeBaseContextString, 
+      temperature: requestTemperature,
     };
 
     try {
         let generatedContent = "";
-        const USE_GROQ_PROXY = true; 
+        console.log("[DataContext] generateCopy - Chamando groq-proxy...");
+        const { data: groqProxyResponseData, error: groqProxyInvokeError } = await supabase.functions.invoke(
+            'groq-proxy',
+            { body: payloadForGroqProxy }
+        );
 
-        if (USE_GROQ_PROXY) {
-            console.log("[DataContext] generateCopy - Chamando groq-proxy..."); // Log simplificado
-            const { data: groqProxyResponseData, error: groqProxyInvokeError } = await supabase.functions.invoke(
-                'groq-proxy', 
-                { body: payloadForGroqProxy } 
-            );
+        if (groqProxyInvokeError) {
+            console.error("[DataContext] generateCopy - Erro ao invocar groq-proxy:", groqProxyInvokeError);
+            let specificProxyError = `Falha na comunicação com o proxy Groq: ${groqProxyInvokeError.message}`;
+            try {
+                if (groqProxyInvokeError.context && groqProxyInvokeError.context.error) {
+                   specificProxyError = `Erro retornado pela função groq-proxy: ${JSON.stringify(groqProxyInvokeError.context.error)}`;
+                } else if (groqProxyInvokeError.context) {
+                   specificProxyError = `Erro retornado pela função groq-proxy (contexto): ${JSON.stringify(groqProxyInvokeError.context)}`;
+                }
+            } catch (e) { /* ignore */ }
+            throw new Error(specificProxyError);
+        }
 
-            if (groqProxyInvokeError) {
-                console.error("[DataContext] generateCopy - Erro ao invocar groq-proxy:", groqProxyInvokeError);
-                let specificProxyError = `Falha na comunicação com o proxy Groq: ${groqProxyInvokeError.message}`;
-                try {
-                    if (groqProxyInvokeError.context && groqProxyInvokeError.context.error) {
-                       specificProxyError = `Erro retornado pela função groq-proxy: ${JSON.stringify(groqProxyInvokeError.context.error)}`;
-                    } else if (groqProxyInvokeError.context) {
-                       specificProxyError = `Erro retornado pela função groq-proxy (contexto): ${JSON.stringify(groqProxyInvokeError.context)}`;
-                    }
-                } catch (e) { /* ignore */ }
-                throw new Error(specificProxyError); // Lança o erro mais específico
-            }
+        if (!groqProxyResponseData) {
+             console.error("[DataContext] generateCopy - groq-proxy não retornou dados.");
+             throw new Error("Resposta nula do proxy Groq.");
+        }
+        
+        generatedContent = groqProxyResponseData.generatedCopy;
 
-            if (!groqProxyResponseData) { 
-                 console.error("[DataContext] generateCopy - groq-proxy não retornou dados.");
-                 throw new Error("Resposta nula do proxy Groq.");
-            }
-            
-            // A groq-proxy agora retorna { generatedCopy: "..." }
-            generatedContent = groqProxyResponseData.generatedCopy; 
-
-            if (!generatedContent && groqProxyResponseData.error) { 
-                // Se a groq-proxy retornou um erro estruturado { error: "..." }
-                throw new Error(`Erro da groq-proxy: ${JSON.stringify(groqProxyResponseData.error)}`);
-            }
-
-        } else { 
-            console.log("[DataContext] generateCopy - Chamando API Groq diretamente...");
-    const GROQ_API_ENDPOINT = "https://api.groq.com/openai/v1/chat/completions";
-
-            // Definir o corpo da requisição para a chamada direta, similar ao que a proxy faria internamente
-            const directGroqPayload = {
-      model: GROQ_MODEL,
-      messages: [
-        { role: "system", content: systemPrompt },
-        ...conversationHistory, 
-        { role: "user", content: additionalInfo } 
-      ],
-              temperature: requestTemperature,
-    };
-
-            const apiResponse = await fetch(GROQ_API_ENDPOINT, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${currentUser.apiKey}`,
-        },
-                body: JSON.stringify(directGroqPayload), // Usar directGroqPayload aqui
-      });
-
-            if (!apiResponse.ok) {
-                const errorBodyText = await apiResponse.text(); 
-                let errorBodyJson;
-                try { errorBodyJson = JSON.parse(errorBodyText); } catch { /* ignore */ }
-                console.error("[DataContext] Groq API Error:", apiResponse.status, errorBodyJson || errorBodyText);
-                const message = errorBodyJson?.error?.message || apiResponse.statusText || "Erro desconhecido da API Groq";
-                throw new Error(`Erro na API Groq (${apiResponse.status}): ${message}`);
-      }
-            const responseData = await apiResponse.json();
-            generatedContent = responseData.choices?.[0]?.message?.content;
+        if (!generatedContent && groqProxyResponseData.error) {
+            throw new Error(`Erro da groq-proxy: ${JSON.stringify(groqProxyResponseData.error)}`);
         }
 
         if (typeof generatedContent !== 'string' || !generatedContent.trim()) {
-            console.warn("[DataContext] generateCopy - Resposta da API Groq (ou proxy) não continha conteúdo de texto válido.");
+            console.warn("[DataContext] generateCopy - Resposta da groq-proxy não continha conteúdo de texto válido.");
             throw new Error("Não foi possível gerar o conteúdo ou a resposta estava vazia. Tente novamente.");
       }
       return generatedContent.trim();
 
     } catch (error: any) {
-        console.error("[DataContext] Erro final em generateCopy ao chamar API Groq (ou proxy):", error);
+        console.error("[DataContext] Erro final em generateCopy ao chamar groq-proxy:", error);
         throw new Error(error.message || "Ocorreu um erro desconhecido durante a geração da cópia.");
     }
-  }, [currentUser, experts, currentChat, getAgentById, supabase, contentTypes, agents, setAgents]); 
+  }, [currentUser, experts, currentChat, getAgentById, supabase, contentTypes, agents, setAgents]);
 
   const createContentType = useCallback(async (
     contentTypeData: Omit<ContentType, "id" | "createdAt" | "updatedAt" | "userId">

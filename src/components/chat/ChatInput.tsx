@@ -1,5 +1,5 @@
 import { useState, FormEvent, useEffect } from "react";
-import { Textarea } from "@/components/ui/textarea";
+import TextareaAutosize from 'react-textarea-autosize';
 import { SendHorizonal } from "lucide-react";
 import { useTheme } from "@/context/ThemeContext";
 import { useKeyboardVisible } from "@/hooks/use-keyboard-visible";
@@ -107,8 +107,8 @@ export function ChatInput({ onSendMessage, disabled = false }: ChatInputProps) {
       setTimeout(() => {
         // Scroll para o elemento atual
         const activeElement = document.activeElement;
-        if (activeElement) {
-          activeElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        if (activeElement && typeof (activeElement as any).scrollIntoView === 'function') {
+          (activeElement as any).scrollIntoView({ behavior: 'smooth', block: 'center' });
         }
       }, 300);
     }
@@ -118,8 +118,8 @@ export function ChatInput({ onSendMessage, disabled = false }: ChatInputProps) {
   
   // Definir cores baseadas no tema
   const inputBgColor = theme === 'light'
-    ? isFocused ? '#ffffff' : 'hsl(220, 20%, 91%)' // Cor dos botões selecionados no modo claro, branco quando focado
-    : isFocused ? 'hsl(217, 33%, 25%)' : 'hsl(222, 47%, 16%)'; // No modo escuro: sem foco mais escuro, com foco mais claro
+    ? isFocused ? '#ffffff' : 'hsl(220, 20%, 91%)'
+    : isFocused ? 'hsl(217, 33%, 25%)' : 'hsl(222, 47%, 16%)';
 
   // Definir sombra baseada no tema
   const boxShadow = theme === 'light'
@@ -135,19 +135,17 @@ export function ChatInput({ onSendMessage, disabled = false }: ChatInputProps) {
       paddingRight: '5px' 
     } : {};
 
-  // Altura do textarea ajustada para mobile e quando o teclado estiver visível
-  const textareaStyle = {
+  // O tipo Style para react-textarea-autosize não deve incluir 'height' explicitamente
+  // se minRows/maxRows estão controlando. O CSSProperties do React é mais amplo.
+  // Vamos garantir que as propriedades que passamos são compatíveis.
+  const textareaDynamicStyles: Omit<React.CSSProperties, 'height'> = {
     fontSize: '16px',
     backgroundColor: inputBgColor,
     border: 'none',
     boxShadow: boxShadow,
     transition: 'background-color 0.2s ease, box-shadow 0.2s ease',
-    ...(isMobile ? { 
-      minHeight: isKeyboardVisible ? '44px' : '50px',
-      maxHeight: isKeyboardVisible ? '80px' : '150px',
-      paddingTop: isKeyboardVisible ? '10px' : '12px',
-      paddingBottom: isKeyboardVisible ? '10px' : '12px',
-    } : {})
+    overflowY: 'auto', // Para garantir que o scroll apareça quando maxRows for atingido
+    boxSizing: 'border-box', // Garantir border-box
   };
 
   return (
@@ -156,9 +154,9 @@ export function ChatInput({ onSendMessage, disabled = false }: ChatInputProps) {
       style={formStyle}
       className={isMobile ? "" : "p-4"}
     >
-      <div className={`flex items-center w-full ${isKeyboardVisible ? 'space-x-1' : 'space-x-2'}`}>
+      <div className={`flex items-end w-full ${isKeyboardVisible ? 'space-x-1' : 'space-x-2'}`}>
         <div className="flex-1">
-          <Textarea
+          <TextareaAutosize
             placeholder="Digite sua mensagem..."
             value={message}
             onChange={(e) => {
@@ -168,19 +166,22 @@ export function ChatInput({ onSendMessage, disabled = false }: ChatInputProps) {
             onKeyDown={handleKeyDown}
             onFocus={handleFocus}
             onBlur={() => setIsFocused(false)}
-            rows={1}
-            className={`resize-none p-3 w-full text-lg focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-offset-0 rounded-lg ${theme === 'light' ? 'placeholder:opacity-45' : 'placeholder:opacity-35'} ${isMobile ? "" : "min-h-[60px] max-h-[200px]"}`}
-            style={textareaStyle}
+            minRows={1}
+            maxRows={9}
+            className={`p-3 w-full text-lg focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-offset-0 rounded-lg ${theme === 'light' ? 'placeholder:opacity-45' : 'placeholder:opacity-35'}`}
+            style={textareaDynamicStyles}
             disabled={disabled}
           />
         </div>
         
-        <BlackButton 
-          disabled={isButtonDisabled}
-          size={isKeyboardVisible && isMobile ? "small" : "normal"}
-        >
-          <SendHorizonal size={isKeyboardVisible && isMobile ? 18 : 20} />
-        </BlackButton>
+        <div className={isMobile ? "pb-[9px]" : "pb-[5px]"}>
+          <BlackButton 
+            disabled={isButtonDisabled}
+            size={isKeyboardVisible && isMobile ? "small" : "normal"}
+          >
+            <SendHorizonal size={isKeyboardVisible && isMobile ? 18 : 20} />
+          </BlackButton>
+        </div>
       </div>
     </form>
   );

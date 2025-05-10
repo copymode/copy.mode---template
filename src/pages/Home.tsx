@@ -797,7 +797,7 @@ export default function Home() {
                   if (!promptInput.trim() || isGenerating || !selectedAgent || !selectedContentType) return;
                   handleSendMessage(promptInput);
                 }} className="p-2 md:p-4">
-                  <div className="flex items-center w-full space-x-2">
+                  <div className="flex items-center max-w-[calc(100vw-32px)] sm:max-w-3xl mx-auto space-x-2 w-full">
                     <div className="flex-1">
                       <Textarea 
                         placeholder="Digite seu prompt..."
