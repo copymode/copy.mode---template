@@ -130,7 +130,7 @@ A chave de API é armazenada no perfil do usuário e utilizada para as chamadas 
 
 ## Versão e Histórico de Alterações
 
-A versão atual do sistema é 2.0.9. Esta versão introduz melhorias na usabilidade do campo de entrada de chat, com redimensionamento automático do textarea e ajustes de alinhamento do botão de envio para diferentes dispositivos.
+A versão atual do sistema é 2.1.0. Esta versão introduz melhorias na renderização do Markdown, corrige problemas de quebras de linha duplas em excesso, remove a sombra da área de input no desktop e torna a borda do header transparente para uma interface mais limpa.
 
 ---
 

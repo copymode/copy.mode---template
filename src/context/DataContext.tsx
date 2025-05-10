@@ -756,11 +756,13 @@ ${agentBasePrompt}
                           `- O usuário solicitou a criação de: ${contentTypeNameForPrompt}${contentTypeDescForPrompt}.\n` +
                           `- A última mensagem do usuário (prompt atual a ser respondido) é: "${additionalInfo}"\n` +
                           `- Gere sua resposta exclusivamente em Português do Brasil.\n` +
+                          `- Para clareza e melhor organização da resposta, utilize formatação Markdown quando apropriado. Isso inclui o uso de títulos, subtítulos, listas (bullet points ou numeradas), negrito e itálico para destacar informações importantes ou estruturar o conteúdo de forma lógica.\n` +
                           `- É IMPERATIVO E NÃO NEGOCIÁVEL que você MANTENHA ESTRITAMENTE A PERSONA, O TOM E AS REGRAS DO AGENTE, conforme detalhado NO BLOCO 'INSTRUÇÕES OBRIGATÓRIAS PARA ESTE AGENTE' NO INÍCIO DESTAS INSTRUÇÕES. NÃO SUAVIZE. NÃO MUDE O TOM. NÃO QUEBRE AS REGRAS ESTABELECIDAS PARA O AGENTE ATUAL.`;
     console.log(`[DataContext] generateCopy - Tamanho Prompt Usuário (additionalInfo): ${additionalInfo.length} caracteres`);
     console.log(`[DataContext] generateCopy - Tamanho Parte Instruções Finais: ${partFinalInstructions.length} caracteres`);
     
-    const systemInstructions = partAgentPrompt + partExpertContext + partKnowledgeBase + partFinalInstructions;
+    const parts = [partAgentPrompt, partExpertContext, partKnowledgeBase, partFinalInstructions];
+    const systemInstructions = parts.map(part => part.trim()).filter(part => part.length > 0).join('\n\n');
     console.log(`[DataContext] generateCopy - System Instructions ANTES da truncação (Tamanho Total): ${systemInstructions.length} caracteres`);
 
     let finalSystemInstructions = systemInstructions;
