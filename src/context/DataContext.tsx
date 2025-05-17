@@ -115,7 +115,8 @@ const mockContentTypes: ContentType[] = [
   { id: '1', name: 'Post Feed', description: 'Conteúdo para o feed principal', avatar: null, createdAt: new Date(), updatedAt: new Date(), userId: 'system'},
   { id: '2', name: 'Story', description: 'Conteúdo para stories', avatar: null, createdAt: new Date(), updatedAt: new Date(), userId: 'system'},
   { id: '3', name: 'Reels', description: 'Conteúdo para reels/vídeos curtos', avatar: null, createdAt: new Date(), updatedAt: new Date(), userId: 'system'},
-  { id: '4', name: 'Anúncio', description: 'Conteúdo para anúncios pagos', avatar: null, createdAt: new Date(), updatedAt: new Date(), userId: 'system'}
+  { id: '4', name: 'Anúncio', description: 'Conteúdo para anúncios pagos', avatar: null, createdAt: new Date(), updatedAt: new Date(), userId: 'system'},
+  { id: '5', name: 'Carrossel', description: 'Conteúdo para carrosséis interativos', avatar: null, createdAt: new Date(), updatedAt: new Date(), userId: 'system'}
 ];
 
 export function DataProvider({ children }: { children: ReactNode }) {
@@ -748,32 +749,19 @@ ${agentBasePrompt}
     }
     console.log(`[DataContext] generateCopy - Tamanho Parte Base de Conhecimento: ${partKnowledgeBase.length} caracteres`);
 
-    const selectedContentTypeData = contentTypes.find(ct => ct.id === contentType);
+    const selectedContentTypeData = contentTypes.find(ct => ct.name === contentType);
     const contentTypeNameForPrompt = selectedContentTypeData?.name || "o conteúdo solicitado";
     const contentTypeDescForPrompt = selectedContentTypeData?.description ? ` (${selectedContentTypeData.description})` : "";
 
-    // Nova seção para tipo de conteúdo com alta prioridade
-    let partContentType = "";
-    if (selectedContentTypeData) {
-      partContentType = `\n\n## INSTRUÇÕES ESPECÍFICAS PARA CRIAÇÃO DE ${contentTypeNameForPrompt.toUpperCase()} (PRIORIDADE ALTA):\n`;
-      partContentType += `As instruções a seguir são CRUCIAIS e devem ser aplicadas rigorosamente na criação deste conteúdo.\n\n`;
-      partContentType += `${selectedContentTypeData.description || "Não há descrição específica disponível."}\n\n`;
-      partContentType += `IMPORTANTE: Você DEVE seguir estas regras e estruturas ao criar este tipo de conteúdo. Este é um requisito não-negociável.\n`;
-      console.log(`[DataContext] generateCopy - Tamanho Parte Tipo de Conteúdo: ${partContentType.length} caracteres`);
-    }
-
-    // Modificação nas instruções finais para remover menção básica ao tipo de conteúdo
     let partFinalInstructions = `\n\n## Tarefa Atual e Diretrizes Finais de Execução:\n` +
-                          `- A pergunta/solicitação atual do usuário é: "${additionalInfo}"\n` +
+                          `- O usuário solicitou a criação de: ${contentTypeNameForPrompt}${contentTypeDescForPrompt}.\n` +
+                          `- A última mensagem do usuário (prompt atual a ser respondido) é: "${additionalInfo}"\n` +
                           `- Gere sua resposta exclusivamente em Português do Brasil.\n` +
-                          `- Para clareza e melhor organização da resposta, utilize formatação Markdown quando apropriado. Isso inclui o uso de títulos, subtítulos, listas (bullet points ou numeradas), negrito e itálico para destacar informações importantes ou estruturar o conteúdo de forma lógica.\n` +
-                          `- Lembre-se de seguir PRIMEIRO as instruções do agente, SEGUNDO as regras específicas do tipo de conteúdo requisitado (${contentTypeNameForPrompt}), e TERCEIRO utilize o conhecimento adicional conforme necessário.\n` +
                           `- É IMPERATIVO E NÃO NEGOCIÁVEL que você MANTENHA ESTRITAMENTE A PERSONA, O TOM E AS REGRAS DO AGENTE, conforme detalhado NO BLOCO 'INSTRUÇÕES OBRIGATÓRIAS PARA ESTE AGENTE' NO INÍCIO DESTAS INSTRUÇÕES. NÃO SUAVIZE. NÃO MUDE O TOM. NÃO QUEBRE AS REGRAS ESTABELECIDAS PARA O AGENTE ATUAL.`;
     console.log(`[DataContext] generateCopy - Tamanho Prompt Usuário (additionalInfo): ${additionalInfo.length} caracteres`);
     console.log(`[DataContext] generateCopy - Tamanho Parte Instruções Finais: ${partFinalInstructions.length} caracteres`);
     
-    // Nova ordem das partes refletindo as prioridades estabelecidas
-    const parts = [partAgentPrompt, partContentType, partKnowledgeBase, partExpertContext, partFinalInstructions];
+    const parts = [partAgentPrompt, partExpertContext, partKnowledgeBase, partFinalInstructions];
     const systemInstructions = parts.map(part => part.trim()).filter(part => part.length > 0).join('\n\n');
     console.log(`[DataContext] generateCopy - System Instructions ANTES da truncação (Tamanho Total): ${systemInstructions.length} caracteres`);
 
