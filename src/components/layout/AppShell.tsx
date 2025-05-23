@@ -3,7 +3,7 @@ import { useAuth } from "@/context/AuthContext";
 import { useTheme } from "@/context/ThemeContext";
 import { useData } from "@/hooks/useData";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { Menu, X, Home, Users, Settings, ChevronRight, Moon, Sun, LogOut, ChevronsLeft, ChevronsRight, Trash2, Pencil, Plus, Bot, Search } from "lucide-react";
+import { Menu, X, Home, Users, Settings, ChevronRight, Moon, Sun, LogOut, ChevronsLeft, ChevronsRight, Trash2, Pencil, Plus, Bot, Search, UserCog } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -253,7 +253,10 @@ export function AppShell({ children }: AppShellProps) {
                  {[ 
                     { path: "/", icon: Home, label: "Home" },
                     { path: "/experts", icon: Users, label: "Experts" },
-                    ...(currentUser?.role === "admin" ? [{ path: "/admin", icon: Bot, label: "Admin" }] : []),
+                    ...(currentUser?.role === "admin" ? [
+                      { path: "/admin", icon: Bot, label: "Admin" },
+                      { path: "/users", icon: UserCog, label: "Usuários" }
+                    ] : []),
                     { path: "/settings", icon: Settings, label: "Configurações" },
                  ].map(({ path, icon: Icon, label }) => {
                    const key = `nav-${path}`;

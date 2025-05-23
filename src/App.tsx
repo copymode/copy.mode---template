@@ -13,6 +13,7 @@ import Login from "./pages/Login";
 import Home from "./pages/Home";
 import Experts from "./pages/Experts";
 import Admin from "./pages/Admin";
+import Users from "./pages/Users";
 import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
 
@@ -58,6 +59,13 @@ const AppRoutes = () => {
         <ProtectedRoute adminOnly={true}>
           <AppShell>
             <Admin />
+          </AppShell>
+        </ProtectedRoute>
+      } />
+      <Route path="/users" element={
+        <ProtectedRoute adminOnly={true}>
+          <AppShell>
+            <Users />
           </AppShell>
         </ProtectedRoute>
       } />
